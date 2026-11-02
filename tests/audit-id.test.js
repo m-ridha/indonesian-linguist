@@ -83,6 +83,18 @@ test('auditDictionary: keeps hyphenated exercise names, audits indented plain-te
   assert.ok(auditText('1) Petunjuk\n\n    1) Silahkan lanjutkan.').some((i) => i.rule === 'kata-tidak-baku'));
 });
 
+test('auditText: keeps list prose audited but strips code indented past the list item content', () => {
+  const code = '1. Langkah\n\n        silahkan ini kode di dalam list\n\n2. Selesai';
+  assert.deepEqual(auditText(code), []);
+  const prose = '1. Langkah\n\n    Silahkan lanjutkan.';
+  assert.ok(auditText(prose).some((i) => i.rule === 'kata-tidak-baku'));
+});
+
+test('auditDictionary: rejects generic hyphenated English phrases as retained exercise names', () => {
+  const findings = auditDictionary({ 'Beginner-friendly bench press': 'Beginner-friendly bench press' });
+  assert.equal(findings.length, 1);
+});
+
 test('auditDictionary: flags silent English fallback on long strings (>15 chars), even when containing a retained brand/loanword inside a sentence', () => {
   const dict = {
     Gym: 'Gym', // Short loanword: allowed

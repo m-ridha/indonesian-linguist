@@ -67,7 +67,7 @@ const KNOWN_CALQUE_TRAPS = [
 // and official product/OS proper nouns. Never matches arbitrary English sentences containing these words.
 const RETAINED_LOANWORD_PATTERNS = [
   /^(?:Drop-set\s*\/\s*rest-pause|Drop-set|Superset(?:\s+\{[0-9]+\}(?:\s*\/\s*\{[0-9]+\}|\s*:\s*\{[0-9]+\}\s*\(\{[0-9]+\}\))?)?|Rest-pause|Deload|Bodyweight|Thibaudeau\s*\(Powerlifting\))$/i,
-  /^(?:(?:[a-z]+(?:-[a-z]+)+|incline|decline|flat|barbell|dumbbell|ez-bar|cable|smith machine|seated|standing|close-grip|wide-grip|romanian|sumo|conventional|deficit|pause|paused|single-arm|one-arm)\s+){0,3}(?:bench press|barbell curl|back squat|front squat|deadlift|overhead press|leverage machine)(?:\s*\([A-Za-z0-9 -]+\))?$/i,
+  /^(?:(?:(?:single|one|two)-(?:leg|arm)|(?:reverse|close|wide|neutral|narrow|overhand|underhand|hammer|snatch)-grip|incline|decline|flat|barbell|dumbbell|ez-bar|cable|smith machine|seated|standing|close-grip|wide-grip|romanian|sumo|conventional|deficit|pause|paused|single-arm|one-arm)\s+){0,3}(?:bench press|barbell curl|back squat|front squat|deadlift|overhead press|leverage machine)(?:\s*\([A-Za-z0-9 -]+\))?$/i,
   /^(?:serratus anterior|latissimus dorsi|sternocleidomastoid|pectoralis(?:\s+major|\s+minor)?|gluteus(?:\s+maximus|\s+medius)?|gastrocnemius)$/i,
   /^(?:Face ID(?:\s*\/\s*Touch ID)?|Touch ID|iCloud Keychain|Google Password Manager|Health Connect|Apple Health|Apple Watch|Cloudflare Access)$/i,
   /^(?:API key|endpoint|reverse proxy|source code|webhook)$/i,
@@ -95,21 +95,24 @@ function stripIndentedCodeBlocks(text) {
   const lines = String(text || '').split('\n');
   const out = [];
   let inListContext = false;
+  let listContentIndent = 0;
   let inIndentedCodeBlock = false;
   let afterBlankLine = true;
 
   for (const line of lines) {
-    const trimmed = line.trim();
-    if (trimmed === '') {
+    if (line.trim() === '') {
       out.push('');
       afterBlankLine = true;
       continue;
     }
 
-    const isListItem = /^\s*(?:[-*+]|\d+[.)])\s+/.test(line);
-    const isIndented = /^(?: {4}|\t)/.test(line);
+    const indent = line.match(/^[ \t]*/)[0].replace(/\t/g, '    ').length;
+    const listMatch = line.match(/^([ \t]*)((?:[-*+]|\d+[.)])\s+)/);
+    const isIndented = indent >= 4;
+    // Inside a list, content only becomes code when indented 4+ columns past the item's content.
+    const codeThreshold = inListContext ? listContentIndent + 4 : 4;
 
-    if (isIndented && (inIndentedCodeBlock || (afterBlankLine && !inListContext))) {
+    if (isIndented && (inIndentedCodeBlock || (afterBlankLine && indent >= codeThreshold))) {
       inIndentedCodeBlock = true;
       afterBlankLine = false;
       out.push('');
@@ -117,8 +120,9 @@ function stripIndentedCodeBlocks(text) {
     }
 
     inIndentedCodeBlock = false;
-    if (isListItem) {
+    if (listMatch) {
       inListContext = true;
+      listContentIndent = listMatch[1].replace(/\t/g, '    ').length + listMatch[2].length;
     } else if (!isIndented) {
       inListContext = false;
     }
