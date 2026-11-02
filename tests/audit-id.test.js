@@ -28,6 +28,7 @@ test('auditText: ignores protected Markdown inline code spans, backtick/tilde fe
     '~~~',
     '',
     '    silahkan merubah aktifitas yg ada—di era digital',
+    '    baris kedua dalam indented code block yg sama—tidak boleh kena flag',
     '',
     'Paragraf penutup ini sudah baku dan alami.',
   ].join('\n');
@@ -70,15 +71,21 @@ test('auditDictionary: flags silent English fallback on long strings (>15 chars)
   const dict = {
     Gym: 'Gym', // Short loanword: allowed
     'Face ID / Touch ID': 'Face ID / Touch ID', // Complete retained proper noun label: allowed
+    'Incline dumbbell bench press': 'Incline dumbbell bench press', // Complete retained exercise name: allowed
     'Collapse completed exercises': 'Collapse completed exercises', // Long untranslated fallback: flagged!
     'Open Apple Health to log your workout': 'Open Apple Health to log your workout', // English sentence containing Apple Health: flagged!
+    'Tap here to add bench press': 'Tap here to add bench press', // English instruction ending with bench press: flagged!
   };
   const findings = auditDictionary(dict);
-  assert.equal(findings.length, 2);
+  assert.equal(findings.length, 3);
   assert.ok(findings.every((f) => f.rule === 'silent-fallback'));
   assert.deepEqual(
     findings.map((f) => f.key),
-    ['Collapse completed exercises', 'Open Apple Health to log your workout'],
+    [
+      'Collapse completed exercises',
+      'Open Apple Health to log your workout',
+      'Tap here to add bench press',
+    ],
   );
 });
 

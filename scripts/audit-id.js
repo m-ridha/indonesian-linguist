@@ -67,7 +67,7 @@ const KNOWN_CALQUE_TRAPS = [
 // and official product/OS proper nouns. Never matches arbitrary English sentences containing these words.
 const RETAINED_LOANWORD_PATTERNS = [
   /^(?:Drop-set\s*\/\s*rest-pause|Drop-set|Superset(?:\s+\{[0-9]+\}(?:\s*\/\s*\{[0-9]+\}|\s*:\s*\{[0-9]+\}\s*\(\{[0-9]+\}\))?)?|Rest-pause|Deload|Bodyweight|Thibaudeau\s*\(Powerlifting\))$/i,
-  /^(?:[A-Za-z-]+\s+){0,3}(?:bench press|barbell curl|back squat|front squat|deadlift|overhead press|leverage machine)(?:\s*\([A-Za-z0-9 -]+\))?$/i,
+  /^(?:(?:incline|decline|flat|barbell|dumbbell|ez-bar|cable|smith machine|seated|standing|close-grip|wide-grip|romanian|sumo|conventional|deficit|pause|paused|single-arm|one-arm)\s+){0,3}(?:bench press|barbell curl|back squat|front squat|deadlift|overhead press|leverage machine)(?:\s*\([A-Za-z0-9 -]+\))?$/i,
   /^(?:serratus anterior|latissimus dorsi|sternocleidomastoid|pectoralis(?:\s+major|\s+minor)?|gluteus(?:\s+maximus|\s+medius)?|gastrocnemius)$/i,
   /^(?:Face ID(?:\s*\/\s*Touch ID)?|Touch ID|iCloud Keychain|Google Password Manager|Health Connect|Apple Health|Apple Watch|Cloudflare Access)$/i,
   /^(?:API key|endpoint|reverse proxy|source code|webhook)$/i,
@@ -95,6 +95,7 @@ function stripIndentedCodeBlocks(text) {
   const lines = String(text || '').split('\n');
   const out = [];
   let inListContext = false;
+  let inIndentedCodeBlock = false;
   let afterBlankLine = true;
 
   for (const line of lines) {
@@ -108,11 +109,14 @@ function stripIndentedCodeBlocks(text) {
     const isListItem = /^\s*(?:[-*+]|\d+\.)\s+/.test(line);
     const isIndented = /^(?: {4}|\t)/.test(line);
 
-    if (isIndented && afterBlankLine && !isListItem && !inListContext) {
+    if (isIndented && (inIndentedCodeBlock || (afterBlankLine && !isListItem && !inListContext))) {
+      inIndentedCodeBlock = true;
+      afterBlankLine = false;
       out.push('');
       continue;
     }
 
+    inIndentedCodeBlock = false;
     if (isListItem) {
       inListContext = true;
     } else if (!isIndented) {
