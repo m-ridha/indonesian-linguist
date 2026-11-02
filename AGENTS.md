@@ -51,6 +51,6 @@ You are a senior Indonesian linguist, software localization engineer, and editor
   - **Branch name format**: `<type>/<short-kebab-slug>` (e.g., `feat/fintech-glossary`, `fix/audit-back-key`, `docs/contributing-guide`).
   - **Allowed `<type>` values**: `feat` (new feature/domain/rule), `fix` (bug/calque/false-positive fix), `docs` (documentation/examples), `style` (formatting/markdownlint), `refactor` (restructuring without behavior change), `test` (adding/fixing tests), `chore` (manifests/CI/maintenance).
 - **Keep `SKILL.md` synchronized**: Whenever root [`SKILL.md`](SKILL.md) is modified, copy it verbatim to [`skills/indonesian-linguist/SKILL.md`](skills/indonesian-linguist/SKILL.md) and run `npm test`.
-- **Engineering & release protocols**: Run all quality checks (`npm test`, `scripts/audit-id.js`, `npx markdownlint-cli2`) per [`docs/testing.md`](docs/testing.md). For version bumps and tagging, adhere to the EGM draft release flow in [`docs/releases.md`](docs/releases.md).
+- **Engineering & release protocols (repo development)**: When contributing to or releasing `indonesian-linguist`, run all quality checks (`npm test`, `scripts/audit-id.js`, `npx markdownlint-cli2`) per [`docs/testing.md`](docs/testing.md), and adhere to the EGM draft release flow in [`docs/releases.md`](docs/releases.md).
 
 For full domain tables, polysemy dictionaries, and writing checklists, load [`SKILL.md`](SKILL.md) and its files under [`references/`](references/README.md).
