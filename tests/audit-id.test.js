@@ -5,7 +5,9 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { execFileSync } = require('node:child_process');
+const { spawnSync } = require('node:child_process');
+const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const { auditText, auditDictionary, parseSimpleJsLocale } = require('../scripts/audit-id');
 
@@ -30,6 +32,12 @@ test('auditText: ignores protected Markdown inline code spans, backtick/tilde fe
     'Paragraf penutup ini sudah baku dan alami.',
   ].join('\n');
   assert.deepEqual(auditText(docWithCodeExamples), []);
+
+  // Nested Markdown list items after a blank line must still be audited
+  const nestedListWithDefect = '- Petunjuk\n\n    - Silahkan lanjutkan.\n    Baris lanjutan yg salah.';
+  const listIssues = auditText(nestedListWithDefect);
+  assert.ok(listIssues.some((i) => i.rule === 'kata-tidak-baku'));
+  assert.ok(listIssues.some((i) => i.rule === 'sms-abbreviation'));
 });
 
 test('auditText: flags banned SMS abbreviations (yg, dgn, utk, krn, tdk, bgt)', () => {
@@ -86,13 +94,15 @@ test('auditDictionary: flags placeholder mismatches including duplicate counts a
   assert.ok(findings.every((f) => f.rule === 'placeholder-mismatch'));
 });
 
-test('parseSimpleJsLocale: parses both quoted and unquoted JS keys and rejects invalid/empty input', () => {
+test('parseSimpleJsLocale: parses both quoted and unquoted JS keys, ignores braces inside comments, and rejects invalid/empty input', () => {
   const parsed = parseSimpleJsLocale(`
-    // Sample locale
+    // {0} is the item count in header comments
+    /* Another comment with { braces } */
     export default {
       Back: 'Punggung',
       'Clear rating': "Peringkat yang jelas",
     };
+    // Trailing comment with { brace }
   `);
   assert.deepEqual(parsed, {
     Back: 'Punggung',
@@ -109,15 +119,43 @@ test('parseSimpleJsLocale: parses both quoted and unquoted JS keys and rejects i
   );
 });
 
+test('auditDictionary: recursively audits nested namespace objects and prefixes finding keys', () => {
+  const nestedDict = {
+    nav: {
+      Back: 'Punggung',
+      profile: {
+        'Clear rating': 'Peringkat yang jelas',
+      },
+    },
+  };
+  const findings = auditDictionary(nestedDict);
+  assert.equal(findings.length, 2);
+  assert.deepEqual(
+    findings.map((f) => f.key),
+    ['nav.Back', 'nav.profile.Clear rating'],
+  );
+});
+
 test('CLI: audits multiple files passed on command line and exits non-zero if a later file fails', () => {
   const scriptPath = path.join(__dirname, '..', 'scripts', 'audit-id.js');
-  const cleanFile = path.join(__dirname, '..', 'CHANGELOG.md');
-  const dirtyFile = path.join(__dirname, '..', 'README.md'); // Contains intentional bad examples outside code spans
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'audit-id-'));
 
-  assert.throws(
-    () => execFileSync(process.execPath, [scriptPath, cleanFile, dirtyFile], { stdio: 'pipe' }),
-    /Command failed/,
-  );
+  try {
+    const cleanFile = path.join(tmpDir, 'clean.md');
+    const dirtyFile = path.join(tmpDir, 'dirty.md');
+    fs.writeFileSync(cleanFile, 'Silakan simpan perubahan ini.\n', 'utf8');
+    fs.writeFileSync(dirtyFile, 'Silahkan simpan perubahan yg ini.\n', 'utf8');
+
+    const result = spawnSync(process.execPath, [scriptPath, cleanFile, dirtyFile], {
+      encoding: 'utf8',
+    });
+
+    assert.equal(result.status, 1);
+    assert.match(result.stdout, /Clean: 0 findings/);
+    assert.match(result.stderr, /dirty\.md/);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
 });
 
 test('auditDictionary: flags known OpenGym / UI polysemy and literal calque traps', () => {

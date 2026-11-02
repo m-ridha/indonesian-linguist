@@ -171,7 +171,7 @@ copilot plugin install indonesian-linguist@indonesian-linguist
 
 ### Cursor, Windsurf, Cline, Zed & Generic Agents
 
-Copy [`AGENTS.md`](AGENTS.md) into your project root (or `.cursor/rules/`, `.windsurf/rules/`, `.clinerules/`). See [`docs/agent-portability.md`](docs/agent-portability.md) for the full adapter matrix.
+Copy [`AGENTS.md`](AGENTS.md) alongside [`SKILL.md`](SKILL.md) and [`references/`](references/README.md) into your project root so relative references resolve (or use `.windsurf/rules/` or `.clinerules/`; for Cursor, keep `AGENTS.md` at the project root or use a `.mdc` rule in `.cursor/rules/`). See [`docs/agent-portability.md`](docs/agent-portability.md) for the full adapter matrix.
 
 ---
 

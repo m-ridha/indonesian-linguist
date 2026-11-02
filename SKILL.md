@@ -39,8 +39,8 @@ Before writing or editing, identify the task type below and read **only** the re
 ### A. Scope Boundaries, Register & Pronoun Lock
 Lock in these parameters before generating your first Indonesian sentence:
 1. **Target Task vs. Protected Technical Artifacts**:
-   - **Target Task Artifacts**: Strings, locale files, documentation, or copy that the user explicitly asked to translate, localize, or edit.
-   - **Protected Reference Artifacts**: Code blocks, inline identifiers, CLI commands, flags, file paths, URLs, git hashes, stack traces, log outputs, and exact-match config keys must **never** be translated or altered.
+   - **Target Task Artifacts**: Strings, locale files, documentation, or copy that the user explicitly asked to translate, localize, or edit (including targeted string values inside pasted locale/code snippets).
+   - **Protected Reference Artifacts**: Non-target code blocks, code syntax, inline identifiers, CLI commands, flags, file paths, URLs, git hashes, stack traces, log outputs, and exact-match config keys must **never** be translated or altered.
    - **Repository Artifact Language (`artifact_language`)**: Commit messages, PR descriptions, branch names, and code comments must follow the repository's dominant convention (defaulting to English in international/open-source repos) even when you converse with the user in Bahasa Indonesia.
 2. **Register (5 Levels)**:
    - *Beku* (Frozen: legal, statutory), *Resmi* (Formal: academic, official reports, B2B docs), *Konsultatif* (Consultative: business emails, documentation, news, general SaaS), *Santai* (Casual: consumer lifestyle apps, social media, blogs), *Akrab* (Intimate: peer community chat, gym-buddy nudges).
@@ -96,7 +96,7 @@ When translating key-value localization dictionaries or UI components:
    - Retain established community and developer loanwords when literal translation produces absurd calques: keep **`API key`**, **`endpoint`**, **`reverse proxy`**, **`source code`**, **`webhook`**, **`Gym`**, **`Check-in`**, **`Squat`**, **`Bench press`**, **`Deadlift`**, **`Dumbbell`**, **`Push / Pull / Leg`**, **`Upper / Lower`**, **`Full Body`**, **`Drop set`**, **`Superset`**, **`Rest-pause`**, **`Deload`**, **`PR`**.
    - Hyphenate Indonesian affixes/clitics attached to unassimilated foreign technical terms in prose: **`di-deploy`**, **`di-build`**, **`di-render`**, **`commit-nya`**, **`endpoint-nya`**.
    - Never translate official product/OS proper nouns: **`iCloud Keychain`**, **`Google Password Manager`**, **`Face ID`**, **`Touch ID`**, **`Health Connect`**, **`Apple Health`**, **`Apple Watch`**.
-   - Match official Android/iOS Indonesian system settings strings when instructing users: **`Aktif / Nonaktif`** (*On / Off*), **`Selalu izinkan`** (*All the time*), **`Tak terbatas`** (*Unrestricted* battery), **`Fungsi Geser`** (*Swipe actions*).
+   - Match official Android/iOS Indonesian system settings strings when instructing users: **`Aktif / Nonaktif`** (*On / Off*), **`Izinkan sepanjang waktu`** / **`Selalu izinkan`** (*All the time* per-app location option vs. permission-manager heading), **`Tak terbatas`** (*Unrestricted* battery), **`Fungsi Geser`** (*Swipe actions*).
    - Keep binary gender pairs paradigmatically matched: **`Pria / Wanita`** or **`Laki-laki / Perempuan`** (never mix *Pria* with *Perempuan*).
 
 ### C. Ten Zero-Tolerance Anti-Slop & Grammar Rules
@@ -121,5 +121,5 @@ Before returning any Indonesian translation, localization file, or text:
 - [ ] **Polysemy, Voice & Antecedent Check**: Are isolated UI keys (`Back`, `Clear`, `Light`, `Right`, `Log`, `Running`, `Hop over`, `Signs out`), verb voices (`Zero` button vs. `meN-` vs. `di-` vs. `ter-`), and form caption pronouns (`it`) resolved to their exact UI context?
 - [ ] **Inanimate Pronoun Check**: Zero instances of `ia`, `dia`, or `mereka` referring to servers, devices, data changes, sets, or inanimate items.
 - [ ] **Button & Compaction Check**: Do all action buttons use base imperative verbs (no `me-` prefix)? Are tight UI pills compact without using banned SMS abbreviations (`yg`, `dgn`, `utk`)?
-- [ ] **Placeholder & Plural Check**: Are all `{0}`, `{1}`, `%s` placeholders preserved with identical counts and placed *before* the noun (`{0} perubahan`)?
+- [ ] **Placeholder & Plural Check**: Are all `{0}`, `{1}`, `%s` placeholders preserved with identical counts, with quantity placeholders placed *before* the noun (`{0} perubahan`, never *Perubahan {0}*) and index/identifier placeholders after the noun (`Set {0}`)?
 - [ ] **Slop & Grammar Check**: Zero instances of `hiruk pikuk`, `dikarenakan`, `di mana` as a relative connector, `adalah merupakan`, stylistic em dashes, or non-standard spellings (*silahkan, sekedar, resiko, merubah*).

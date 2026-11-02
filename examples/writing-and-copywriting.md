@@ -28,9 +28,9 @@ These examples compare standard LLM output (without `indonesian-linguist`) again
 > Ada pembeli di warungmu pegang HP, bukan dompet. "Bisa bayar QRIS?" Kamu jawab apa?
 >
 > Sekarang jawabannya gampang: bisa.
-> Kasirin sekarang terima pembayaran QRIS langsung dari aplikasi yang biasa kamu pakai buat catat penjualan. Nggak perlu mesin tambahan, nggak perlu pasang aplikasi lain.
+> Kasirin sekarang bisa terima pembayaran QRIS untuk warung.
 >
-> Biaya transaksinya gratis sampai 31 Oktober 2026: uang dari tiap transaksi masuk utuh ke rekeningmu, nggak kepotong sepeser pun.
+> Biaya pembayaran QRIS gratis sampai 31 Oktober 2026.
 >
 > Buka aplikasi Kasirin, lalu aktifkan QRIS di menu Pembayaran sekarang.
 >

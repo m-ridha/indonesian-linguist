@@ -80,7 +80,7 @@ Do not start consecutive paragraphs with conjunctive adverbs (*Selain itu, Tidak
 - ❌ *"Pertanyaan yang sangat menarik!"*, *"Tentu saja, dengan senang hati saya bantu!"*
 
 ### S10. Formatting Slop & Stylistic Em Dashes (`—`)
-- **Em Dash Ban**: Never use the em dash (`—`) as stylistic punctuation glue (e.g., *"Konsistensi, bukan motivasi, adalah kunci"*). Use commas, colons, parentheses, or separate sentences. In formal Indonesian (EYD V), the dash is reserved strictly for ranges (*2020-2026*, *Jakarta-Bandung*), and in prose it is often better written out as *sampai*.
+- **Em Dash Ban**: Never use the em dash (`—`) as stylistic LLM punctuation glue (e.g., *"Konsistensi, bukan motivasi, adalah kunci"*). Although EYD V formally permits *tanda pisah* (`—`) to set off explanatory appositives and to express *sampai dengan* (*2020-2026*, *Jakarta-Bandung*), this skill bans stylistic em dashes in prose to prevent AI punctuation slop; use commas, colons, parentheses, or separate sentences instead, and write out *sampai* or *hingga* for ranges in prose.
 - **Title Case Abuse**: Indonesian headings and UI titles use **Sentence case** (only first word and proper nouns capitalized) or clean **Title Case** only on formal document titles, never capitalize prepositions/conjunctions (*di, ke, dari, dan, atau, yang, untuk*).
 
 ---

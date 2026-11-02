@@ -86,6 +86,47 @@ function extractPlaceholders(str) {
 }
 
 /**
+ * Strip Markdown 4-space or tab-indented code blocks while preserving indented list continuations
+ * and nested list items (e.g., `- Petunjuk\n\n    - Silahkan...`).
+ * @param {string} text
+ * @returns {string}
+ */
+function stripIndentedCodeBlocks(text) {
+  const lines = String(text || '').split('\n');
+  const out = [];
+  let inListContext = false;
+  let afterBlankLine = true;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed === '') {
+      out.push('');
+      afterBlankLine = true;
+      continue;
+    }
+
+    const isListItem = /^\s*(?:[-*+]|\d+\.)\s+/.test(line);
+    const isIndented = /^(?: {4}|\t)/.test(line);
+
+    if (isIndented && afterBlankLine && !isListItem && !inListContext) {
+      out.push('');
+      continue;
+    }
+
+    if (isListItem) {
+      inListContext = true;
+    } else if (!isIndented) {
+      inListContext = false;
+    }
+
+    afterBlankLine = false;
+    out.push(line);
+  }
+
+  return out.join('\n');
+}
+
+/**
  * Audit a prose string for Indonesian AI slop, SMS slang, and non-standard spelling.
  * Automatically strips protected Markdown fenced code blocks (backticks and tildes),
  * 4-space/tab-indented code blocks, and inline code spans.
@@ -94,11 +135,10 @@ function extractPlaceholders(str) {
  */
 function auditText(text) {
   const issues = [];
-  const str = String(text || '')
+  const withoutFences = String(text || '')
     .replace(/```[\s\S]*?```/g, ' ')
-    .replace(/~~~[\s\S]*?~~~/g, ' ')
-    .replace(/(?:^|\n\s*\n)(?:(?: {4}|\t).*(?:\n|$))+/g, '\n')
-    .replace(/`[^`\n]+`/g, ' ');
+    .replace(/~~~[\s\S]*?~~~/g, ' ');
+  const str = stripIndentedCodeBlocks(withoutFences).replace(/`[^`\n]+`/g, ' ');
 
   const smsMatch = str.match(SMS_SLANG_REGEX);
   if (smsMatch) {
@@ -131,8 +171,8 @@ function auditText(text) {
 }
 
 /**
- * Audit a key-value i18n dictionary object.
- * @param {Record<string, string>} dict
+ * Audit a key-value i18n dictionary object (including nested namespace objects).
+ * @param {Record<string, unknown>} dict
  * @param {{ minFallbackLength?: number, allowlistKeys?: Set<string> }} [options]
  * @returns {Array<{key: string, rule: string, message: string}>}
  */
@@ -141,7 +181,16 @@ function auditDictionary(dict, options = {}) {
   const allowlistKeys = options.allowlistKeys ?? new Set();
   const findings = [];
 
-  for (const [key, value] of Object.entries(dict)) {
+  for (const [key, value] of Object.entries(dict || {})) {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      for (const nested of auditDictionary(value, options)) {
+        findings.push({
+          ...nested,
+          key: `${key}.${nested.key}`,
+        });
+      }
+      continue;
+    }
     if (typeof value !== 'string') continue;
 
     // 1. Silent English identity fallback check
@@ -204,7 +253,10 @@ function auditDictionary(dict, options = {}) {
  * @returns {Record<string, string>}
  */
 function parseSimpleJsLocale(content) {
-  const src = String(content || '');
+  const src = String(content || '').replace(
+    /(['"])(?:\\.|(?!\1)[^\\])*\1|\/\*[\s\S]*?\*\/|\/\/[^\n]*/g,
+    (match, quote) => (quote ? match : ''),
+  );
   const openBrace = src.indexOf('{');
   const closeBrace = src.lastIndexOf('}');
   if (openBrace === -1 || closeBrace === -1 || closeBrace <= openBrace) {

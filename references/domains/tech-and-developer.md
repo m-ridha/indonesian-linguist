@@ -51,7 +51,7 @@ When an app instructs a user to open their phone's system settings (e.g., enabli
 | English OS Setting / Gesture | Mismatched Literal Translation | Official Android / iOS `id-ID` String | Where It Appears on Device |
 | --- | --- | --- | --- |
 | **On / Off** | Menyala / Mati | **Aktif / Nonaktif** | System toggles & feature switches |
-| **All the time** *(location permission)* | Sepanjang waktu / Setiap saat | **Selalu izinkan** | Android Location Permission dialog |
+| **All the time** *(location permission)* | Sepanjang waktu / Setiap saat | **Izinkan sepanjang waktu** (per-app *Izin lokasi* option) / **Selalu izinkan** (permission-manager section heading & OEM variants) | Android Location Permission settings |
 | **While using the app** | Saat menggunakan aplikasi | **Saat aplikasi digunakan** | Android / iOS Location Permission dialog |
 | **Unrestricted** *(battery usage)* | Tanpa pembatasan / Bebas | **Tak terbatas** | Android App Battery Management screen |
 | **Keep screen awake** | Jaga layar tetap bangun | **Layar tetap menyala** | Display wake-lock toggle |

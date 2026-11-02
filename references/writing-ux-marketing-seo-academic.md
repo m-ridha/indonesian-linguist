@@ -51,7 +51,7 @@ Before writing a single word, match the register to the relationship between wri
 ## 4. Indonesian SEO & Long-Form Articles
 
 1. **Title Tag (`<title>`) & H1**:
-   - Keep `title` under **60 characters** so Google SERPs do not truncate it.
+   - Keep `title` under **60 characters** as a practical heuristic (Google SERPs truncate by pixel display width at ~600px rather than a strict character count, so verify the rendered title).
    - Front-load the primary Indonesian search query naturally.
    - Use **Sentence case** (capitalize only the first word and proper nouns), which reads more authentically than English-style Title Case.
    - *Example*: ✅ **`Cara mengatur jadwal latihan push pull legs 3 hari seminggu`** (59 chars).

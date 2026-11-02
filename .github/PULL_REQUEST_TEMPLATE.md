@@ -4,7 +4,7 @@ Example: feat(domains): add fintech and banking domain glossary -->
 
 ## Contribution Track
 
-Please select the track that matches this Pull Request (see [CONTRIBUTING.md](../CONTRIBUTING.md)):
+Please select the track that matches this Pull Request (see [CONTRIBUTING.md](https://github.com/m-ridha/indonesian-linguist/blob/main/CONTRIBUTING.md)):
 
 - [ ] **Track 1: Linguistic Fix, Glossary Addition, or Minor Patch** (`<= 100` non-test lines and `< 3` core files; no prior issue required)
 - [ ] **Track 2: New Domain Glossary, Core Invariant, or Architectural Change** (`Closes #___` | Aligned with maintainer on a prior proposal issue)
@@ -23,7 +23,7 @@ Please select the track that matches this Pull Request (see [CONTRIBUTING.md](..
 
 ## Human Accountability Affirmation
 
-- [ ] I am a human contributor. I have personally reviewed, verified, and can explain every line and Indonesian example in this Pull Request (see [AI_POLICY.md](../AI_POLICY.md)).
+- [ ] I am a human contributor. I have personally reviewed, verified, and can explain every line and Indonesian example in this Pull Request (see [AI_POLICY.md](https://github.com/m-ridha/indonesian-linguist/blob/main/AI_POLICY.md)).
 
 ## Verification Checklist
 
