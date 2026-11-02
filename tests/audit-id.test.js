@@ -30,6 +30,10 @@ test('auditText: ignores protected Markdown inline code spans, backtick/tilde fe
     '    silahkan merubah aktifitas yg ada—di era digital',
     '    baris kedua dalam indented code block yg sama—tidak boleh kena flag',
     '',
+    'Contoh daftar di dalam indented code block:',
+    '',
+    '    - Silahkan cek yg ini',
+    '',
     'Paragraf penutup ini sudah baku dan alami.',
   ].join('\n');
   assert.deepEqual(auditText(docWithCodeExamples), []);

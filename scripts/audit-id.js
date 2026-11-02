@@ -109,7 +109,7 @@ function stripIndentedCodeBlocks(text) {
     const isListItem = /^\s*(?:[-*+]|\d+\.)\s+/.test(line);
     const isIndented = /^(?: {4}|\t)/.test(line);
 
-    if (isIndented && (inIndentedCodeBlock || (afterBlankLine && !isListItem && !inListContext))) {
+    if (isIndented && (inIndentedCodeBlock || (afterBlankLine && !inListContext))) {
       inIndentedCodeBlock = true;
       afterBlankLine = false;
       out.push('');
