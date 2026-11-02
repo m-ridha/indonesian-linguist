@@ -16,3 +16,5 @@ jobs:
         with:
           node-version: '22'
       - run: npm test
+      - run: node scripts/audit-id.js docs/*.md scripts/README.md references/README.md references/domains/README.md
+      - run: npx --yes markdownlint-cli2

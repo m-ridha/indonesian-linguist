@@ -46,7 +46,7 @@ Once the PR is merged to `main`, checkout the latest `main` locally and push an 
 git checkout main
 git pull origin main
 
-# Tag format must strictly be vMAJOR.MINOR.PATCH (or vMAJOR.MINOR.PATCH-prerelease)
+# Tag format must strictly be vMAJOR.MINOR.PATCH (with optional prerelease and/or build metadata)
 git tag -a v1.0.0 -m "v1.0.0"
 
 # Push the tag to GitHub
