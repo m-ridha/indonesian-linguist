@@ -38,6 +38,7 @@ const REQUIRED_REFERENCES = [
   'references/domains/README.md',
   'references/domains/fitness-and-gym.md',
   'references/domains/tech-and-developer.md',
+  'scripts/README.md',
 ];
 
 const LOAD_BEARING_INVARIANTS = [
@@ -104,19 +105,20 @@ test('AGENTS.md and SKILL.md contain all load-bearing linguistic invariants', ()
   }
 });
 
-test('all required reference modules exist and are reachable from both root and plugin skill path', () => {
-  for (const rel of REQUIRED_REFERENCES) {
-    assert.ok(fs.existsSync(path.join(root, rel)), `Missing root reference: ${rel}`);
+test('all required reference modules and scripts exist and are reachable from both root and plugin skill path', () => {
+  for (const rel of [...REQUIRED_REFERENCES, 'scripts/audit-id.js']) {
+    assert.ok(fs.existsSync(path.join(root, rel)), `Missing root path: ${rel}`);
     assert.ok(
       fs.existsSync(path.join(root, 'skills', SKILL_NAME, rel)),
-      `Missing plugin-resolved reference: skills/${SKILL_NAME}/${rel}`,
+      `Missing plugin-resolved path: skills/${SKILL_NAME}/${rel}`,
     );
   }
 });
 
-test('all relative markdown links in SKILL.md, README.md, CONTRIBUTING.md, and docs resolve to existing files', () => {
+test('all relative markdown links in SKILL.md, plugin SKILL.md, README.md, CONTRIBUTING.md, and docs resolve to existing files', () => {
   const filesToCheck = [
     'SKILL.md',
+    'skills/indonesian-linguist/SKILL.md',
     'README.md',
     'CONTRIBUTING.md',
     'AI_POLICY.md',

@@ -28,7 +28,7 @@ Every rule, blacklist, and disambiguation in `indonesian-linguist` is grounded i
 4. **Developer & Technical Loanword Retention (Widiastutik et al., 2026; Azami et al., 2026)**:
    - Sociolinguistic and software engineering studies showing that Indonesian developers and technical users strongly prefer untranslated infrastructure terms (`API key`, `endpoint`, `reverse proxy`, `webhook`, `source code`, `token`) over artificial literal calques (*kunci API*, *titik akhir*, *proksi terbalik*).
 5. **LLM Excess Vocabulary & Slop Markers (Kobak et al., *Science Advances*, 2025; Wikipedia *Signs of AI Writing*)**:
-   - Empirical measurement of post-training lexical spikes in LLM outputs, adapted to their Indonesian calque equivalents (*hiruk pikuk*, *lanskap*, *ranah*, *krusial*, *menyelami*, *menggarisbawahi*, *menyoroti*, *garda terdepan*, *mercusuar*, *bukan hanya X, tetapi juga Y*).
+   - Empirical measurement of post-training lexical spikes in LLM outputs, adapted to their Indonesian calque equivalents (`hiruk pikuk`, `lanskap`, `ranah`, `krusial`, `menyelami`, `menggarisbawahi`, `menyoroti`, `garda terdepan`, `mercusuar`, `bukan hanya X, tetapi juga Y`).
 
 ---
 

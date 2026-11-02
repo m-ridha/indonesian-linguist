@@ -63,22 +63,32 @@ const KNOWN_CALQUE_TRAPS = [
   { keyMatch: /add exercise/i, badVal: /\btambahkan olahraga\b/i, fix: 'Tambahkan latihan' },
 ];
 
+// Full-string anchored patterns for complete retained loanwords, exercise names, Latin muscle names,
+// and official product/OS proper nouns. Never matches arbitrary English sentences containing these words.
 const RETAINED_LOANWORD_PATTERNS = [
-  /^(Drop-set|Superset|Rest-pause|Deload|Bodyweight|Powerlifting|Thibaudeau)/i,
-  /\b(bench press|barbell curl|back squat|front squat|deadlift|overhead press|leverage machine)\b/i,
-  /\b(serratus anterior|latissimus dorsi|sternocleidomastoid|pectoralis|gluteus|gastrocnemius)\b/i,
-  /\b(Face ID|Touch ID|iCloud Keychain|Google Password Manager|Health Connect|Apple Health|Apple Watch|Cloudflare)\b/i,
-  /\b(API key|endpoint|reverse proxy|webhook)\b/i,
+  /^(?:Drop-set\s*\/\s*rest-pause|Drop-set|Superset(?:\s+\{[0-9]+\}(?:\s*\/\s*\{[0-9]+\}|\s*:\s*\{[0-9]+\}\s*\(\{[0-9]+\}\))?)?|Rest-pause|Deload|Bodyweight|Thibaudeau\s*\(Powerlifting\))$/i,
+  /^(?:[A-Za-z-]+\s+){0,3}(?:bench press|barbell curl|back squat|front squat|deadlift|overhead press|leverage machine)(?:\s*\([A-Za-z0-9 -]+\))?$/i,
+  /^(?:serratus anterior|latissimus dorsi|sternocleidomastoid|pectoralis(?:\s+major|\s+minor)?|gluteus(?:\s+maximus|\s+medius)?|gastrocnemius)$/i,
+  /^(?:Face ID(?:\s*\/\s*Touch ID)?|Touch ID|iCloud Keychain|Google Password Manager|Health Connect|Apple Health|Apple Watch|Cloudflare Access)$/i,
+  /^(?:API key|endpoint|reverse proxy|source code|webhook)$/i,
 ];
 
+/**
+ * Extract all placeholders from a string, preserving duplicate counts and supporting
+ * `{0}`, `{name}`, `{{name}}`, and printf (`%s`, `%d`, `%1$s`) tokens.
+ * @param {string} str
+ * @returns {string[]}
+ */
 function extractPlaceholders(str) {
-  const matches = String(str).match(/\{[0-9a-zA-Z_]+\}/g) || [];
-  return [...new Set(matches)].sort();
+  const matches =
+    String(str).match(/\{\{[0-9a-zA-Z_.-]+\}\}|\{[0-9a-zA-Z_.-]+\}|%(?:\d+\$)?[sdif]/g) || [];
+  return [...matches].sort();
 }
 
 /**
  * Audit a prose string for Indonesian AI slop, SMS slang, and non-standard spelling.
- * Automatically strips protected Markdown fenced code blocks and inline code spans.
+ * Automatically strips protected Markdown fenced code blocks (backticks and tildes),
+ * 4-space/tab-indented code blocks, and inline code spans.
  * @param {string} text
  * @returns {Array<{rule: string, message: string}>}
  */
@@ -86,6 +96,8 @@ function auditText(text) {
   const issues = [];
   const str = String(text || '')
     .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/~~~[\s\S]*?~~~/g, ' ')
+    .replace(/(?:^|\n\s*\n)(?:(?: {4}|\t).*(?:\n|$))+/g, '\n')
     .replace(/`[^`\n]+`/g, ' ');
 
   const smsMatch = str.match(SMS_SLANG_REGEX);
@@ -148,7 +160,7 @@ function auditDictionary(dict, options = {}) {
       });
     }
 
-    // 2. Placeholder parity check
+    // 2. Placeholder parity check (preserves duplicate counts & printf tokens)
     const keyPh = extractPlaceholders(key);
     const valPh = extractPlaceholders(value);
     if (keyPh.join(',') !== valPh.join(',')) {
@@ -183,46 +195,98 @@ function auditDictionary(dict, options = {}) {
   return findings;
 }
 
+/**
+ * Parse a flat JavaScript locale dictionary (`export default { ... }` or `module.exports = { ... }`)
+ * supporting both quoted keys (`'key'` / `"key"`) and unquoted identifier keys (`Back: 'Punggung'`)
+ * without executing the file. Throws if the file cannot be parsed into at least one key-value entry
+ * or contains unsupported property values.
+ * @param {string} content
+ * @returns {Record<string, string>}
+ */
 function parseSimpleJsLocale(content) {
-  const dict = {};
-  const pairRegex = /(['"])((?:\\.|(?!\1)[^\\])*)\1\s*:\s*(['"])((?:\\.|(?!\3)[^\\])*)\3/g;
-  let match;
-  while ((match = pairRegex.exec(content)) !== null) {
-    const k = match[2].replace(/\\(['"\\])/g, '$1');
-    const v = match[4].replace(/\\(['"\\])/g, '$1');
-    dict[k] = v;
+  const src = String(content || '');
+  const openBrace = src.indexOf('{');
+  const closeBrace = src.lastIndexOf('}');
+  if (openBrace === -1 || closeBrace === -1 || closeBrace <= openBrace) {
+    throw new Error('Unsupported JS locale format: missing object literal braces "{ ... }".');
   }
+
+  const body = src.slice(openBrace + 1, closeBrace);
+  const dict = {};
+  const tokenRegex =
+    /\/\*[\s\S]*?\*\/|\/\/[^\n]*|(?:(['"])((?:\\.|(?!\1)[^\\])*)\1|([A-Za-z_$][A-Za-z0-9_$]*))\s*:\s*(['"])((?:\\.|(?!\4)[^\\])*)\4\s*,?/g;
+
+  let match;
+  let count = 0;
+  while ((match = tokenRegex.exec(body)) !== null) {
+    if (match[1] || match[3]) {
+      const rawKey = match[1] ? match[2].replace(/\\(['"\\])/g, '$1') : match[3];
+      const rawVal = match[5].replace(/\\(['"\\])/g, '$1');
+      dict[rawKey] = rawVal;
+      count++;
+    }
+  }
+
+  const leftover = body.replace(tokenRegex, '').trim();
+  if (leftover.length > 0) {
+    throw new Error(
+      `Unsupported JS locale syntax near: ${leftover.slice(0, 80).replace(/\s+/g, ' ')}`,
+    );
+  }
+  if (count === 0) {
+    throw new Error('No key-value string entries found in JS locale object.');
+  }
+
   return dict;
 }
 
 if (require.main === module) {
-  const target = process.argv[2];
-  if (!target) {
-    console.log('Usage: node scripts/audit-id.js <path-to-locale.json|locale.js|text.md>');
+  const targets = process.argv.slice(2);
+  if (targets.length === 0) {
+    console.log('Usage: node scripts/audit-id.js <path-to-locale.json|locale.js|text.md> [...]');
     process.exit(0);
   }
-  const absPath = path.resolve(process.cwd(), target);
-  const raw = fs.readFileSync(absPath, 'utf8');
-  let findings = [];
 
-  if (absPath.endsWith('.json')) {
-    findings = auditDictionary(JSON.parse(raw));
-  } else if (absPath.endsWith('.js') || absPath.endsWith('.mjs')) {
-    findings = auditDictionary(parseSimpleJsLocale(raw));
-  } else {
-    findings = auditText(raw).map((f) => ({ key: path.basename(absPath), ...f }));
-  }
+  let hasFailures = false;
 
-  if (findings.length === 0) {
-    console.log(`✅ Clean: 0 findings in ${target}`);
-    process.exit(0);
-  } else {
-    console.error(`❌ Found ${findings.length} issue(s) in ${target}:`);
-    for (const f of findings) {
-      console.error(`  - [${f.rule}] (${f.key}): ${f.message}`);
+  for (const target of targets) {
+    const absPath = path.resolve(process.cwd(), target);
+    let raw;
+    try {
+      raw = fs.readFileSync(absPath, 'utf8');
+    } catch (err) {
+      console.error(`❌ Error reading ${target}: ${err.message}`);
+      hasFailures = true;
+      continue;
     }
-    process.exit(1);
+
+    let findings = [];
+    try {
+      if (absPath.endsWith('.json')) {
+        findings = auditDictionary(JSON.parse(raw));
+      } else if (absPath.endsWith('.js') || absPath.endsWith('.mjs')) {
+        findings = auditDictionary(parseSimpleJsLocale(raw));
+      } else {
+        findings = auditText(raw).map((f) => ({ key: path.basename(absPath), ...f }));
+      }
+    } catch (err) {
+      console.error(`❌ Error parsing ${target}: ${err.message}`);
+      hasFailures = true;
+      continue;
+    }
+
+    if (findings.length === 0) {
+      console.log(`✅ Clean: 0 findings in ${target}`);
+    } else {
+      hasFailures = true;
+      console.error(`❌ Found ${findings.length} issue(s) in ${target}:`);
+      for (const f of findings) {
+        console.error(`  - [${f.rule}] (${f.key}): ${f.message}`);
+      }
+    }
   }
+
+  process.exit(hasFailures ? 1 : 0);
 }
 
 module.exports = {

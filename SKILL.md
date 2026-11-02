@@ -30,7 +30,7 @@ Before writing or editing, identify the task type below and read **only** the re
 | Developer tools, APIs, cloud, security, authentication, mobile OS settings (Android/iOS), SaaS | **Domain: Tech, Dev & Native OS** | [references/domains/tech-and-developer.md](references/domains/tech-and-developer.md) (+ UI refs if i18n) |
 | General translation, proofreading, rewriting unnatural text, fixing AI-generated Indonesian | **Core Translation & Editing** | 1. [references/anti-slop-and-calques.md](references/anti-slop-and-calques.md)<br>2. [references/core-grammar-and-eyd.md](references/core-grammar-and-eyd.md) |
 | Social media captions, ads, landing pages, brand voice, SEO articles, blog posts, academic papers | **Content Writing (Marketing, Web, SEO, Academic)** | 1. [references/writing-ux-marketing-seo-academic.md](references/writing-ux-marketing-seo-academic.md)<br>2. [references/anti-slop-and-calques.md](references/anti-slop-and-calques.md) |
-| Auditing an existing locale dictionary (`id.js`/`id.json`) or Indonesian document for defects | **Quality & Localization Audit** | Run `node scripts/audit-id.js <path>` (see [scripts/README.md](scripts/README.md)) + check against Section 3 below |
+| Auditing an existing locale dictionary (`id.js`/`id.json`) or Indonesian document for defects | **Quality & Localization Audit** | Run `node <skill-dir>/scripts/audit-id.js <target-path>` (resolve `scripts/audit-id.js` relative to this `SKILL.md`'s directory; see [scripts/README.md](scripts/README.md)) + check against Section 3 below |
 
 ---
 
