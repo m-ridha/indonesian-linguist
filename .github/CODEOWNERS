@@ -1,0 +1,6 @@
+# Global code owner for indonesian-linguist
+#
+# Automatically requests review from the repository maintainer on every Pull Request
+# Enable "Require review from Code Owners" in GitHub Branch Protection Rules for `main`
+
+* @m-ridha

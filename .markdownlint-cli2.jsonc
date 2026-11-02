@@ -1,0 +1,31 @@
+{
+    // Markdownlint configuration for indonesian-linguist
+    // Enforces genuine structural & syntax integrity while keeping AI skill prompts compact.
+    "globs": [
+        "**/*.md"
+    ],
+    "config": {
+        "default": true,
+        // Keep tight bullet lists in SKILL.md, AGENTS.md, and references/ compact to save context tokens
+        "MD032": false,
+        // Require a blank line above headings, but allow tight lists/text immediately below headings
+        "MD022": {
+            "lines_above": 1,
+            "lines_below": 0
+        },
+        // Long lines in reference tables and bilingual examples are intentional
+        "MD013": false,
+        // Allow inline HTML for README header logo and <title>/<meta> SEO examples
+        "MD033": false,
+        // Allow centered HTML header in README.md and ## headings in GitHub PR/Issue templates
+        "MD041": false,
+        // Allow duplicate subheadings across distinct Before/After example sections
+        "MD024": {
+            "siblings_only": true
+        }
+    },
+    "ignores": [
+        "node_modules/**",
+        "docs/scribles/**"
+    ]
+}

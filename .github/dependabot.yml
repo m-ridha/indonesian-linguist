@@ -1,0 +1,19 @@
+# Keeps GitHub Actions in .github/workflows/ up to date.
+# Note: npm is intentionally omitted because this repository is zero-dependency.
+# Docs: https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    commit-message:
+      prefix: "chore(ci)"
+    labels:
+      - "ci"
+      - "deps"
+    groups:
+      github-actions:
+        patterns:
+          - "*"

@@ -1,0 +1,7 @@
+{
+  "name": "indonesian-linguist",
+  "version": "1.0.0",
+  "description": "Expert Bahasa Indonesia language, writing, translation, and software localization (i18n/UX) skill.",
+  "commands": "commands/",
+  "skills": "skills/"
+}

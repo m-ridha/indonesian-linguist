@@ -1,0 +1,32 @@
+# Secrets & credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*credentials*.json
+*secret*
+
+# Local IDE & OS files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.sw?
+
+# Node & test artifacts
+node_modules/
+npm-debug.log*
+coverage/
+*.tgz
+
+# Local AI agent state (keep .claude-plugin/, .codex-plugin/, and .agents/plugins/marketplace.json tracked)
+*.local.md
+.claude/
+.codex/
+.gemini/
+.cursor/
+.agents/*
+!.agents/plugins/
+.agents/plugins/*
+!.agents/plugins/marketplace.json

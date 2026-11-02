@@ -1,0 +1,38 @@
+{
+  "name": "indonesian-linguist",
+  "version": "1.0.0",
+  "description": "Expert Bahasa Indonesia language, writing, translation, and software localization (i18n/UX) skill. Enforces natural Indonesian phrasing, EYD V grammar, UI polysemy resolution, lexical compaction, domain loanwords, and zero AI slop.",
+  "author": {
+    "name": "Muhammad Ridha",
+    "url": "https://github.com/m-ridha"
+  },
+  "homepage": "https://github.com/m-ridha/indonesian-linguist",
+  "repository": "https://github.com/m-ridha/indonesian-linguist",
+  "license": "MIT",
+  "keywords": [
+    "bahasa-indonesia",
+    "indonesian",
+    "i18n",
+    "localization",
+    "ux-writing",
+    "translation"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Indonesian Linguist",
+    "shortDescription": "Expert Bahasa Indonesia writing, translation & i18n localization",
+    "longDescription": "Enforces natural Indonesian phrasing, EYD V grammar, isolated UI polysemy resolution, tight-layout lexical compaction, community/developer loanwords, and zero AI slop.",
+    "developerName": "Muhammad Ridha",
+    "category": "Productivity",
+    "capabilities": ["Instructions"],
+    "websiteURL": "https://github.com/m-ridha/indonesian-linguist",
+    "defaultPrompt": [
+      "Use Indonesian Linguist to localize these UI strings into Bahasa Indonesia.",
+      "Review and fix this Indonesian translation for natural phrasing and EYD V compliance.",
+      "Audit this Indonesian i18n file for polysemy errors, silent fallbacks, and AI slop."
+    ],
+    "brandColor": "#D9232A",
+    "composerIcon": "./assets/icons/il-icon.png",
+    "logo": "./assets/icons/il-icon.png"
+  }
+}

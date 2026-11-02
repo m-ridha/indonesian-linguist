@@ -1,0 +1,49 @@
+{
+  "name": "indonesian-linguist",
+  "version": "1.0.0",
+  "description": "Expert Bahasa Indonesia language, writing, translation, and software localization (i18n/UX) skill for AI agents.",
+  "keywords": [
+    "bahasa-indonesia",
+    "indonesian",
+    "i18n",
+    "localization",
+    "ux-writing",
+    "translation",
+    "ai-skills",
+    "claude-code",
+    "codex",
+    "antigravity",
+    "opencode"
+  ],
+  "license": "MIT",
+  "author": {
+    "name": "Muhammad Ridha",
+    "url": "https://github.com/m-ridha"
+  },
+  "homepage": "https://github.com/m-ridha/indonesian-linguist",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/m-ridha/indonesian-linguist.git"
+  },
+  "bugs": {
+    "url": "https://github.com/m-ridha/indonesian-linguist/issues"
+  },
+  "files": [
+    "AGENTS.md",
+    "SKILL.md",
+    "plugin.json",
+    "CONTRIBUTING.md",
+    "AI_POLICY.md",
+    "LICENSE",
+    "assets/",
+    "references/",
+    "skills/",
+    "commands/",
+    "scripts/",
+    "examples/"
+  ],
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "audit": "node scripts/audit-id.js"
+  }
+}
