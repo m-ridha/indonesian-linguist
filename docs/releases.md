@@ -35,7 +35,7 @@ flowchart TD
 ### Step 1: Version Bump PR
 1. Create a branch `chore/bump-vX.Y.Z`.
 2. Update the version string in all six manifests.
-3. Run `npm test` locally to verify manifest parity.
+3. Run all quality checks locally per [`docs/testing.md`](testing.md) (`npm test`, `node scripts/audit-id.js docs/*.md scripts/README.md references/README.md references/domains/README.md`, and `npx markdownlint-cli2`).
 4. Open a pull request titled `chore(release): bump version to X.Y.Z`.
 5. Review and merge the pull request into `main`.
 

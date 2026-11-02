@@ -40,7 +40,8 @@
     "skills/",
     "commands/",
     "scripts/",
-    "examples/"
+    "examples/",
+    "docs/"
   ],
   "scripts": {
     "test": "node --test tests/*.test.js",
