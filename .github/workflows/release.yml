@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: release
+  group: release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -30,8 +30,9 @@ jobs:
       - name: Validate release tag and branch
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
-          [[ "$GITHUB_REF_NAME" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]] || {
-            echo "Expected release tag vX.Y.Z with an optional version suffix" >&2; exit 1;
+          semver_regex='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
+          [[ "$GITHUB_REF_NAME" =~ $semver_regex ]] || {
+            echo "Expected release tag vX.Y.Z with optional prerelease or build metadata" >&2; exit 1;
           }
           git merge-base --is-ancestor HEAD origin/main || {
             echo "Tagged commit is not on main" >&2; exit 1;
@@ -52,16 +53,25 @@ jobs:
         run: |
           VERSION="$(node -p "require('./package.json').version")"
           awk -v v="$VERSION" '
-            $0 ~ "^## \\[" v "\\]" { found=1; next }
-            found && /^## \[/ { exit }
+            index($0, "## [" v "]") == 1 { found=1; next }
+            found && index($0, "## [") == 1 { exit }
             found { print }
           ' CHANGELOG.md > release-notes.md
-          if [ ! -s release-notes.md ]; then
-            echo "No CHANGELOG.md section found for $VERSION" >&2
+          if ! grep -q '[^[:space:]]' release-notes.md; then
+            echo "No non-empty CHANGELOG.md section found for $VERSION" >&2
             exit 1
           fi
       - name: Create GitHub release
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file release-notes.md --verify-tag
+        run: |
+          EXTRA_ARGS=()
+          if [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+- ]]; then
+            EXTRA_ARGS+=(--prerelease)
+          fi
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file release-notes.md \
+            --verify-tag \
+            "${EXTRA_ARGS[@]}"
