@@ -47,7 +47,7 @@ git checkout main
 git pull origin main
 
 # Tag format must strictly be vMAJOR.MINOR.PATCH (or vMAJOR.MINOR.PATCH-prerelease)
-git tag -a v1.0.0 -m "Release v1.0.0"
+git tag -a v1.0.0 -m "v1.0.0"
 
 # Push the tag to GitHub
 git push origin v1.0.0
