@@ -182,6 +182,8 @@ test('all markdown files have balanced code fences and zero unfinished TODO/TBD/
     'scripts/README.md',
     'docs/agent-portability.md',
     'docs/sources.md',
+    'docs/testing.md',
+    'docs/releases.md',
     'examples/i18n-and-ui-localization.md',
     'examples/writing-and-copywriting.md',
     ...REQUIRED_REFERENCES,

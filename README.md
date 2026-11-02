@@ -197,6 +197,8 @@ Run the repository verification and unit test suite (Node 18+ built-in test runn
 npm test
 ```
 
+For full testing protocols, test layers, and TDD guidelines, see [`docs/testing.md`](docs/testing.md). For version bumping and automated release workflows, see [`docs/releases.md`](docs/releases.md).
+
 ---
 
 ## Authoritative Linguistic Grounding
