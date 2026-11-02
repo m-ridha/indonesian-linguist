@@ -67,7 +67,7 @@ const KNOWN_CALQUE_TRAPS = [
 // and official product/OS proper nouns. Never matches arbitrary English sentences containing these words.
 const RETAINED_LOANWORD_PATTERNS = [
   /^(?:Drop-set\s*\/\s*rest-pause|Drop-set|Superset(?:\s+\{[0-9]+\}(?:\s*\/\s*\{[0-9]+\}|\s*:\s*\{[0-9]+\}\s*\(\{[0-9]+\}\))?)?|Rest-pause|Deload|Bodyweight|Thibaudeau\s*\(Powerlifting\))$/i,
-  /^(?:(?:incline|decline|flat|barbell|dumbbell|ez-bar|cable|smith machine|seated|standing|close-grip|wide-grip|romanian|sumo|conventional|deficit|pause|paused|single-arm|one-arm)\s+){0,3}(?:bench press|barbell curl|back squat|front squat|deadlift|overhead press|leverage machine)(?:\s*\([A-Za-z0-9 -]+\))?$/i,
+  /^(?:(?:[a-z]+(?:-[a-z]+)+|incline|decline|flat|barbell|dumbbell|ez-bar|cable|smith machine|seated|standing|close-grip|wide-grip|romanian|sumo|conventional|deficit|pause|paused|single-arm|one-arm)\s+){0,3}(?:bench press|barbell curl|back squat|front squat|deadlift|overhead press|leverage machine)(?:\s*\([A-Za-z0-9 -]+\))?$/i,
   /^(?:serratus anterior|latissimus dorsi|sternocleidomastoid|pectoralis(?:\s+major|\s+minor)?|gluteus(?:\s+maximus|\s+medius)?|gastrocnemius)$/i,
   /^(?:Face ID(?:\s*\/\s*Touch ID)?|Touch ID|iCloud Keychain|Google Password Manager|Health Connect|Apple Health|Apple Watch|Cloudflare Access)$/i,
   /^(?:API key|endpoint|reverse proxy|source code|webhook)$/i,
@@ -106,7 +106,7 @@ function stripIndentedCodeBlocks(text) {
       continue;
     }
 
-    const isListItem = /^\s*(?:[-*+]|\d+\.)\s+/.test(line);
+    const isListItem = /^\s*(?:[-*+]|\d+[.)])\s+/.test(line);
     const isIndented = /^(?: {4}|\t)/.test(line);
 
     if (isIndented && (inIndentedCodeBlock || (afterBlankLine && !inListContext))) {
@@ -135,14 +135,16 @@ function stripIndentedCodeBlocks(text) {
  * Automatically strips protected Markdown fenced code blocks (backticks and tildes),
  * 4-space/tab-indented code blocks, and inline code spans.
  * @param {string} text
+ * @param {{ stripIndentedCode?: boolean }} [options] Set `stripIndentedCode: false` for plain-text input (e.g., dictionary values) where indentation does not mark code.
  * @returns {Array<{rule: string, message: string}>}
  */
-function auditText(text) {
+function auditText(text, options = {}) {
+  const stripIndentedCode = options.stripIndentedCode ?? true;
   const issues = [];
   const withoutFences = String(text || '')
     .replace(/```[\s\S]*?```/g, ' ')
     .replace(/~~~[\s\S]*?~~~/g, ' ');
-  const str = stripIndentedCodeBlocks(withoutFences).replace(/`[^`\n]+`/g, ' ');
+  const str = (stripIndentedCode ? stripIndentedCodeBlocks(withoutFences) : withoutFences).replace(/`[^`\n]+`/g, ' ');
 
   const smsMatch = str.match(SMS_SLANG_REGEX);
   if (smsMatch) {
@@ -236,7 +238,7 @@ function auditDictionary(dict, options = {}) {
     }
 
     // 4. Text-level checks (SMS slang, kata tidak baku, slop)
-    for (const issue of auditText(value)) {
+    for (const issue of auditText(value, { stripIndentedCode: false })) {
       findings.push({
         key,
         rule: issue.rule,

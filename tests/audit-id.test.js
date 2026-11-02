@@ -71,6 +71,18 @@ test('auditText: flags AI slop vocabulary, negative parallelism, and stylistic e
   assert.match(messages, /em dash/);
 });
 
+test('auditDictionary: keeps hyphenated exercise names, audits indented plain-text values, and handles ordered ")" lists', () => {
+  const dict = {
+    'Single-leg deadlift': 'Single-leg deadlift',
+    'Reverse-grip barbell curl': 'Reverse-grip barbell curl',
+    Note: '    Kalimat benar\n    Silahkan masuk',
+  };
+  const findings = auditDictionary(dict);
+  assert.deepEqual(findings.map((f) => f.key), ['Note']);
+  assert.ok(findings[0].message.includes('silakan'));
+  assert.ok(auditText('1) Petunjuk\n\n    1) Silahkan lanjutkan.').some((i) => i.rule === 'kata-tidak-baku'));
+});
+
 test('auditDictionary: flags silent English fallback on long strings (>15 chars), even when containing a retained brand/loanword inside a sentence', () => {
   const dict = {
     Gym: 'Gym', // Short loanword: allowed
