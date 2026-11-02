@@ -1,0 +1,17 @@
+{
+  "name": "indonesian-linguist",
+  "interface": {
+    "displayName": "Indonesian Linguist"
+  },
+  "plugins": [
+    {
+      "name": "indonesian-linguist",
+      "source": "./",
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

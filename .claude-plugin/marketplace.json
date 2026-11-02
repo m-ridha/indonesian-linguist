@@ -1,0 +1,13 @@
+{
+  "name": "indonesian-linguist",
+  "owner": {
+    "name": "Muhammad Ridha"
+  },
+  "plugins": [
+    {
+      "name": "indonesian-linguist",
+      "source": "./",
+      "description": "Expert Bahasa Indonesia language, writing, translation, and software localization (i18n/UX) skill. Enforces natural Indonesian phrasing, EYD V grammar, UI polysemy resolution, lexical compaction, domain loanwords, and zero AI slop."
+    }
+  ]
+}

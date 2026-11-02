@@ -1,0 +1,7 @@
+interface:
+  display_name: "Indonesian Linguist"
+  short_description: "Expert Bahasa Indonesia writing, translation & i18n skill"
+  default_prompt: "Use $indonesian-linguist to write, translate, or localize into natural Bahasa Indonesia following EYD V, UI polysemy rules, lexical compaction, and zero AI slop."
+
+policy:
+  allow_implicit_invocation: true

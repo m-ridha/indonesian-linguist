@@ -1,0 +1,7 @@
+description = "Activate Indonesian Linguist for expert Bahasa Indonesia translation, i18n localization, UX writing, and anti-slop editing."
+prompt = """
+Load and follow the `indonesian-linguist` skill (`SKILL.md` and relevant files in `references/`).
+Apply all Bahasa Indonesia EYD V grammar rules, UI polysemy resolutions, lexical compaction standards, domain loanword conventions, and anti-slop checks to the following task:
+
+{{args}}
+"""
