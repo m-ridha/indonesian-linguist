@@ -12,7 +12,9 @@ const path = require('path');
 
 const root = path.join(__dirname, '..');
 const SKILL_NAME = 'indonesian-linguist';
-const PINNED_SEMVER = /^\d+\.\d+\.\d+$/;
+// Valid SemVer 2.0.0 (supports optional prerelease and build metadata, forbidding leading zeroes on numeric parts)
+const PINNED_SEMVER =
+  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?(?:\+[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*)?$/;
 
 const VERSIONED_MANIFESTS = [
   'package.json',
