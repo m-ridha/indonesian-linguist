@@ -99,6 +99,13 @@ function stripIndentedCodeBlocks(text) {
   let inIndentedCodeBlock = false;
   let afterBlankLine = true;
 
+  // Width in columns of a whitespace/marker prefix, using 4-column tab stops.
+  const columns = (prefix) => {
+    let col = 0;
+    for (const ch of prefix) col += ch === '\t' ? 4 - (col % 4) : 1;
+    return col;
+  };
+
   for (const line of lines) {
     if (line.trim() === '') {
       out.push('');
@@ -106,13 +113,12 @@ function stripIndentedCodeBlocks(text) {
       continue;
     }
 
-    const indent = line.match(/^[ \t]*/)[0].replace(/\t/g, '    ').length;
-    const listMatch = line.match(/^([ \t]*)((?:[-*+]|\d+[.)])\s+)/);
-    const isIndented = indent >= 4;
+    const indent = columns(line.match(/^[ \t]*/)[0]);
+    const listMatch = line.match(/^[ \t]*(?:[-*+]|\d+[.)])[ \t]+/);
     // Inside a list, content only becomes code when indented 4+ columns past the item's content.
     const codeThreshold = inListContext ? listContentIndent + 4 : 4;
 
-    if (isIndented && (inIndentedCodeBlock || (afterBlankLine && indent >= codeThreshold))) {
+    if (indent >= codeThreshold && (inIndentedCodeBlock || afterBlankLine)) {
       inIndentedCodeBlock = true;
       afterBlankLine = false;
       out.push('');
@@ -122,8 +128,8 @@ function stripIndentedCodeBlocks(text) {
     inIndentedCodeBlock = false;
     if (listMatch) {
       inListContext = true;
-      listContentIndent = listMatch[1].replace(/\t/g, '    ').length + listMatch[2].length;
-    } else if (!isIndented) {
+      listContentIndent = columns(listMatch[0]);
+    } else if (indent < 4) {
       inListContext = false;
     }
 

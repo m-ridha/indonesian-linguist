@@ -90,6 +90,15 @@ test('auditText: keeps list prose audited but strips code indented past the list
   assert.ok(auditText(prose).some((i) => i.rule === 'kata-tidak-baku'));
 });
 
+test('auditText: ends list code blocks at the list code indentation and measures tab stops', () => {
+  const afterCode = '1. Langkah\n\n       contoh kode\n\n    Silahkan lanjutkan.';
+  assert.ok(auditText(afterCode).some((i) => i.rule === 'kata-tidak-baku'));
+  const tabProse = '1.\tLangkah\n\n    Silahkan lanjutkan.';
+  assert.ok(auditText(tabProse).some((i) => i.rule === 'kata-tidak-baku'));
+  const tabCode = '1.\tLangkah\n\n\t\tsilahkan kode\n';
+  assert.deepEqual(auditText(tabCode), []);
+});
+
 test('auditDictionary: rejects generic hyphenated English phrases as retained exercise names', () => {
   const findings = auditDictionary({ 'Beginner-friendly bench press': 'Beginner-friendly bench press' });
   assert.equal(findings.length, 1);
