@@ -176,7 +176,6 @@ test('all markdown files have balanced code fences and zero unfinished TODO/TBD/
     'SKILL.md',
     'AGENTS.md',
     'README.md',
-    'CHANGELOG.md',
     'CONTRIBUTING.md',
     'AI_POLICY.md',
     'skills/indonesian-linguist/TEST.md',

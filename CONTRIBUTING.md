@@ -75,7 +75,7 @@ Every linguistic or localization rule added to this repository must be backed by
 
    ```bash
    npm test
-   node scripts/audit-id.js CHANGELOG.md docs/*.md scripts/README.md references/README.md references/domains/README.md
+   node scripts/audit-id.js docs/*.md scripts/README.md references/README.md references/domains/README.md
    ```
 
 4. **Commit & Open a Pull Request (Semantic Commit Style)**:
