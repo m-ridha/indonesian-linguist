@@ -30,7 +30,7 @@ Before writing or editing, identify the task type below and read **only** the re
 | Developer tools, APIs, cloud, security, authentication, mobile OS settings (Android/iOS), SaaS | **Domain: Tech, Dev & Native OS** | [references/domains/tech-and-developer.md](references/domains/tech-and-developer.md) (+ UI refs if i18n) |
 | General translation, proofreading, rewriting unnatural text, fixing AI-generated Indonesian | **Core Translation & Editing** | 1. [references/anti-slop-and-calques.md](references/anti-slop-and-calques.md)<br>2. [references/core-grammar-and-eyd.md](references/core-grammar-and-eyd.md) |
 | Social media captions, ads, landing pages, brand voice, SEO articles, blog posts, academic papers | **Content Writing (Marketing, Web, SEO, Academic)** | 1. [references/writing-ux-marketing-seo-academic.md](references/writing-ux-marketing-seo-academic.md)<br>2. [references/anti-slop-and-calques.md](references/anti-slop-and-calques.md) |
-| Auditing an existing locale dictionary (`id.js`/`id.json`) or Indonesian document for defects | **Quality & Localization Audit** | Run `node <skill-dir>/scripts/audit-id.js <target-path>` (resolve `scripts/audit-id.js` relative to this `SKILL.md`'s directory; see [scripts/README.md](scripts/README.md)) + check against Section 3 below |
+| Auditing an existing locale dictionary (`id.js`/`id.json`) or Indonesian document for defects | **Quality & Localization Audit** | Run `node <skill-dir>/scripts/audit-id.js [--source <en-catalog>] <target-path>` (resolve `scripts/audit-id.js` relative to this `SKILL.md`'s directory; see [scripts/README.md](scripts/README.md)) + check against Section 3 below |
 
 ---
 
@@ -45,8 +45,9 @@ Lock in these parameters before generating your first Indonesian sentence:
 2. **Register (5 Levels)**:
    - *Beku* (Frozen: legal, statutory), *Resmi* (Formal: academic, official reports, B2B docs), *Konsultatif* (Consultative: business emails, documentation, news, general SaaS), *Santai* (Casual: consumer lifestyle apps, social media, blogs), *Akrab* (Intimate: peer community chat, gym-buddy nudges).
 3. **Pronoun Policy (*Anda* vs. *kamu / -mu* vs. Implicit)**:
+   - **Project Voice Precedence**: Project-level instructions, repository guidelines (`AGENTS.md`), or explicit user configurations (`--register formal --pronoun Anda`) **always take precedence** over default consumer vs. enterprise heuristics. If a consumer product explicitly chooses formal `Anda` (e.g. private journals, healthcare, or security-sensitive settings), lock to `Anda` consistently.
    - **Financial / Banking / B2B / Enterprise / Official**: Use **`Anda`** (always capitalized).
-   - **Consumer / Lifestyle / Fitness / Companion Apps**: Use enclitic **`-mu`** (*latihanmu*, *profilmu*, *bebanmu*) or **`kamu`**. Never use stiff *Anda* in a personal companion app.
+   - **Consumer / Lifestyle / Fitness / Companion Apps**: Use enclitic **`-mu`** (*latihanmu*, *profilmu*, *bebanmu*) or **`kamu`** (unless project explicitly mandates formal *Anda*).
    - **Implicit Pronoun (UI Default)**: Drop the pronoun entirely when the subject is obvious (*"Masukkan kata sandi"*, not *"Silakan masukkan kata sandi Anda"*).
    - **Strict Lock & Anti-Caricature**: Never mix *Anda*, *kamu*, and *lo* within the same product or document. Never default to `gue/lo` or regional dialect markers unless explicitly requested, and never invent unverified regional dialect forms.
 4. **No Personal Pronouns for Inanimate Objects**:
