@@ -25,8 +25,22 @@ function syncDir(srcDir, destDir, ignoreFiles = []) {
   }
   fs.mkdirSync(destDir, { recursive: true });
 
-  const entries = fs.readdirSync(srcDir, { withFileTypes: true });
-  for (const entry of entries) {
+  const srcEntries = fs.readdirSync(srcDir, { withFileTypes: true });
+  const srcNames = new Set(srcEntries.map((e) => e.name));
+
+  // Prune destination entries that no longer exist in source (excluding ignored files)
+  const destEntries = fs.readdirSync(destDir, { withFileTypes: true });
+  for (const destEntry of destEntries) {
+    if (ignoreFiles.includes(destEntry.name)) {
+      continue;
+    }
+    if (!srcNames.has(destEntry.name)) {
+      const destPath = path.join(destDir, destEntry.name);
+      fs.rmSync(destPath, { recursive: true, force: true });
+    }
+  }
+
+  for (const entry of srcEntries) {
     if (ignoreFiles.includes(entry.name)) {
       continue;
     }

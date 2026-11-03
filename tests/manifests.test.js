@@ -119,6 +119,15 @@ test('all required reference modules and scripts exist and are reachable from bo
     const lstat = fs.lstatSync(pluginPath);
     assert.ok(!lstat.isSymbolicLink(), `skills/${SKILL_NAME}/${rel} must be a real file, not a symlink`);
 
+    // Verify intermediate path segments are also real directories and not symlinks
+    const relParts = rel.split('/');
+    let curPluginSegment = path.join(root, 'skills', SKILL_NAME);
+    for (const part of relParts.slice(0, -1)) {
+      curPluginSegment = path.join(curPluginSegment, part);
+      const segmentStat = fs.lstatSync(curPluginSegment);
+      assert.ok(!segmentStat.isSymbolicLink(), `${curPluginSegment} must not be a symlink`);
+    }
+
     // Verify contents match root verbatim
     const rootContent = fs.readFileSync(rootPath);
     const pluginContent = fs.readFileSync(pluginPath);
