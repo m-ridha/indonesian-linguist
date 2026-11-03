@@ -107,12 +107,24 @@ test('AGENTS.md and SKILL.md contain all load-bearing linguistic invariants', ()
   }
 });
 
+function isGitIgnored(relPath) {
+  try {
+    execFileSync('git', ['check-ignore', '-q', relPath], { cwd: root, stdio: 'pipe' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function getAllFilesRecursively(dir, ignoreNames = []) {
   const results = [];
   const entries = fs.readdirSync(dir, { withFileTypes: true });
   for (const entry of entries) {
     if (ignoreNames.includes(entry.name)) continue;
     const full = path.join(dir, entry.name);
+    const rel = path.relative(root, full);
+    if (isGitIgnored(rel)) continue;
+
     if (entry.isDirectory()) {
       results.push(...getAllFilesRecursively(full, ignoreNames));
     } else if (entry.isFile()) {
