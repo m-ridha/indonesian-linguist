@@ -899,6 +899,13 @@ test('auditDictionary: pronoun policy enforcement (Anda vs kamu)', () => {
   };
   const casualPlFindings = auditDictionary(casualWithPlaceholder, { pronoun: 'kamu' });
   assert.equal(casualPlFindings.filter((f) => f.rule === 'pronoun-mismatch').length, 0);
+
+  // Lowercase "anda" should also be detected under casual policy
+  const casualWithLowercaseAnda = {
+    slip: 'Silakan periksa akun anda',
+  };
+  const lowercaseAndaFindings = auditDictionary(casualWithLowercaseAnda, { pronoun: 'kamu' });
+  assert.equal(lowercaseAndaFindings.filter((f) => f.rule === 'pronoun-mismatch').length, 1);
 });
 
 test('auditText: applies pronoun policy to prose and ignores inline code / placeholders', () => {

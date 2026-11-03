@@ -190,7 +190,7 @@ function checkPronounPolicy(text, pronoun) {
       });
     }
   } else if (pronoun === 'kamu') {
-    if (/\bAnda\b/.test(textWithoutPlaceholders)) {
+    if (/\bAnda\b/i.test(textWithoutPlaceholders)) {
       findings.push({
         rule: 'pronoun-mismatch',
         message: `Formal pronoun "Anda" found in "${text}"; informal "kamu" is enforced by project policy.`,
