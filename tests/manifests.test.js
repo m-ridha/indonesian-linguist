@@ -233,16 +233,14 @@ function extractRelativeMarkdownLinks(content) {
 
       // Match code spans per CommonMark Section 6.2 in a single linear pass
       let r = 0;
+      const cursors = new Map(); // len -> monotonically advancing position in runsByLen list
       while (r < runs.length) {
         const openRun = runs[r];
         const list = runsByLen.get(openRun.len);
-        let matchIdx = -1;
-        for (const idx of list) {
-          if (idx > r) {
-            matchIdx = idx;
-            break;
-          }
-        }
+        let c = cursors.get(openRun.len) || 0;
+        while (c < list.length && list[c] <= r) c++;
+        cursors.set(openRun.len, c);
+        const matchIdx = c < list.length ? list[c] : -1;
         if (matchIdx !== -1) {
           const closeRun = runs[matchIdx];
           codeRanges.push([openRun.start, closeRun.start + closeRun.len]);
@@ -430,6 +428,17 @@ test('extractRelativeMarkdownLinks handles link titles, code spans, fences, and 
   assert.ok(
     elapsedDistinct < 200,
     `1,400 distinct unmatched backtick runs took ${elapsedDistinct}ms (expected < 200ms)`,
+  );
+
+  // Linear scan bound check for many same-length backtick runs (100,000 runs)
+  const sameLengthRuns = '` '.repeat(100000) + '\n\nSee [valid](./docs/testing.md)';
+  const t1 = Date.now();
+  const sameLengthLinks = extractRelativeMarkdownLinks(sameLengthRuns);
+  const elapsedSameLength = Date.now() - t1;
+  assert.deepEqual(sameLengthLinks, ['./docs/testing.md']);
+  assert.ok(
+    elapsedSameLength < 200,
+    `100,000 same-length backtick runs took ${elapsedSameLength}ms (expected < 200ms)`,
   );
 });
 
