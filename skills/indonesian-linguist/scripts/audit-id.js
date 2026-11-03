@@ -1332,7 +1332,7 @@ Options:
   --json                Output findings in structured JSON format
   --source <file>       Path to source catalog (.json/.js/.mjs/.xml/.strings) to compare placeholders and fallbacks
   --ignore-keys <keys>  Comma-separated list of keys or wildcard patterns (e.g. "picker.*,app_name") to ignore
-  --warn-only           Print diagnostics but exit with code 0
+  --warn-only           Report audit findings but exit with code 0 (file-read and parse errors still exit with code 1)
   --min-fallback <n>    Minimum character length for identity fallback check (default: 16)
   --pronoun <name>      Enforce consistent pronoun: "Anda", "kamu", or "any" (default: any)
   --register <mode>     Alias for pronoun policy: "formal" (Anda), "casual" (kamu), or "any"
