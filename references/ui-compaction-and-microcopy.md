@@ -38,7 +38,7 @@ Instead of translating English participles as long `Seperti yang di-...` clauses
 | **Each** *(dumbbell weight mode)* | *Masing-masing dumbbell* (22 chars) | **Per dumbbell** / **Tiap tangan** (11-12 chars) | **-45%** |
 | **Both** *(dumbbell weight mode)* | *Keduanya bersamaan* (18 chars) | **Total sepasang** (14 chars) | **-22%** |
 | **Weight means** | *Berat artinya* (calque) | **Format input beban** / **Arti angka beban** | Clear & idiomatic |
-| **Less / More time** | *Lebih sedikit / banyak waktu* | **Durasi lebih sedikit / banyak** | Natural metric label |
+| **Less / More time** | *Lebih sedikit / banyak waktu* | **Durasi lebih singkat / lebih lama** | Natural duration label |
 | **Less / More volume** | *Volumenya lebih sedikit* | **Volume lebih sedikit / banyak** | Parallel metric structure |
 
 ### B. Zero Relative Pronoun (Dropping `yang`)
