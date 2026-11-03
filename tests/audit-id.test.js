@@ -603,6 +603,10 @@ test('auditDictionary: flags inverted quantitative placeholders ({0} sets unchec
   const inverted7 = auditDictionary({ '{{count}} items left': 'Item {{count}} tersisa' });
   assert.ok(inverted7.some((f) => f.rule === 'inverted-quantitative-placeholder'));
 
+  // Longer multi-word noun phrase inverted before placeholder
+  const inverted8 = auditDictionary({ '{{0}} selected photos': 'Foto yang dipilih {{0}}' });
+  assert.ok(inverted8.some((f) => f.rule === 'inverted-quantitative-placeholder'));
+
   // Correct: quantity placeholder precedes noun
   const correct1 = auditDictionary({ '{0} sets unchecked': '{0} set belum dicentang' });
   assert.equal(correct1.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 0);
@@ -613,6 +617,13 @@ test('auditDictionary: flags inverted quantitative placeholders ({0} sets unchec
   // Multiword permitted quantifiers like "Tersisa sekitar"
   const correct3 = auditDictionary({ '{0} sets left': 'Tersisa sekitar {0} set' });
   assert.equal(correct3.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 0);
+
+  // Count placeholder precedes its noun after a verb / predicate: valid
+  const correct4 = auditDictionary({ '{{0}} files deleted': 'Dihapus {{0}} file' });
+  assert.equal(correct4.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 0);
+
+  const correct5 = auditDictionary({ '{0} photos deleted': 'Dihapus {0} foto' });
+  assert.equal(correct5.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 0);
 
   // Non-count named placeholders (e.g., {name}) should not be flagged when translated as noun phrase
   const nonCount = auditDictionary({ '{name} commented': 'Komentar dari {name}' });

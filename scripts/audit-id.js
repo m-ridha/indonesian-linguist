@@ -361,8 +361,14 @@ function auditDictionary(dict, options = {}) {
     if (quantMatch) {
       const ph = quantMatch[1];
       const escapedPh = ph.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const keyNoun = quantMatch[2].toLowerCase().replace(/s$/, '');
+      const followingWordMatch = value.match(new RegExp(`${escapedPh}\\s+([A-Za-z\\u00C0-\\u024F-]+)`, 'i'));
+      const countedNounFollows =
+        followingWordMatch !== null &&
+        followingWordMatch[1].toLowerCase().replace(/s$/, '') === keyNoun;
+
       const invertedMatch = value.match(
-        new RegExp(`^([A-Za-z\\u00C0-\\u024F-]+(?:\\s+[A-Za-z\\u00C0-\\u024F-]+)?)\\s+${escapedPh}`, 'i'),
+        new RegExp(`^([A-Za-z\\u00C0-\\u024F-]+(?:\\s+[A-Za-z\\u00C0-\\u024F-]+)*)\\s+${escapedPh}`, 'i'),
       );
       if (invertedMatch) {
         const leadingWord = invertedMatch[1].toLowerCase();
@@ -370,7 +376,10 @@ function auditDictionary(dict, options = {}) {
         const isPermittedQuantifier =
           /^(kurang dari|lebih dari)$/i.test(leadingWord) ||
           leadingWord.split(/\s+/).every((word) => permittedQuantifierWord.test(word));
-        if (!isPermittedQuantifier) {
+        const isLeadingVerbWithObject =
+          followingWordMatch !== null && /^(?:di|ter|ber|me)[a-z\u00C0-\u024F]+/i.test(leadingWord);
+
+        if (!isPermittedQuantifier && !countedNounFollows && !isLeadingVerbWithObject) {
           findings.push({
             key: fullKey,
             rule: 'inverted-quantitative-placeholder',
