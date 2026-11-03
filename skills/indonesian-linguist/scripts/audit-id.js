@@ -98,6 +98,110 @@ function extractPlaceholders(str) {
 }
 
 /**
+ * Detect unmatched, improperly nested, or misplaced curly braces in template placeholders.
+ * Handles both single-brace ({name}) and double-brace ({{name}}) placeholder syntax.
+ * @param {string} str
+ * @returns {boolean}
+ */
+function hasMalformedBraces(str) {
+  let i = 0;
+  const n = str.length;
+  while (i < n) {
+    const ch = str[i];
+    if (ch === '}') {
+      return true; // Unmatched closing brace outside any placeholder
+    }
+    if (ch === '{') {
+      if (i + 1 < n && str[i + 1] === '{') {
+        // Double brace placeholder {{ ... }}
+        i += 2;
+        let closed = false;
+        while (i < n) {
+          if (str[i] === '{') {
+            return true; // Nested opening brace
+          }
+          if (str[i] === '}' && i + 1 < n && str[i + 1] === '}') {
+            i += 2;
+            closed = true;
+            break;
+          }
+          if (str[i] === '}') {
+            return true; // Single closing brace inside double-brace placeholder
+          }
+          i++;
+        }
+        if (!closed) return true; // Unclosed double-brace placeholder
+      } else {
+        // Single brace placeholder { ... }
+        i++;
+        let closed = false;
+        while (i < n) {
+          if (str[i] === '{' || str[i] === '}') {
+            if (str[i] === '}') {
+              i++;
+              closed = true;
+              break;
+            }
+            return true; // Nested opening brace inside single-brace placeholder
+          }
+          i++;
+        }
+        if (!closed) return true; // Unclosed single-brace placeholder
+      }
+    } else {
+      i++;
+    }
+  }
+  return false;
+}
+
+/**
+ * Non-pronoun words ending in "-mu" that should not be flagged as informal enclitic pronouns.
+ */
+const NON_PRONOUN_MU_EXCEPTIONS =
+  /^(?:kamu|ilmu|berilmu|tamu|bertamu|temu|bertemu|ketemu|ditemu|menemu|jamu|ramu|meramu|diramu|semu|bersemu|jemu)$/i;
+
+/**
+ * Check a string against an explicit pronoun policy ('Anda' or 'kamu').
+ * Automatically excludes supported placeholders before evaluating pronoun occurrences.
+ * @param {string} text
+ * @param {string} pronoun
+ * @returns {Array<{rule: string, message: string}>}
+ */
+function checkPronounPolicy(text, pronoun) {
+  if (!pronoun || (pronoun !== 'Anda' && pronoun !== 'kamu')) {
+    return [];
+  }
+
+  const textWithoutPlaceholders = String(text || '').replace(
+    /\{\{[0-9a-zA-Z_.-]+\}\}|\{[0-9a-zA-Z_.-]+\}|%(?:\d+\$)?[sdif]/g,
+    ' ',
+  );
+
+  const findings = [];
+  if (pronoun === 'Anda') {
+    const hasEncliticMu = (textWithoutPlaceholders.match(/\b[a-zA-Z\u00C0-\u024F]{2,}-?mu\b/gi) || []).some(
+      (w) => !NON_PRONOUN_MU_EXCEPTIONS.test(w),
+    );
+    if (/\b(?:kamu|kau)\b/i.test(textWithoutPlaceholders) || hasEncliticMu) {
+      findings.push({
+        rule: 'pronoun-mismatch',
+        message: `Informal pronoun found in "${text}"; formal "Anda" is enforced by project policy.`,
+      });
+    }
+  } else if (pronoun === 'kamu') {
+    if (/\bAnda\b/.test(textWithoutPlaceholders)) {
+      findings.push({
+        rule: 'pronoun-mismatch',
+        message: `Formal pronoun "Anda" found in "${text}"; informal "kamu" is enforced by project policy.`,
+      });
+    }
+  }
+
+  return findings;
+}
+
+/**
  * Strip Markdown 4-space or tab-indented code blocks while preserving indented list continuations
  * and nested list items (e.g., `- Petunjuk\n\n    - Silahkan...`).
  * @param {string} text
@@ -153,15 +257,16 @@ function stripIndentedCodeBlocks(text) {
 }
 
 /**
- * Audit a prose string for Indonesian AI slop, SMS slang, and non-standard spelling.
+ * Audit a prose string for Indonesian AI slop, SMS slang, non-standard spelling, and pronoun policy.
  * Automatically strips protected Markdown fenced code blocks (backticks and tildes),
  * 4-space/tab-indented code blocks, and inline code spans.
  * @param {string} text
- * @param {{ stripIndentedCode?: boolean }} [options] Set `stripIndentedCode: false` for plain-text input (e.g., dictionary values) where indentation does not mark code.
+ * @param {{ stripIndentedCode?: boolean, pronoun?: string }} [options] Set `stripIndentedCode: false` for plain-text input (e.g., dictionary values) where indentation does not mark code.
  * @returns {Array<{rule: string, message: string}>}
  */
 function auditText(text, options = {}) {
   const stripIndentedCode = options.stripIndentedCode ?? true;
+  const pronoun = options.pronoun ?? null;
   const issues = [];
   const withoutFences = String(text || '')
     .replace(/```[\s\S]*?```/g, ' ')
@@ -192,6 +297,12 @@ function auditText(text, options = {}) {
         rule: 'slop-or-pleonasm',
         message: pat.reason,
       });
+    }
+  }
+
+  if (pronoun) {
+    for (const pIssue of checkPronounPolicy(str, pronoun)) {
+      issues.push(pIssue);
     }
   }
 
@@ -353,14 +464,12 @@ function auditDictionary(dict, options = {}) {
     // 2. Placeholder parity and well-formedness check
     const valPh = extractPlaceholders(value);
 
-    // 2a. Malformed placeholder check (unmatched curly braces)
-    const openBraces = (value.match(/\{/g) || []).length;
-    const closeBraces = (value.match(/\}/g) || []).length;
-    if (openBraces !== closeBraces) {
+    // 2a. Malformed placeholder check (unmatched or improperly ordered curly braces)
+    if (hasMalformedBraces(value)) {
       findings.push({
         key: fullKey,
         rule: 'malformed-placeholder',
-        message: `Unmatched curly braces in placeholder for "${value}".`,
+        message: `Unmatched or improperly ordered curly braces in placeholder for "${value}".`,
       });
     }
 
@@ -470,23 +579,12 @@ function auditDictionary(dict, options = {}) {
     }
 
     // 4. Pronoun policy check (when explicit project override is specified)
-    if (pronoun === 'Anda') {
-      const hasEncliticMu = (value.match(/\b[a-zA-Z\u00C0-\u024F]{2,}-?mu\b/gi) || []).some(
-        (w) => !/^(?:kamu|ilmu|berilmu|tamu|bertamu|temu|bertemu|ketemu|ditemu|menemu|jamu|ramu|meramu|diramu|semu|bersemu|jemu)$/i.test(w),
-      );
-      if (/\b(?:kamu|kau)\b/i.test(value) || hasEncliticMu) {
+    if (pronoun) {
+      for (const pIssue of checkPronounPolicy(value, pronoun)) {
         findings.push({
           key: fullKey,
-          rule: 'pronoun-mismatch',
-          message: `Informal pronoun found in "${value}"; formal "Anda" is enforced by project policy.`,
-        });
-      }
-    } else if (pronoun === 'kamu') {
-      if (/\bAnda\b/.test(value)) {
-        findings.push({
-          key: fullKey,
-          rule: 'pronoun-mismatch',
-          message: `Formal pronoun "Anda" found in "${value}"; informal "kamu" is enforced by project policy.`,
+          rule: pIssue.rule,
+          message: pIssue.message,
         });
       }
     }
@@ -884,10 +982,10 @@ Usage:
 Options:
   -h, --help            Show this help message and exit
   --json                Output findings in structured JSON format
-  --source <file>       Path to source catalog (.json/.js) to compare placeholders and fallbacks
+  --source <file>       Path to source catalog (.json/.js/.mjs) to compare placeholders and fallbacks
   --min-fallback <n>    Minimum character length for identity fallback check (default: 16)
-  --pronoun <name>      Enforce consistent pronoun in .json/.js/.mjs dictionaries: "Anda", "kamu", or "any" (default: any)
-  --register <mode>     Alias for pronoun policy (dictionaries only): "formal" (Anda), "casual" (kamu), or "any"
+  --pronoun <name>      Enforce consistent pronoun: "Anda", "kamu", or "any" (default: any)
+  --register <mode>     Alias for pronoun policy: "formal" (Anda), "casual" (kamu), or "any"
 `);
     process.exit(0);
   }
@@ -964,7 +1062,7 @@ Options:
           pronoun: pronounPolicy,
         });
       } else {
-        findings = auditText(raw).map((f) => ({ key: path.basename(absPath), ...f }));
+        findings = auditText(raw, { pronoun: pronounPolicy }).map((f) => ({ key: path.basename(absPath), ...f }));
       }
     } catch (err) {
       if (jsonOutput) {
@@ -1044,6 +1142,8 @@ module.exports = {
   auditText,
   auditDictionary,
   extractPlaceholders,
+  hasMalformedBraces,
+  checkPronounPolicy,
   parseSimpleJsLocale,
   sanitizeDiagnostic,
   truncateToUtf8ByteLimit,

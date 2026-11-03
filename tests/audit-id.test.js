@@ -796,6 +796,15 @@ test('auditDictionary: standalone mode does not flag slug keys with placeholders
   };
   const malformedFindings = auditDictionary(malformed);
   assert.ok(malformedFindings.some((f) => f.rule === 'malformed-placeholder'));
+
+  // Regression test: balanced-count string with unmatched or misordered braces
+  const balancedUnmatched = {
+    greeting: 'Halo {name}} {',
+  };
+  const balancedFindings = auditDictionary(balancedUnmatched, {
+    source: { greeting: 'Hello {name}' },
+  });
+  assert.ok(balancedFindings.some((f) => f.rule === 'malformed-placeholder'));
 });
 
 test('auditDictionary: source-aware placeholder and fallback auditing with options.source', () => {
@@ -877,6 +886,32 @@ test('auditDictionary: pronoun policy enforcement (Anda vs kamu)', () => {
   const kamuFindings = auditDictionary(casualCatalog, { pronoun: 'kamu' });
   assert.equal(kamuFindings.filter((f) => f.rule === 'pronoun-mismatch').length, 1);
   assert.equal(kamuFindings.find((f) => f.rule === 'pronoun-mismatch').key, 'formalSlip');
+
+  // Placeholders named after pronouns should not trigger false positive pronoun-mismatch
+  const formalWithPlaceholder = {
+    greeting: 'Halo {kamu}, silakan masukkan kata sandi Anda',
+  };
+  const formalPlFindings = auditDictionary(formalWithPlaceholder, { pronoun: 'Anda' });
+  assert.equal(formalPlFindings.filter((f) => f.rule === 'pronoun-mismatch').length, 0);
+
+  const casualWithPlaceholder = {
+    greeting: 'Halo {Anda}, silakan masukkan kata sandimu',
+  };
+  const casualPlFindings = auditDictionary(casualWithPlaceholder, { pronoun: 'kamu' });
+  assert.equal(casualPlFindings.filter((f) => f.rule === 'pronoun-mismatch').length, 0);
+});
+
+test('auditText: applies pronoun policy to prose and ignores inline code / placeholders', () => {
+  const formalProse = 'Silakan masukkan kata sandi Anda. Gunakan perintah `git checkout kamu`.';
+  assert.equal(auditText(formalProse, { pronoun: 'Anda' }).filter((f) => f.rule === 'pronoun-mismatch').length, 0);
+
+  const informalProse = 'Silakan masukkan kata sandimu di formulir.';
+  const issues = auditText(informalProse, { pronoun: 'Anda' });
+  assert.ok(issues.some((f) => f.rule === 'pronoun-mismatch'));
+
+  const casualProse = 'Silakan periksa akun kamu. Jangan berikan kata sandi Anda.';
+  const casualIssues = auditText(casualProse, { pronoun: 'kamu' });
+  assert.ok(casualIssues.some((f) => f.rule === 'pronoun-mismatch'));
 });
 
 test('CLI: supports --source, --pronoun, and --register flags', () => {
@@ -942,6 +977,17 @@ test('CLI: supports --source, --pronoun, and --register flags', () => {
     );
     assert.equal(resEmptySource.status, 1);
     assert.match(resEmptySource.stderr, /Missing value for --source/);
+
+    // 5. Standalone markdown file with --pronoun Anda
+    const mdPath = path.join(tmpDir, 'guide.md');
+    fs.writeFileSync(mdPath, '# Panduan\n\nSilakan masukkan kata sandi kamu.\n');
+    const resMd = spawnSync(
+      process.execPath,
+      [path.resolve('scripts/audit-id.js'), '--pronoun', 'Anda', mdPath],
+      { encoding: 'utf8' },
+    );
+    assert.equal(resMd.status, 1);
+    assert.match(resMd.stderr, /pronoun-mismatch/);
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
