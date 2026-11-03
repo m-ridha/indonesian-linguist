@@ -71,11 +71,11 @@ Every linguistic or localization rule added to this repository must be backed by
 
    *(Our automated test suite in [`tests/manifests.test.js`](tests/manifests.test.js) fails if the two files drift or if `SKILL.md` exceeds Antigravity's 24,000-byte load limit.)*
 3. **Run Offline Verification & Self-Audit**:
-   Run the zero-dependency test suite and deterministic auditor locally:
+   Run the zero-dependency test suite and deterministic auditor locally (detailed guidelines in [`docs/testing.md`](docs/testing.md)):
 
    ```bash
    npm test
-   node scripts/audit-id.js CHANGELOG.md docs/*.md scripts/README.md references/README.md references/domains/README.md
+   node scripts/audit-id.js docs/*.md scripts/README.md references/README.md references/domains/README.md
    ```
 
 4. **Commit & Open a Pull Request (Semantic Commit Style)**:
@@ -85,9 +85,10 @@ Every linguistic or localization rule added to this repository must be backed by
      - `docs(eyd): add correlative conjunction pairs from Recehan Bahasa`
      - Allowed types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`.
    - Complete every section of [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md), including the **Human Accountability Affirmation**.
-5. **Maintainer Review & Merge**:
+5. **Maintainer Review, Merge & Releases**:
    - The repository maintainer (`@m-ridha`) is automatically requested for review via [`.github/CODEOWNERS`](.github/CODEOWNERS).
    - Address any review feedback in the PR thread. Once CI passes and the maintainer approves, the maintainer will merge the PR.
+   - For version bumps and release execution, maintainers follow the EGM draft release process documented in [`docs/releases.md`](docs/releases.md).
 
 ---
 
