@@ -1199,3 +1199,101 @@ test('parseIosStringsLocale: parses Apple .strings with comments and escaped quo
   assert.equal(dict.dialog_confirm, 'Tekan "Lanjutkan" untuk memulai sesi latihan.');
   assert.equal(dict.settings_title, 'Pengaturan Profil');
 });
+
+test('auditDictionary: permits language picker autonyms and locale tags', () => {
+  const languagePicker = {
+    lang_id: 'Bahasa Indonesia (ID)',
+    lang_ms: 'Bahasa Melayu',
+    lang_en: 'English (US)',
+    locale_code: 'id-ID',
+  };
+  const findings = auditDictionary(languagePicker);
+  assert.equal(findings.filter((f) => f.rule === 'silent-fallback').length, 0);
+});
+
+test('auditDictionary: ignores keys matching exact string or wildcard prefix', () => {
+  const source = {
+    'app.name': 'My App Fallback Here',
+    'nav.Back': 'Back',
+    'picker.one': 'English Fallback Long',
+    'picker.two': 'Another Long Fallback',
+  };
+  const target = {
+    'app.name': 'My App Fallback Here',
+    'nav.Back': 'Punggung',
+    'picker.one': 'English Fallback Long',
+    'picker.two': 'Another Long Fallback',
+  };
+  const findings = auditDictionary(target, {
+    source,
+    ignoreKeys: ['nav.Back', 'picker.*'],
+  });
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].key, 'app.name');
+});
+
+test('CLI: supports .xml and .strings catalogs, --ignore-keys, and --warn-only', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'il-native-'));
+  const xmlSource = path.join(tmpDir, 'strings_en.xml');
+  const xmlTarget = path.join(tmpDir, 'strings_id.xml');
+  const stringsSource = path.join(tmpDir, 'en.strings');
+  const stringsTarget = path.join(tmpDir, 'id.strings');
+
+  fs.writeFileSync(
+    xmlSource,
+    `<resources>
+       <string name="title">Welcome</string>
+       <plurals name="days">
+         <item quantity="one">%d day</item>
+         <item quantity="other">%d days</item>
+       </plurals>
+     </resources>`,
+  );
+
+  fs.writeFileSync(
+    xmlTarget,
+    `<resources>
+       <string name="title">Selamat Datang</string>
+       <plurals name="days">
+         <item quantity="one">%d hari</item>
+         <item quantity="other">%d hari</item>
+       </plurals>
+     </resources>`,
+  );
+
+  fs.writeFileSync(stringsSource, '"action_cancel" = "Cancel";\n"Back" = "Back";\n');
+  fs.writeFileSync(stringsTarget, '"action_cancel" = "Batal";\n"Back" = "Punggung";\n');
+
+  const scriptPath = path.resolve('scripts/audit-id.js');
+
+  const xmlResult = spawnSync(process.execPath, [scriptPath, '--source', xmlSource, xmlTarget], {
+    encoding: 'utf8',
+  });
+  assert.equal(xmlResult.status, 0);
+
+  const stringsIgnored = spawnSync(
+    process.execPath,
+    [scriptPath, '--source', stringsSource, '--ignore-keys', 'Back', stringsTarget],
+    { encoding: 'utf8' },
+  );
+  assert.equal(stringsIgnored.status, 0);
+
+  const stringsFail = spawnSync(
+    process.execPath,
+    [scriptPath, '--source', stringsSource, stringsTarget],
+    { encoding: 'utf8' },
+  );
+  assert.equal(stringsFail.status, 1);
+  assert.match(stringsFail.stderr, /\[polysemy-calque\]/);
+  assert.match(stringsFail.stderr, /\[terminology\]/);
+
+  const stringsWarn = spawnSync(
+    process.execPath,
+    [scriptPath, '--source', stringsSource, '--warn-only', stringsTarget],
+    { encoding: 'utf8' },
+  );
+  assert.equal(stringsWarn.status, 0);
+  assert.match(stringsWarn.stderr, /\[polysemy-calque\]/);
+
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});

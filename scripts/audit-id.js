@@ -83,7 +83,40 @@ const RETAINED_LOANWORD_PATTERNS = [
   /^(?:serratus anterior|latissimus dorsi|sternocleidomastoid|pectoralis(?:\s+major|\s+minor)?|gluteus(?:\s+maximus|\s+medius)?|gastrocnemius)$/i,
   /^(?:Face ID(?:\s*\/\s*Touch ID)?|Touch ID|iCloud Keychain|Google Password Manager|Health Connect|Apple Health|Apple Watch|Cloudflare Access)$/i,
   /^(?:API key|endpoint|reverse proxy|source code|webhook)$/i,
+  /^(?:Bahasa Indonesia(?:\s*\([A-Za-z0-9_-]+\))?|Bahasa Melayu(?:\s*\([A-Za-z0-9_-]+\))?|English(?:\s*\([A-Za-z0-9_-]+\))?|[a-z]{2}(?:[-_][A-Z]{2,4})?)$/i,
 ];
+
+const RULE_CATEGORIES = {
+  'kata-tidak-baku': 'grammar',
+  'slop-or-pleonasm': 'grammar',
+  'merged-preposition': 'grammar',
+  'polysemy-calque': 'terminology',
+  'retained-loanword-calque': 'terminology',
+  'pronoun-mismatch': 'style',
+  'inverted-quantitative-placeholder': 'style',
+  'sms-abbreviation': 'style',
+  'silent-fallback': 'parity',
+  'placeholder-mismatch': 'parity',
+  'malformed-placeholder': 'parity',
+  'nesting-limit-exceeded': 'structure',
+  'traversal-limit-exceeded': 'structure',
+  'findings-limit-exceeded': 'structure',
+};
+
+function getRuleCategory(rule) {
+  return RULE_CATEGORIES[rule] || 'general';
+}
+
+function isKeyIgnored(keyPath, ignoreKeys) {
+  if (!ignoreKeys) return false;
+  const set = ignoreKeys instanceof Set ? ignoreKeys : new Set(Array.isArray(ignoreKeys) ? ignoreKeys : [ignoreKeys]);
+  if (set.has(keyPath)) return true;
+  for (const pattern of set) {
+    if (pattern === keyPath) return true;
+    if (pattern.endsWith('*') && keyPath.startsWith(pattern.slice(0, -1))) return true;
+  }
+  return false;
+}
 
 /**
  * Extract all placeholders from a string, preserving duplicate counts and supporting
@@ -276,6 +309,7 @@ function auditText(text, options = {}) {
   if (smsMatch) {
     issues.push({
       rule: 'sms-abbreviation',
+      category: getRuleCategory('sms-abbreviation'),
       message: `Banned chat/SMS abbreviation "${smsMatch[0]}" found; use full word or lexical compaction.`,
     });
   }
@@ -285,6 +319,7 @@ function auditText(text, options = {}) {
     if (m) {
       issues.push({
         rule: 'kata-tidak-baku',
+        category: getRuleCategory('kata-tidak-baku'),
         message: `Non-standard word "${m[0]}" found; use KBBI standard "${item.fix}".`,
       });
     }
@@ -294,6 +329,7 @@ function auditText(text, options = {}) {
     if (pat.regex.test(str)) {
       issues.push({
         rule: 'slop-or-pleonasm',
+        category: getRuleCategory('slop-or-pleonasm'),
         message: pat.reason,
       });
     }
@@ -301,7 +337,11 @@ function auditText(text, options = {}) {
 
   if (pronoun) {
     for (const pIssue of checkPronounPolicy(str, pronoun)) {
-      issues.push(pIssue);
+      issues.push({
+        rule: pIssue.rule,
+        category: getRuleCategory(pIssue.rule),
+        message: pIssue.message,
+      });
     }
   }
 
@@ -363,6 +403,7 @@ function auditDictionary(dict, options = {}) {
     findings.push({
       key: currentPrefix || 'root',
       rule: 'nesting-limit-exceeded',
+      category: getRuleCategory('nesting-limit-exceeded'),
       message: `Dictionary nesting depth exceeded safety limit of ${MAX_DICTIONARY_DEPTH}.`,
     });
     return findings;
@@ -385,6 +426,7 @@ function auditDictionary(dict, options = {}) {
       findings.push({
         key: currentPrefix || 'root',
         rule: 'traversal-limit-exceeded',
+        category: getRuleCategory('traversal-limit-exceeded'),
         message: `Total dictionary traversal work exceeded safety limit of ${MAX_DICTIONARY_ENTRIES} entries.`,
       });
       break;
@@ -394,6 +436,7 @@ function auditDictionary(dict, options = {}) {
       findings.push({
         key: currentPrefix || 'root',
         rule: 'findings-limit-exceeded',
+        category: getRuleCategory('findings-limit-exceeded'),
         message: `Total dictionary findings exceeded safety limit of ${MAX_DICTIONARY_FINDINGS}.`,
       });
       break;
@@ -424,6 +467,10 @@ function auditDictionary(dict, options = {}) {
       }
     }
 
+    if (isKeyIgnored(fullKey, options.ignoreKeys)) {
+      continue;
+    }
+
     if (value && typeof value === 'object') {
       auditDictionary(value, {
         ...options,
@@ -434,6 +481,7 @@ function auditDictionary(dict, options = {}) {
         visited,
         activeStack,
         counter,
+        ignoreKeys: options.ignoreKeys,
       });
       continue;
     }
@@ -456,6 +504,7 @@ function auditDictionary(dict, options = {}) {
       findings.push({
         key: fullKey,
         rule: 'silent-fallback',
+        category: getRuleCategory('silent-fallback'),
         message: `Untranslated identity fallback (${typeof sourceValue === 'string' ? 'source === value' : 'key === value'}, ${value.length} chars).`,
       });
     }
@@ -468,6 +517,7 @@ function auditDictionary(dict, options = {}) {
       findings.push({
         key: fullKey,
         rule: 'malformed-placeholder',
+        category: getRuleCategory('malformed-placeholder'),
         message: `Unmatched or improperly ordered curly braces in placeholder for "${value}".`,
       });
     }
@@ -479,6 +529,7 @@ function auditDictionary(dict, options = {}) {
         findings.push({
           key: fullKey,
           rule: 'placeholder-mismatch',
+          category: getRuleCategory('placeholder-mismatch'),
           message: `Placeholders in source [${srcPh.join(', ')}] do not match value [${valPh.join(', ')}].`,
         });
       }
@@ -489,6 +540,7 @@ function auditDictionary(dict, options = {}) {
         findings.push({
           key: fullKey,
           rule: 'placeholder-mismatch',
+          category: getRuleCategory('placeholder-mismatch'),
           message: `Placeholders in key [${keyPh.join(', ')}] do not match value [${valPh.join(', ')}].`,
         });
       }
@@ -557,6 +609,7 @@ function auditDictionary(dict, options = {}) {
           findings.push({
             key: fullKey,
             rule: 'inverted-quantitative-placeholder',
+            category: getRuleCategory('inverted-quantitative-placeholder'),
             message: `Quantitative placeholder inverted: "${sourceTemplate}" (${ph} count) translated with placeholder placed after noun ("${value}"); in Indonesian, quantity must precede the noun (${ph} ${invertedMatch[1]}).`,
           });
         }
@@ -572,6 +625,7 @@ function auditDictionary(dict, options = {}) {
         findings.push({
           key: fullKey,
           rule: 'polysemy-calque',
+          category: getRuleCategory('polysemy-calque'),
           message: `Literal calque trap in "${value}"; use "${trap.fix}".`,
         });
       }
@@ -583,6 +637,7 @@ function auditDictionary(dict, options = {}) {
         findings.push({
           key: fullKey,
           rule: pIssue.rule,
+          category: getRuleCategory(pIssue.rule),
           message: pIssue.message,
         });
       }
@@ -593,6 +648,7 @@ function auditDictionary(dict, options = {}) {
       findings.push({
         key: fullKey,
         rule: issue.rule,
+        category: issue.category || getRuleCategory(issue.rule),
         message: issue.message,
       });
     }
@@ -1014,9 +1070,11 @@ if (require.main === module) {
   const argv = process.argv.slice(2);
   let showHelp = false;
   let jsonOutput = false;
+  let warnOnly = false;
   let minFallbackLength = 16;
   let sourcePath = null;
   let pronounPolicy = null;
+  const ignoreKeys = new Set();
   const targets = [];
 
   const parseMinFallback = (raw) => {
@@ -1058,6 +1116,25 @@ if (require.main === module) {
       showHelp = true;
     } else if (arg === '--json') {
       jsonOutput = true;
+    } else if (arg === '--warn-only') {
+      warnOnly = true;
+    } else if (arg === '--ignore-keys') {
+      if (i + 1 >= argv.length) {
+        console.error('❌ Missing value for --ignore-keys (expected comma-separated keys)');
+        process.exit(1);
+      }
+      argv[++i]
+        .split(',')
+        .map((k) => k.trim())
+        .filter(Boolean)
+        .forEach((k) => ignoreKeys.add(k));
+    } else if (arg.startsWith('--ignore-keys=')) {
+      arg
+        .slice(14)
+        .split(',')
+        .map((k) => k.trim())
+        .filter(Boolean)
+        .forEach((k) => ignoreKeys.add(k));
     } else if (arg === '--min-fallback') {
       if (i + 1 >= argv.length) {
         console.error('❌ Missing value for --min-fallback (expected a non-negative integer)');
@@ -1107,7 +1184,9 @@ Usage:
 Options:
   -h, --help            Show this help message and exit
   --json                Output findings in structured JSON format
-  --source <file>       Path to source catalog (.json/.js/.mjs) to compare placeholders and fallbacks
+  --source <file>       Path to source catalog (.json/.js/.mjs/.xml/.strings) to compare placeholders and fallbacks
+  --ignore-keys <keys>  Comma-separated list of keys or wildcard patterns (e.g. "picker.*,app_name") to ignore
+  --warn-only           Print diagnostics but exit with code 0
   --min-fallback <n>    Minimum character length for identity fallback check (default: 16)
   --pronoun <name>      Enforce consistent pronoun: "Anda", "kamu", or "any" (default: any)
   --register <mode>     Alias for pronoun policy: "formal" (Anda), "casual" (kamu), or "any"
@@ -1128,9 +1207,13 @@ Options:
         sourceCatalog = JSON.parse(rawSource);
       } else if (absSourcePath.endsWith('.js') || absSourcePath.endsWith('.mjs')) {
         sourceCatalog = parseSimpleJsLocale(rawSource);
+      } else if (absSourcePath.endsWith('.xml')) {
+        sourceCatalog = parseAndroidXmlLocale(rawSource);
+      } else if (absSourcePath.endsWith('.strings')) {
+        sourceCatalog = parseIosStringsLocale(rawSource);
       } else {
         console.error(
-          `❌ Error: --source file must be a .json or .js/.mjs locale dictionary: ${sanitizeDiagnostic(sourcePath)}`,
+          `❌ Error: --source file must be a .json, .js/.mjs, .xml, or .strings locale dictionary: ${sanitizeDiagnostic(sourcePath)}`,
         );
         process.exit(1);
       }
@@ -1179,12 +1262,28 @@ Options:
           minFallbackLength,
           source: sourceCatalog,
           pronoun: pronounPolicy,
+          ignoreKeys,
         });
       } else if (absPath.endsWith('.js') || absPath.endsWith('.mjs')) {
         findings = auditDictionary(parseSimpleJsLocale(raw), {
           minFallbackLength,
           source: sourceCatalog,
           pronoun: pronounPolicy,
+          ignoreKeys,
+        });
+      } else if (absPath.endsWith('.xml')) {
+        findings = auditDictionary(parseAndroidXmlLocale(raw), {
+          minFallbackLength,
+          source: sourceCatalog,
+          pronoun: pronounPolicy,
+          ignoreKeys,
+        });
+      } else if (absPath.endsWith('.strings')) {
+        findings = auditDictionary(parseIosStringsLocale(raw), {
+          minFallbackLength,
+          source: sourceCatalog,
+          pronoun: pronounPolicy,
+          ignoreKeys,
         });
       } else {
         findings = auditText(raw, { pronoun: pronounPolicy }).map((f) => ({ key: path.basename(absPath), ...f }));
@@ -1232,7 +1331,7 @@ Options:
         let printedBytes = 0;
         let truncated = false;
         for (const f of findings) {
-          const line = `  - [${sanitizeDiagnostic(f.rule)}] (${sanitizeDiagnostic(f.key)}): ${sanitizeDiagnostic(f.message)}\n`;
+          const line = `  - [${sanitizeDiagnostic(f.rule)}] [${sanitizeDiagnostic(f.category || 'general')}] (${sanitizeDiagnostic(f.key)}): ${sanitizeDiagnostic(f.message)}\n`;
           const lineBytes = Buffer.byteLength(line, 'utf8');
           if (printedBytes + lineBytes > MAX_CLI_DIAGNOSTIC_BYTES) {
             truncated = true;
@@ -1260,7 +1359,7 @@ Options:
     process.stdout.write(JSON.stringify(jsonReport, null, 2) + '\n');
   }
 
-  process.exitCode = hasFailures ? 1 : 0;
+  process.exitCode = hasFailures && !warnOnly ? 1 : 0;
 }
 
 module.exports = {
