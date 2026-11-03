@@ -597,6 +597,12 @@ test('auditDictionary: flags inverted quantitative placeholders ({0} sets unchec
   const inverted5 = auditDictionary({ '{count} items left': 'Item {count} tersisa' });
   assert.ok(inverted5.some((f) => f.rule === 'inverted-quantitative-placeholder'));
 
+  const inverted6 = auditDictionary({ '{{0}} photos left': 'Foto {{0}} tersisa' });
+  assert.ok(inverted6.some((f) => f.rule === 'inverted-quantitative-placeholder'));
+
+  const inverted7 = auditDictionary({ '{{count}} items left': 'Item {{count}} tersisa' });
+  assert.ok(inverted7.some((f) => f.rule === 'inverted-quantitative-placeholder'));
+
   // Correct: quantity placeholder precedes noun
   const correct1 = auditDictionary({ '{0} sets unchecked': '{0} set belum dicentang' });
   assert.equal(correct1.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 0);

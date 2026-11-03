@@ -357,7 +357,7 @@ function auditDictionary(dict, options = {}) {
     // Catches when English source has a count/quantity placeholder followed by a noun
     // (e.g., "{0} sets unchecked", "{0} photos", "%d passkeys"),
     // but Indonesian translation flips it to ordinal format after the noun (e.g., "Set {0} belum dicentang", "Foto {0}").
-    const quantMatch = key.match(/^(\{(?:\d+|n|count|total)\}|\{\{(?:n|count|total)\}\}|%(?:\d+\$)?d)\s+([A-Za-z-]+)/i);
+    const quantMatch = key.match(/^(\{(?:\d+|n|count|total)\}|\{\{(?:\d+|n|count|total)\}\}|%(?:\d+\$)?d)\s+([A-Za-z-]+)/i);
     if (quantMatch) {
       const ph = quantMatch[1];
       const escapedPh = ph.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
