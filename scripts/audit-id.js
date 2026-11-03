@@ -357,17 +357,19 @@ function auditDictionary(dict, options = {}) {
     // Catches when English source has a count/quantity placeholder followed by a noun
     // (e.g., "{0} sets unchecked", "{0} photos", "%d passkeys"),
     // but Indonesian translation flips it to ordinal format after the noun (e.g., "Set {0} belum dicentang", "Foto {0}").
-    const quantMatch = key.match(/^(\{[0-9a-zA-Z_.-]+\}|\{\{[0-9a-zA-Z_.-]+\}\}|%(?:\d+\$)?[sd])\s+([A-Za-z-]+)/);
+    const quantMatch = key.match(/^(\{(?:\d+|n|count|total)\}|\{\{(?:n|count|total)\}\}|%(?:\d+\$)?d)\s+([A-Za-z-]+)/i);
     if (quantMatch) {
       const ph = quantMatch[1];
-      const escapedPh = ph.replace(/[{}\\]/g, '\\$&');
+      const escapedPh = ph.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const invertedMatch = value.match(
         new RegExp(`^([A-Za-z\\u00C0-\\u024F-]+(?:\\s+[A-Za-z\\u00C0-\\u024F-]+)?)\\s+${escapedPh}`, 'i'),
       );
       if (invertedMatch) {
         const leadingWord = invertedMatch[1].toLowerCase();
+        const permittedQuantifierWord = /^(sebanyak|total|sekitar|hanya|ada|tersisa)$/i;
         const isPermittedQuantifier =
-          /^(sebanyak|total|sekitar|hanya|ada|tersisa|kurang dari|lebih dari)$/i.test(leadingWord);
+          /^(kurang dari|lebih dari)$/i.test(leadingWord) ||
+          leadingWord.split(/\s+/).every((word) => permittedQuantifierWord.test(word));
         if (!isPermittedQuantifier) {
           findings.push({
             key: fullKey,
@@ -548,6 +550,10 @@ function parseSimpleJsLocale(content) {
         closed = true;
         pos++;
         break;
+      } else if (quote === '`' && c === '$' && stripped[pos + 1] === '{') {
+        throw new Error(
+          `Unsupported JS locale syntax near: ${stripped.slice(pos, pos + 80).replace(/\s+/g, ' ')}`,
+        );
       } else {
         val += c;
       }
@@ -635,16 +641,31 @@ if (require.main === module) {
   let minFallbackLength = 16;
   const targets = [];
 
+  const parseMinFallback = (raw) => {
+    const n = Number(raw);
+    if (raw === undefined || raw === '' || !Number.isInteger(n) || n < 0) {
+      console.error(
+        `❌ Invalid value for --min-fallback: ${sanitizeDiagnostic(raw ?? '(missing)')} (expected a non-negative integer)`,
+      );
+      process.exit(1);
+    }
+    return n;
+  };
+
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--help' || arg === '-h') {
       showHelp = true;
     } else if (arg === '--json') {
       jsonOutput = true;
-    } else if (arg === '--min-fallback' && i + 1 < argv.length) {
-      minFallbackLength = parseInt(argv[++i], 10) || 16;
+    } else if (arg === '--min-fallback') {
+      if (i + 1 >= argv.length) {
+        console.error('❌ Missing value for --min-fallback (expected a non-negative integer)');
+        process.exit(1);
+      }
+      minFallbackLength = parseMinFallback(argv[++i]);
     } else if (arg.startsWith('--min-fallback=')) {
-      minFallbackLength = parseInt(arg.slice(15), 10) || 16;
+      minFallbackLength = parseMinFallback(arg.slice(15));
     } else if (arg.startsWith('-')) {
       console.error(`❌ Unknown option: ${sanitizeDiagnostic(arg)}`);
       process.exit(1);

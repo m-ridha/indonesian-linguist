@@ -591,12 +591,26 @@ test('auditDictionary: flags inverted quantitative placeholders ({0} sets unchec
   const inverted3 = auditDictionary({ '%d passkeys': 'Kunci sandi %d' });
   assert.ok(inverted3.some((f) => f.rule === 'inverted-quantitative-placeholder'));
 
+  const inverted4 = auditDictionary({ '%1$d photos': 'Foto %1$d' });
+  assert.ok(inverted4.some((f) => f.rule === 'inverted-quantitative-placeholder'));
+
+  const inverted5 = auditDictionary({ '{count} items left': 'Item {count} tersisa' });
+  assert.ok(inverted5.some((f) => f.rule === 'inverted-quantitative-placeholder'));
+
   // Correct: quantity placeholder precedes noun
   const correct1 = auditDictionary({ '{0} sets unchecked': '{0} set belum dicentang' });
   assert.equal(correct1.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 0);
 
   const correct2 = auditDictionary({ '{0} sets unchecked': 'Sebanyak {0} set belum dicentang' });
   assert.equal(correct2.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 0);
+
+  // Multiword permitted quantifiers like "Tersisa sekitar"
+  const correct3 = auditDictionary({ '{0} sets left': 'Tersisa sekitar {0} set' });
+  assert.equal(correct3.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 0);
+
+  // Non-count named placeholders (e.g., {name}) should not be flagged when translated as noun phrase
+  const nonCount = auditDictionary({ '{name} commented': 'Komentar dari {name}' });
+  assert.equal(nonCount.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 0);
 
   // Ordinal English source should not trigger false positives
   const ordinalSource = auditDictionary({ 'Set {0}': 'Set {0}' });
@@ -624,9 +638,15 @@ test('parseSimpleJsLocale: parses nested objects, export const, and backtick lit
 
   const findings = auditDictionary(parsed);
   assert.equal(findings.length, 0);
+
+  // Rejects unescaped template literal interpolation ${...}
+  assert.throws(
+    () => parseSimpleJsLocale('export default { greeting: `Halo ${user}` };'),
+    /Unsupported JS locale syntax/,
+  );
 });
 
-test('CLI: supports --help, -h, and --json output flags', () => {
+test('CLI: supports --help, -h, --json, and validates --min-fallback operands', () => {
   const scriptPath = path.join(__dirname, '..', 'scripts', 'audit-id.js');
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'audit-cli-flags-'));
 
@@ -641,11 +661,32 @@ test('CLI: supports --help, -h, and --json output flags', () => {
     assert.equal(shortHelpResult.status, 0);
     assert.match(shortHelpResult.stdout, /Usage:/);
 
-    // Test --json output format
+    // Test --min-fallback operand validation
+    const missingOperand = spawnSync(process.execPath, [scriptPath, '--min-fallback'], { encoding: 'utf8' });
+    assert.equal(missingOperand.status, 1);
+    assert.match(missingOperand.stderr, /Missing value for --min-fallback/);
+
+    const negativeOperand = spawnSync(process.execPath, [scriptPath, '--min-fallback', '-5', 'dummy.json'], {
+      encoding: 'utf8',
+    });
+    assert.equal(negativeOperand.status, 1);
+    assert.match(negativeOperand.stderr, /Invalid value for --min-fallback/);
+
+    const malformedOperand = spawnSync(process.execPath, [scriptPath, '--min-fallback=abc', 'dummy.json'], {
+      encoding: 'utf8',
+    });
+    assert.equal(malformedOperand.status, 1);
+    assert.match(malformedOperand.stderr, /Invalid value for --min-fallback/);
+
+    // Test --json output format with --min-fallback=0
     const testFile = path.join(tmpDir, 'test.json');
     fs.writeFileSync(testFile, JSON.stringify({ Back: 'Punggung' }), 'utf8');
 
-    const jsonResult = spawnSync(process.execPath, [scriptPath, '--json', testFile], { encoding: 'utf8' });
+    const jsonResult = spawnSync(
+      process.execPath,
+      [scriptPath, '--json', '--min-fallback=0', testFile],
+      { encoding: 'utf8' },
+    );
     assert.equal(jsonResult.status, 1);
     const parsedJson = JSON.parse(jsonResult.stdout);
     assert.equal(parsedJson.totalFiles, 1);
