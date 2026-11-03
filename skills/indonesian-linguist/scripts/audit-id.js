@@ -163,7 +163,7 @@ const NON_PRONOUN_MU_EXCEPTIONS =
 
 /**
  * Check a string against an explicit pronoun policy ('Anda' or 'kamu').
- * Automatically excludes supported placeholders before evaluating pronoun occurrences.
+ * Automatically excludes URLs and supported placeholders before evaluating pronoun occurrences.
  * @param {string} text
  * @param {string} pronoun
  * @returns {Array<{rule: string, message: string}>}
@@ -173,24 +173,23 @@ function checkPronounPolicy(text, pronoun) {
     return [];
   }
 
-  const textWithoutPlaceholders = String(text || '').replace(
-    /\{\{[0-9a-zA-Z_.-]+\}\}|\{[0-9a-zA-Z_.-]+\}|%(?:\d+\$)?[sdif]/g,
-    ' ',
-  );
+  const textWithoutTokens = String(text || '')
+    .replace(/https?:\/\/[^\s<>"'`()]+/g, ' ')
+    .replace(/\{\{[0-9a-zA-Z_.-]+\}\}|\{[0-9a-zA-Z_.-]+\}|%(?:\d+\$)?[sdif]/g, ' ');
 
   const findings = [];
   if (pronoun === 'Anda') {
-    const hasEncliticMu = (textWithoutPlaceholders.match(/\b[a-zA-Z\u00C0-\u024F]{2,}-?mu\b/gi) || []).some(
+    const hasEncliticMu = (textWithoutTokens.match(/\b[a-zA-Z\u00C0-\u024F]{2,}-?mu\b/gi) || []).some(
       (w) => !NON_PRONOUN_MU_EXCEPTIONS.test(w),
     );
-    if (/\b(?:kamu|kau)\b/i.test(textWithoutPlaceholders) || hasEncliticMu) {
+    if (/\b(?:kamu|kau)\b/i.test(textWithoutTokens) || hasEncliticMu) {
       findings.push({
         rule: 'pronoun-mismatch',
         message: `Informal pronoun found in "${text}"; formal "Anda" is enforced by project policy.`,
       });
     }
   } else if (pronoun === 'kamu') {
-    if (/\bAnda\b/i.test(textWithoutPlaceholders)) {
+    if (/\bAnda\b/i.test(textWithoutTokens)) {
       findings.push({
         rule: 'pronoun-mismatch',
         message: `Formal pronoun "Anda" found in "${text}"; informal "kamu" is enforced by project policy.`,

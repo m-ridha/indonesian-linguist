@@ -906,11 +906,27 @@ test('auditDictionary: pronoun policy enforcement (Anda vs kamu)', () => {
   };
   const lowercaseAndaFindings = auditDictionary(casualWithLowercaseAnda, { pronoun: 'kamu' });
   assert.equal(lowercaseAndaFindings.filter((f) => f.rule === 'pronoun-mismatch').length, 1);
+
+  // URLs containing pronoun tokens should not trigger false positive pronoun-mismatch
+  const formalWithUrl = {
+    docs: 'Kunjungi https://example.com/user/kamu/reset-mu untuk mengatur ulang kata sandi Anda',
+  };
+  const formalUrlFindings = auditDictionary(formalWithUrl, { pronoun: 'Anda' });
+  assert.equal(formalUrlFindings.filter((f) => f.rule === 'pronoun-mismatch').length, 0);
+
+  const casualWithUrl = {
+    docs: 'Kunjungi https://example.com/panduan-anda untuk panduan akunmu',
+  };
+  const casualUrlFindings = auditDictionary(casualWithUrl, { pronoun: 'kamu' });
+  assert.equal(casualUrlFindings.filter((f) => f.rule === 'pronoun-mismatch').length, 0);
 });
 
 test('auditText: applies pronoun policy to prose and ignores inline code / placeholders', () => {
   const formalProse = 'Silakan masukkan kata sandi Anda. Gunakan perintah `git checkout kamu`.';
   assert.equal(auditText(formalProse, { pronoun: 'Anda' }).filter((f) => f.rule === 'pronoun-mismatch').length, 0);
+
+  const formalProseWithUrl = 'Baca panduan di https://myjournal.app/v1/kamu untuk akun Anda.';
+  assert.equal(auditText(formalProseWithUrl, { pronoun: 'Anda' }).filter((f) => f.rule === 'pronoun-mismatch').length, 0);
 
   const informalProse = 'Silakan masukkan kata sandimu di formulir.';
   const issues = auditText(informalProse, { pronoun: 'Anda' });
