@@ -117,6 +117,12 @@ test('all required reference modules and scripts exist and are reachable from bo
   }
 });
 
+function isEscapedBacktick(content, pos) {
+  let backslashes = 0;
+  for (let p = pos - 1; p >= 0 && content[p] === '\\'; p--) backslashes++;
+  return backslashes % 2 === 1;
+}
+
 // Linear scanner to extract relative Markdown links without quadratic backtracking
 function extractRelativeMarkdownLinks(content) {
   const MAX_DOC_LENGTH = 1_000_000;
@@ -236,14 +242,23 @@ function extractRelativeMarkdownLinks(content) {
       const cursors = new Map(); // len -> monotonically advancing position in runsByLen list
       while (r < runs.length) {
         const openRun = runs[r];
-        const list = runsByLen.get(openRun.len);
-        let c = cursors.get(openRun.len) || 0;
+        // A backslash-escaped first backtick is literal; the remainder of the run can still open
+        const escaped = isEscapedBacktick(content, openRun.start);
+        const openLen = escaped ? openRun.len - 1 : openRun.len;
+        const openStart = escaped ? openRun.start + 1 : openRun.start;
+        if (openLen === 0) {
+          r++;
+          continue;
+        }
+
+        const list = runsByLen.get(openLen) || [];
+        let c = cursors.get(openLen) || 0;
         while (c < list.length && list[c] <= r) c++;
-        cursors.set(openRun.len, c);
+        cursors.set(openLen, c);
         const matchIdx = c < list.length ? list[c] : -1;
         if (matchIdx !== -1) {
           const closeRun = runs[matchIdx];
-          codeRanges.push([openRun.start, closeRun.start + closeRun.len]);
+          codeRanges.push([openStart, closeRun.start + closeRun.len]);
           r = matchIdx + 1;
         } else {
           r++;
@@ -439,6 +454,17 @@ test('extractRelativeMarkdownLinks handles link titles, code spans, fences, and 
   assert.ok(
     elapsedSameLength < 200,
     `100,000 same-length backtick runs took ${elapsedSameLength}ms (expected < 200ms)`,
+  );
+
+  // Escaped backticks: escaped single backtick does not open a span, so subsequent links are extracted
+  assert.deepEqual(
+    extractRelativeMarkdownLinks('Escaped backtick: \\` followed by [valid](./docs/testing.md) and stray `'),
+    ['./docs/testing.md'],
+  );
+  // Escaped run of length 2 opens a span of length 1 starting after the escaped backtick
+  assert.deepEqual(
+    extractRelativeMarkdownLinks('Escaped run: \\``[missing](./missing.md)` and outside [valid](./docs/testing.md)'),
+    ['./docs/testing.md'],
   );
 });
 
