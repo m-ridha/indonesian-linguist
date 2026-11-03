@@ -184,7 +184,7 @@ test('auditDictionary: bounds nesting depth and prevents exponential allocation'
 });
 
 test('auditDictionary: signs out linear regex handles repetitive "signs" safely without catastrophic backtracking', () => {
-  const repetitiveKey = `${'signs '.repeat(1000)}not_out`;
+  const repetitiveKey = `${'signs '.repeat(20000)}not_out`;
   const t0 = Date.now();
   const findings = auditDictionary({ [repetitiveKey]: 'menandakan' });
   const elapsed = Date.now() - t0;
@@ -194,6 +194,26 @@ test('auditDictionary: signs out linear regex handles repetitive "signs" safely 
   // Positive case
   const matchFindings = auditDictionary({ 'signs the user out': 'menandakan user keluar' });
   assert.ok(matchFindings.some((f) => f.rule === 'polysemy-calque'));
+});
+
+test('auditDictionary: handles compact shared-reference DAGs and cyclic objects without exponential calls', () => {
+  // Shared-reference DAG: 2 children pointing to same node across 25 levels (would be 2^25 = 33M calls without object tracking)
+  const leaf = { Back: 'Punggung' };
+  let node = leaf;
+  for (let i = 0; i < 25; i++) {
+    node = { left: node, right: node };
+  }
+  const t0 = Date.now();
+  const findings = auditDictionary(node);
+  const elapsed = Date.now() - t0;
+  assert.ok(elapsed < 200, `DAG traversal took ${elapsed}ms (expected < 200ms)`);
+  assert.ok(findings.length > 0);
+
+  // Cyclic object
+  const cycle = { a: 'test' };
+  cycle.self = cycle;
+  const cycleFindings = auditDictionary(cycle);
+  assert.ok(Array.isArray(cycleFindings));
 });
 
 test('CLI: escapes control characters and newlines in diagnostics to prevent log injection', () => {
@@ -222,6 +242,37 @@ test('CLI: escapes control characters and newlines in diagnostics to prevent log
     assert.doesNotMatch(result.stderr, /OK\rCR/);
     assert.doesNotMatch(result.stderr, /\u2028/);
     assert.doesNotMatch(result.stderr, /\u202e/);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('CLI: error handlers escape control characters in filenames and syntax error messages', () => {
+  const scriptPath = path.join(__dirname, '..', 'scripts', 'audit-id.js');
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'audit-id-err-'));
+
+  try {
+    // 1. Missing file path with newline
+    const resultMissing = spawnSync(process.execPath, [scriptPath, 'missing\nFAKE_HEADER: injection'], {
+      encoding: 'utf8',
+    });
+    assert.equal(resultMissing.status, 1);
+    assert.match(resultMissing.stderr, /missing\\nFAKE_HEADER/);
+    assert.doesNotMatch(resultMissing.stderr, /missing\nFAKE_HEADER/);
+
+    // 2. Malformed JS file with control characters in key
+    const malformedJs = path.join(tmpDir, 'malformed.js');
+    fs.writeFileSync(
+      malformedJs,
+      'module.exports = { "bad\nkey\x1b[31m": };',
+      'utf8',
+    );
+    const resultParse = spawnSync(process.execPath, [scriptPath, malformedJs], {
+      encoding: 'utf8',
+    });
+    assert.equal(resultParse.status, 1);
+    assert.match(resultParse.stderr, /bad\\nkey/);
+    assert.doesNotMatch(resultParse.stderr, /bad\nkey/);
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }

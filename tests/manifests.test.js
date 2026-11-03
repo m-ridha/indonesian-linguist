@@ -185,6 +185,11 @@ function extractRelativeMarkdownLinks(content) {
           continue;
         }
       }
+      // If fenceChar is '~' and not at line start, advance past the entire tilde run to prevent quadratic rescanning
+      if (fenceChar === '~') {
+        i += Math.max(fenceLen, 1);
+        continue;
+      }
     }
 
     // Process inline code spans within the current paragraph
@@ -276,6 +281,7 @@ function extractRelativeMarkdownLinks(content) {
   const links = [];
   let rangeIdx = 0;
   const bracketStack = [];
+  let noClosingParenBefore = -1;
   i = 0;
 
   while (i < n) {
@@ -312,22 +318,27 @@ function extractRelativeMarkdownLinks(content) {
         // CommonMark: link label length at most 999 characters
         if (labelLen <= 999 && i + 1 < n && content[i + 1] === '(') {
           const urlStart = i + 2;
-          let k = urlStart;
-          while (k < n && content[k] !== ')' && content[k] !== '\n') {
-            if (content[k] === '\\') k++;
-            k++;
-          }
-          if (k < n && content[k] === ')') {
-            const rawTarget = content.slice(urlStart, k).trim();
-            // Separate destination from optional title (e.g. [guide](./guide.md "Title") or <path>)
-            const destMatch = rawTarget.match(/^(?:<([^>]+)>|(\S+))/);
-            const destination = destMatch ? (destMatch[1] || destMatch[2]) : '';
-            if (destination && !/^(?:https?:|mailto:|#)/i.test(destination)) {
-              const cleanTarget = destination.split('#')[0].trim();
-              if (cleanTarget) links.push(cleanTarget);
+          if (urlStart >= noClosingParenBefore) {
+            let k = urlStart;
+            while (k < n && content[k] !== ')' && content[k] !== '\n') {
+              if (content[k] === '\\') k++;
+              k++;
             }
-            i = k + 1;
-            continue;
+            if (k < n && content[k] === ')') {
+              noClosingParenBefore = -1;
+              const rawTarget = content.slice(urlStart, k).trim();
+              // Separate destination from optional title (e.g. [guide](./guide.md "Title") or <path>)
+              const destMatch = rawTarget.match(/^(?:<([^>]+)>|(\S+))/);
+              const destination = destMatch ? (destMatch[1] || destMatch[2]) : '';
+              if (destination && !/^(?:https?:|mailto:|#)/i.test(destination)) {
+                const cleanTarget = destination.split('#')[0].trim();
+                if (cleanTarget) links.push(cleanTarget);
+              }
+              i = k + 1;
+              continue;
+            } else {
+              noClosingParenBefore = k;
+            }
           }
         }
       }
@@ -465,6 +476,28 @@ test('extractRelativeMarkdownLinks handles link titles, code spans, fences, and 
   assert.deepEqual(
     extractRelativeMarkdownLinks('Escaped run: \\``[missing](./missing.md)` and outside [valid](./docs/testing.md)'),
     ['./docs/testing.md'],
+  );
+
+  // Linear scan bound check for mid-line tildes (50,000 tildes)
+  const midlineTildes = 'word ' + '~'.repeat(50000) + '\n\nSee [valid](./docs/testing.md)';
+  const t2 = Date.now();
+  const tildeLinks = extractRelativeMarkdownLinks(midlineTildes);
+  const elapsedTilde = Date.now() - t2;
+  assert.deepEqual(tildeLinks, ['./docs/testing.md']);
+  assert.ok(
+    elapsedTilde < 200,
+    `50,000 mid-line tildes took ${elapsedTilde}ms (expected < 200ms)`,
+  );
+
+  // Linear scan bound check for repeated unclosed destination candidates on a long line
+  const unclosedDestinations = '[a]( [b]( [c]( [d]( '.repeat(10000) + '\n\nSee [valid](./docs/testing.md)';
+  const t3 = Date.now();
+  const unclosedLinks = extractRelativeMarkdownLinks(unclosedDestinations);
+  const elapsedUnclosed = Date.now() - t3;
+  assert.deepEqual(unclosedLinks, ['./docs/testing.md']);
+  assert.ok(
+    elapsedUnclosed < 200,
+    `10,000 unclosed destinations took ${elapsedUnclosed}ms (expected < 200ms)`,
   );
 });
 

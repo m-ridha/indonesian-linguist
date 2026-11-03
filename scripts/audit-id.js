@@ -55,7 +55,16 @@ const KNOWN_CALQUE_TRAPS = [
   { keyMatch: /sets are drawn/i, badVal: /\bdiundi\b/i, fix: 'ditampilkan di grafik' },
   { keyMatch: /logged workout/i, badVal: /\blogin\b/i, fix: 'sesi latihan yang dicatat' },
   { keyMatch: /hop over/i, badVal: /\b(lanjutkan|meneruskan)\b/i, fix: 'melewati / melompati' },
-  { keyMatch: /signs\b.*?\bouts?\b/i, badVal: /\bmenandakan\b/i, fix: 'mengeluarkan' },
+  {
+    keyMatch: {
+      test(key) {
+        const idx = String(key || '').search(/\bsigns\b/i);
+        return idx !== -1 && /\bouts?\b/i.test(key.slice(idx + 5));
+      },
+    },
+    badVal: /\bmenandakan\b/i,
+    fix: 'mengeluarkan',
+  },
   { keyMatch: /^abductors$/i, badVal: /\bpenculik\b/i, fix: 'Abduktor' },
   { keyMatch: /^landmine$/i, badVal: /\branjau darat\b/i, fix: 'Landmine' },
   { keyMatch: /^traps$/i, badVal: /\bperangkap\b/i, fix: 'Traps' },
@@ -197,10 +206,16 @@ const MAX_DICTIONARY_DEPTH = 32;
 const MAX_DICTIONARY_FINDINGS = 5000;
 
 /**
+ * Maximum total entries (keys + sub-objects) traversed across an entire dictionary audit.
+ */
+const MAX_DICTIONARY_ENTRIES = 50_000;
+
+/**
  * Audit a key-value i18n dictionary object (including nested namespace objects).
- * Collects findings in a single accumulator with explicit depth and size bounds.
+ * Collects findings in a single accumulator with explicit depth, size, and traversal bounds.
+ * Tracks visited object references to prevent exponential work on compact shared-reference graphs.
  * @param {Record<string, unknown>} dict
- * @param {{ minFallbackLength?: number, allowlistKeys?: Set<string>, prefix?: string, depth?: number, accumulator?: Array<{key: string, rule: string, message: string}> }} [options]
+ * @param {{ minFallbackLength?: number, allowlistKeys?: Set<string>, prefix?: string, depth?: number, accumulator?: Array<{key: string, rule: string, message: string}>, visited?: Set<object>, counter?: { entries: number } }} [options]
  * @returns {Array<{key: string, rule: string, message: string}>}
  */
 function auditDictionary(dict, options = {}) {
@@ -209,6 +224,15 @@ function auditDictionary(dict, options = {}) {
   const currentPrefix = options.prefix ?? '';
   const currentDepth = options.depth ?? 0;
   const findings = options.accumulator ?? [];
+  const visited = options.visited ?? new Set();
+  const counter = options.counter ?? { entries: 0 };
+
+  if (dict && typeof dict === 'object') {
+    if (visited.has(dict)) {
+      return findings;
+    }
+    visited.add(dict);
+  }
 
   if (currentDepth > MAX_DICTIONARY_DEPTH) {
     findings.push({
@@ -220,6 +244,16 @@ function auditDictionary(dict, options = {}) {
   }
 
   for (const [key, value] of Object.entries(dict || {})) {
+    counter.entries++;
+    if (counter.entries > MAX_DICTIONARY_ENTRIES) {
+      findings.push({
+        key: currentPrefix || 'root',
+        rule: 'traversal-limit-exceeded',
+        message: `Total dictionary traversal work exceeded safety limit of ${MAX_DICTIONARY_ENTRIES} entries.`,
+      });
+      break;
+    }
+
     if (findings.length >= MAX_DICTIONARY_FINDINGS) {
       findings.push({
         key: currentPrefix || 'root',
@@ -237,6 +271,8 @@ function auditDictionary(dict, options = {}) {
         prefix: fullKey,
         depth: currentDepth + 1,
         accumulator: findings,
+        visited,
+        counter,
       });
       continue;
     }
@@ -505,7 +541,7 @@ if (require.main === module) {
     try {
       raw = fs.readFileSync(absPath, 'utf8');
     } catch (err) {
-      console.error(`❌ Error reading ${target}: ${err.message}`);
+      console.error(`❌ Error reading ${sanitizeDiagnostic(target)}: ${sanitizeDiagnostic(err.message)}`);
       hasFailures = true;
       continue;
     }
@@ -520,7 +556,7 @@ if (require.main === module) {
         findings = auditText(raw).map((f) => ({ key: path.basename(absPath), ...f }));
       }
     } catch (err) {
-      console.error(`❌ Error parsing ${target}: ${err.message}`);
+      console.error(`❌ Error parsing ${sanitizeDiagnostic(target)}: ${sanitizeDiagnostic(err.message)}`);
       hasFailures = true;
       continue;
     }
