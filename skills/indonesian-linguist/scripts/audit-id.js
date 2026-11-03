@@ -83,7 +83,51 @@ const RETAINED_LOANWORD_PATTERNS = [
   /^(?:serratus anterior|latissimus dorsi|sternocleidomastoid|pectoralis(?:\s+major|\s+minor)?|gluteus(?:\s+maximus|\s+medius)?|gastrocnemius)$/i,
   /^(?:Face ID(?:\s*\/\s*Touch ID)?|Touch ID|iCloud Keychain|Google Password Manager|Health Connect|Apple Health|Apple Watch|Cloudflare Access)$/i,
   /^(?:API key|endpoint|reverse proxy|source code|webhook)$/i,
+  /^(?:Bahasa Indonesia(?:\s*\([A-Za-z0-9_-]+\))?|Bahasa Melayu(?:\s*\([A-Za-z0-9_-]+\))?|English(?:\s*\([A-Za-z0-9_-]+\))?|[a-z]{2}(?:[-_][A-Z]{2,4})?)$/i,
 ];
+
+const RULE_CATEGORIES = {
+  'kata-tidak-baku': 'grammar',
+  'slop-or-pleonasm': 'grammar',
+  'merged-preposition': 'grammar',
+  'polysemy-calque': 'terminology',
+  'retained-loanword-calque': 'terminology',
+  'pronoun-mismatch': 'style',
+  'inverted-quantitative-placeholder': 'style',
+  'sms-abbreviation': 'style',
+  'silent-fallback': 'parity',
+  'placeholder-mismatch': 'parity',
+  'malformed-placeholder': 'parity',
+  'nesting-limit-exceeded': 'structure',
+  'traversal-limit-exceeded': 'structure',
+  'findings-limit-exceeded': 'structure',
+};
+
+/**
+ * Maps a diagnostic rule identifier to its high-level audit category.
+ * @param {string} rule - The rule identifier string.
+ * @returns {string} The categorized domain (grammar, terminology, style, parity, structure, or general).
+ */
+function getRuleCategory(rule) {
+  return RULE_CATEGORIES[rule] || 'general';
+}
+
+/**
+ * Checks if a given key path is excluded by exact match or wildcard prefix.
+ * @param {string} keyPath - The dot-separated key path being checked.
+ * @param {Set<string>|Array<string>|null|undefined} ignoreKeys - Collection of ignored keys or wildcards.
+ * @returns {boolean} True if the key path is ignored.
+ */
+function isKeyIgnored(keyPath, ignoreKeys) {
+  if (!ignoreKeys) return false;
+  const set = ignoreKeys instanceof Set ? ignoreKeys : new Set(Array.isArray(ignoreKeys) ? ignoreKeys : [ignoreKeys]);
+  if (set.has(keyPath)) return true;
+  for (const pattern of set) {
+    if (pattern === keyPath) return true;
+    if (pattern.endsWith('*') && keyPath.startsWith(pattern.slice(0, -1))) return true;
+  }
+  return false;
+}
 
 /**
  * Extract all placeholders from a string, preserving duplicate counts and supporting
@@ -276,6 +320,7 @@ function auditText(text, options = {}) {
   if (smsMatch) {
     issues.push({
       rule: 'sms-abbreviation',
+      category: getRuleCategory('sms-abbreviation'),
       message: `Banned chat/SMS abbreviation "${smsMatch[0]}" found; use full word or lexical compaction.`,
     });
   }
@@ -285,6 +330,7 @@ function auditText(text, options = {}) {
     if (m) {
       issues.push({
         rule: 'kata-tidak-baku',
+        category: getRuleCategory('kata-tidak-baku'),
         message: `Non-standard word "${m[0]}" found; use KBBI standard "${item.fix}".`,
       });
     }
@@ -294,6 +340,7 @@ function auditText(text, options = {}) {
     if (pat.regex.test(str)) {
       issues.push({
         rule: 'slop-or-pleonasm',
+        category: getRuleCategory('slop-or-pleonasm'),
         message: pat.reason,
       });
     }
@@ -301,7 +348,11 @@ function auditText(text, options = {}) {
 
   if (pronoun) {
     for (const pIssue of checkPronounPolicy(str, pronoun)) {
-      issues.push(pIssue);
+      issues.push({
+        rule: pIssue.rule,
+        category: getRuleCategory(pIssue.rule),
+        message: pIssue.message,
+      });
     }
   }
 
@@ -363,6 +414,7 @@ function auditDictionary(dict, options = {}) {
     findings.push({
       key: currentPrefix || 'root',
       rule: 'nesting-limit-exceeded',
+      category: getRuleCategory('nesting-limit-exceeded'),
       message: `Dictionary nesting depth exceeded safety limit of ${MAX_DICTIONARY_DEPTH}.`,
     });
     return findings;
@@ -385,6 +437,7 @@ function auditDictionary(dict, options = {}) {
       findings.push({
         key: currentPrefix || 'root',
         rule: 'traversal-limit-exceeded',
+        category: getRuleCategory('traversal-limit-exceeded'),
         message: `Total dictionary traversal work exceeded safety limit of ${MAX_DICTIONARY_ENTRIES} entries.`,
       });
       break;
@@ -394,6 +447,7 @@ function auditDictionary(dict, options = {}) {
       findings.push({
         key: currentPrefix || 'root',
         rule: 'findings-limit-exceeded',
+        category: getRuleCategory('findings-limit-exceeded'),
         message: `Total dictionary findings exceeded safety limit of ${MAX_DICTIONARY_FINDINGS}.`,
       });
       break;
@@ -424,6 +478,10 @@ function auditDictionary(dict, options = {}) {
       }
     }
 
+    if (isKeyIgnored(fullKey, options.ignoreKeys)) {
+      continue;
+    }
+
     if (value && typeof value === 'object') {
       auditDictionary(value, {
         ...options,
@@ -434,6 +492,7 @@ function auditDictionary(dict, options = {}) {
         visited,
         activeStack,
         counter,
+        ignoreKeys: options.ignoreKeys,
       });
       continue;
     }
@@ -456,6 +515,7 @@ function auditDictionary(dict, options = {}) {
       findings.push({
         key: fullKey,
         rule: 'silent-fallback',
+        category: getRuleCategory('silent-fallback'),
         message: `Untranslated identity fallback (${typeof sourceValue === 'string' ? 'source === value' : 'key === value'}, ${value.length} chars).`,
       });
     }
@@ -468,6 +528,7 @@ function auditDictionary(dict, options = {}) {
       findings.push({
         key: fullKey,
         rule: 'malformed-placeholder',
+        category: getRuleCategory('malformed-placeholder'),
         message: `Unmatched or improperly ordered curly braces in placeholder for "${value}".`,
       });
     }
@@ -479,6 +540,7 @@ function auditDictionary(dict, options = {}) {
         findings.push({
           key: fullKey,
           rule: 'placeholder-mismatch',
+          category: getRuleCategory('placeholder-mismatch'),
           message: `Placeholders in source [${srcPh.join(', ')}] do not match value [${valPh.join(', ')}].`,
         });
       }
@@ -489,6 +551,7 @@ function auditDictionary(dict, options = {}) {
         findings.push({
           key: fullKey,
           rule: 'placeholder-mismatch',
+          category: getRuleCategory('placeholder-mismatch'),
           message: `Placeholders in key [${keyPh.join(', ')}] do not match value [${valPh.join(', ')}].`,
         });
       }
@@ -557,6 +620,7 @@ function auditDictionary(dict, options = {}) {
           findings.push({
             key: fullKey,
             rule: 'inverted-quantitative-placeholder',
+            category: getRuleCategory('inverted-quantitative-placeholder'),
             message: `Quantitative placeholder inverted: "${sourceTemplate}" (${ph} count) translated with placeholder placed after noun ("${value}"); in Indonesian, quantity must precede the noun (${ph} ${invertedMatch[1]}).`,
           });
         }
@@ -572,6 +636,7 @@ function auditDictionary(dict, options = {}) {
         findings.push({
           key: fullKey,
           rule: 'polysemy-calque',
+          category: getRuleCategory('polysemy-calque'),
           message: `Literal calque trap in "${value}"; use "${trap.fix}".`,
         });
       }
@@ -583,6 +648,7 @@ function auditDictionary(dict, options = {}) {
         findings.push({
           key: fullKey,
           rule: pIssue.rule,
+          category: getRuleCategory(pIssue.rule),
           message: pIssue.message,
         });
       }
@@ -593,6 +659,7 @@ function auditDictionary(dict, options = {}) {
       findings.push({
         key: fullKey,
         rule: issue.rule,
+        category: issue.category || getRuleCategory(issue.rule),
         message: issue.message,
       });
     }
@@ -884,13 +951,352 @@ function parseSimpleJsLocale(content) {
   return dict;
 }
 
+/**
+ * Maximum allowed source length for Android XML and iOS strings files (2 MB).
+ */
+const MAX_NATIVE_LOCALE_LENGTH = 2_000_000;
+
+/**
+ * Unescapes standard Android XML entities, CDATA sections, and backslash-escapes.
+ * Decodes named and numeric character entities in a single pass to prevent double-decoding.
+ * @param {string} str
+ * @returns {string}
+ */
+function unescapeAndroidXml(str) {
+  if (!str) return '';
+  let res = str.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1');
+  res = res.replace(/\\(['"])/g, '$1');
+  const named = { quot: '"', apos: "'", lt: '<', gt: '>', amp: '&' };
+  res = res.replace(/&(?:(quot|apos|lt|gt|amp)|#(\d+)|#x([0-9a-fA-F]+));/gi, (_, name, dec, hex) => {
+    if (name) return named[name.toLowerCase()];
+    const code = dec !== undefined ? parseInt(dec, 10) : parseInt(hex, 16);
+    return Number.isFinite(code) && code >= 0 && code <= 0x10ffff ? String.fromCodePoint(code) : '';
+  });
+  return res.trim();
+}
+
+/**
+ * Parse an Android `strings.xml` resource file into a dictionary object.
+ * Extracts:
+ * - `<string name="key">value</string>` -> `"key": "value"`
+ * - `<string-array name="key"><item>value</item>...</string-array>` -> `"key": ["value", ...]`
+ * - `<plurals name="key"><item quantity="qty">value</item>...</plurals>` -> `"key": { "qty": "value", ... }`
+ * Handles CDATA, XML entity decoding, and XML comment stripping.
+ * Verifies single root <resources> containment and rejects malformed/unclosed tags.
+ * @param {string} content
+ * @returns {Record<string, unknown>}
+ */
+/**
+ * Strips XML comments (<!-- ... -->) while preserving comment delimiters inside <![CDATA[...]]> blocks.
+ * Throws if an unclosed XML comment is encountered outside CDATA.
+ * @param {string} src
+ * @returns {string}
+ */
+function stripXmlCommentsPreservingCdata(src) {
+  let current = src;
+  while (true) {
+    let result = '';
+    let i = 0;
+    const len = current.length;
+    let foundComment = false;
+    while (i < len) {
+      if (current.startsWith('<![CDATA[', i)) {
+        const end = current.indexOf(']]>', i + 9);
+        if (end === -1) {
+          result += current.slice(i);
+          break;
+        }
+        result += current.slice(i, end + 3);
+        i = end + 3;
+      } else if (current.startsWith('<!--', i)) {
+        const end = current.indexOf('-->', i + 4);
+        if (end === -1) {
+          throw new Error('Malformed Android XML: unclosed XML comment <!--');
+        }
+        foundComment = true;
+        i = end + 3;
+      } else {
+        result += current[i];
+        i++;
+      }
+    }
+    if (!foundComment) {
+      return result;
+    }
+    current = result;
+  }
+}
+
+/**
+ * Parse an Android `strings.xml` resource file into a dictionary object.
+ * Extracts:
+ * - `<string name="key">value</string>` -> `"key": "value"`
+ * - `<string-array name="key"><item>value</item>...</string-array>` -> `"key": ["value", ...]`
+ * - `<plurals name="key"><item quantity="qty">value</item>...</plurals>` -> `"key": { "qty": "value", ... }`
+ * Handles CDATA, XML entity decoding, and XML comment stripping.
+ * Verifies single root <resources> containment, validates child tag structure, and rejects malformed/unclosed tags.
+ * Normalizes self-closing string, string-array, plurals, and item elements into empty open/close pairs.
+ * @param {string} content
+ * @returns {Record<string, unknown>}
+ */
+function parseAndroidXmlLocale(content) {
+  const src = String(content || '');
+  if (src.length > MAX_NATIVE_LOCALE_LENGTH) {
+    throw new Error(`Android XML source exceeds maximum length of ${MAX_NATIVE_LOCALE_LENGTH} characters.`);
+  }
+
+  const clean = stripXmlCommentsPreservingCdata(src);
+
+  const withoutProlog = clean.replace(/^\s*<\?xml[^>]*\?>/i, '').trim();
+  const rootMatch = /^\s*<resources\b[^>]*>([\s\S]*?)<\/resources\s*>\s*$/i.exec(withoutProlog);
+  if (!rootMatch) {
+    throw new Error('Invalid Android strings.xml: document must contain a single root <resources> element enclosing all entries.');
+  }
+
+  const innerContent = rootMatch[1];
+  if (/<resources\b/i.test(innerContent) || /<\/resources\s*>/i.test(innerContent)) {
+    throw new Error('Invalid Android strings.xml: nested or multiple <resources> elements are not allowed.');
+  }
+
+  // Normalize self-closing entries into empty open/close pairs before balance checks and extraction
+  const normalizedInner = innerContent.replace(
+    /<(string-array|string|plurals|item)(\s+[^>]*?|\s*)\/>/gi,
+    '<$1$2></$1>'
+  );
+
+  const openStringCount = (normalizedInner.match(/<string\s/gi) || []).length;
+  const closeStringCount = (normalizedInner.match(/<\/string\s*>/gi) || []).length;
+  if (openStringCount !== closeStringCount) {
+    throw new Error(`Invalid Android strings.xml: mismatched <string> tags (${openStringCount} open, ${closeStringCount} close).`);
+  }
+
+  const openArrayCount = (normalizedInner.match(/<string-array\s/gi) || []).length;
+  const closeArrayCount = (normalizedInner.match(/<\/string-array\s*>/gi) || []).length;
+  if (openArrayCount !== closeArrayCount) {
+    throw new Error(`Invalid Android strings.xml: mismatched <string-array> tags (${openArrayCount} open, ${closeArrayCount} close).`);
+  }
+
+  const openPluralsCount = (normalizedInner.match(/<plurals\s/gi) || []).length;
+  const closePluralsCount = (normalizedInner.match(/<\/plurals\s*>/gi) || []).length;
+  if (openPluralsCount !== closePluralsCount) {
+    throw new Error(`Invalid Android strings.xml: mismatched <plurals> tags (${openPluralsCount} open, ${closePluralsCount} close).`);
+  }
+
+  const dict = {};
+
+  // 1. Single strings: <string name="key" ...>value</string>
+  const stringRegex = /<string\s+[^>]*name\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/string>/gi;
+  let match;
+  while ((match = stringRegex.exec(normalizedInner)) !== null) {
+    dict[match[1]] = unescapeAndroidXml(match[2]);
+  }
+
+  // 2. String arrays: <string-array name="key" ...><item>...</item></string-array>
+  const arrayRegex = /<string-array\s+[^>]*name\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/string-array>/gi;
+  while ((match = arrayRegex.exec(normalizedInner)) !== null) {
+    const key = match[1];
+    const inner = match[2];
+    const openItemCount = (inner.match(/<item(\s|>)/gi) || []).length;
+    const closeItemCount = (inner.match(/<\/item\s*>/gi) || []).length;
+    if (openItemCount !== closeItemCount) {
+      throw new Error(`Invalid Android strings.xml: mismatched <item> tags in <string-array name="${key}"> (${openItemCount} open, ${closeItemCount} close).`);
+    }
+    const items = [];
+    const itemRegex = /<item[^>]*>([\s\S]*?)<\/item>/gi;
+    let itemMatch;
+    while ((itemMatch = itemRegex.exec(inner)) !== null) {
+      items.push(unescapeAndroidXml(itemMatch[1]));
+    }
+    const unconsumed = inner.replace(/<item[^>]*>[\s\S]*?<\/item>/gi, '').trim();
+    if (unconsumed) {
+      throw new Error(`Invalid Android strings.xml: malformed or unconsumed content in <string-array name="${key}">.`);
+    }
+    dict[key] = items;
+  }
+
+  // 3. Plurals: <plurals name="key" ...><item quantity="one">...</item></plurals>
+  const pluralsRegex = /<plurals\s+[^>]*name\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/plurals>/gi;
+  while ((match = pluralsRegex.exec(normalizedInner)) !== null) {
+    const key = match[1];
+    const inner = match[2];
+    const openItemCount = (inner.match(/<item(\s|>)/gi) || []).length;
+    const closeItemCount = (inner.match(/<\/item\s*>/gi) || []).length;
+    if (openItemCount !== closeItemCount) {
+      throw new Error(`Invalid Android strings.xml: mismatched <item> tags in <plurals name="${key}"> (${openItemCount} open, ${closeItemCount} close).`);
+    }
+    const pluralsObj = {};
+    const itemRegex = /<item\s+[^>]*quantity\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/item>/gi;
+    let itemMatch;
+    while ((itemMatch = itemRegex.exec(inner)) !== null) {
+      pluralsObj[itemMatch[1]] = unescapeAndroidXml(itemMatch[2]);
+    }
+    const unconsumed = inner.replace(/<item\s+[^>]*quantity\s*=\s*["'][^"']+["'][^>]*>[\s\S]*?<\/item>/gi, '').trim();
+    if (unconsumed) {
+      throw new Error(`Invalid Android strings.xml: malformed or unconsumed content in <plurals name="${key}">.`);
+    }
+    dict[key] = pluralsObj;
+  }
+
+  return dict;
+}
+
+/**
+ * Unescapes standard Apple .strings escape sequences in a single pass.
+ * Supports standard escapes (\", \\, \n, \r, \t) and Unicode escapes (\Uxxxx, \uxxxx).
+ * @param {string} str
+ * @returns {string}
+ */
+function unescapeIosString(str) {
+  if (!str) return '';
+  return str.replace(/\\(?:(["\\nrt])|[uU]([0-9a-fA-F]{4}))/g, (_, ch, hex) => {
+    if (hex) {
+      const code = parseInt(hex, 16);
+      return Number.isFinite(code) && code >= 0 && code <= 0xffff ? String.fromCharCode(code) : '';
+    }
+    switch (ch) {
+      case '"': return '"';
+      case '\\': return '\\';
+      case 'n': return '\n';
+      case 'r': return '\r';
+      case 't': return '\t';
+      default: return ch;
+    }
+  });
+}
+
+/**
+ * Parse an Apple iOS/macOS `.strings` localization file into a dictionary object.
+ * Strips C-style multiline comments and line comments, and extracts `"key" = "value";` pairs.
+ * Rejects unparsed non-comment, non-whitespace content and malformed entries.
+ * @param {string} content
+ * @returns {Record<string, string>}
+ */
+function parseIosStringsLocale(content) {
+  const src = String(content || '');
+  if (src.length > MAX_NATIVE_LOCALE_LENGTH) {
+    throw new Error(`iOS strings source exceeds maximum length of ${MAX_NATIVE_LOCALE_LENGTH} characters.`);
+  }
+
+  const dict = {};
+  let i = 0;
+  const len = src.length;
+
+  while (i < len) {
+    // 1. Skip whitespace
+    while (i < len && /\s/.test(src[i])) {
+      i++;
+    }
+    if (i >= len) break;
+
+    // 2. Comments
+    if (src[i] === '/' && src[i + 1] === '/') {
+      i += 2;
+      while (i < len && src[i] !== '\n' && src[i] !== '\r') {
+        i++;
+      }
+      continue;
+    }
+    if (src[i] === '/' && src[i + 1] === '*') {
+      const closeIdx = src.indexOf('*/', i + 2);
+      if (closeIdx === -1) {
+        throw new Error('Malformed iOS .strings catalog: unclosed block comment /*');
+      }
+      i = closeIdx + 2;
+      continue;
+    }
+
+    // 3. String key
+    if (src[i] === '"') {
+      const keyStart = i + 1;
+      let keyEnd = -1;
+      let escaped = false;
+      let j = keyStart;
+      while (j < len) {
+        if (escaped) {
+          escaped = false;
+        } else if (src[j] === '\\') {
+          escaped = true;
+        } else if (src[j] === '"') {
+          keyEnd = j;
+          break;
+        }
+        j++;
+      }
+      if (keyEnd === -1) {
+        throw new Error('Malformed iOS .strings catalog: unterminated string key');
+      }
+      const rawKey = src.slice(keyStart, keyEnd);
+      const key = unescapeIosString(rawKey);
+      i = keyEnd + 1;
+
+      // Skip whitespace
+      while (i < len && /\s/.test(src[i])) i++;
+
+      // Expect '='
+      if (i >= len || src[i] !== '=') {
+        throw new Error(`Malformed iOS .strings catalog: expected '=' after key "${key}"`);
+      }
+      i++; // skip '='
+
+      // Skip whitespace
+      while (i < len && /\s/.test(src[i])) i++;
+
+      // Expect '"'
+      if (i >= len || src[i] !== '"') {
+        throw new Error(`Malformed iOS .strings catalog: expected string value for key "${key}"`);
+      }
+      const valStart = i + 1;
+      let valEnd = -1;
+      escaped = false;
+      j = valStart;
+      while (j < len) {
+        if (escaped) {
+          escaped = false;
+        } else if (src[j] === '\\') {
+          escaped = true;
+        } else if (src[j] === '"') {
+          valEnd = j;
+          break;
+        }
+        j++;
+      }
+      if (valEnd === -1) {
+        throw new Error(`Malformed iOS .strings catalog: unterminated string value for key "${key}"`);
+      }
+      const rawVal = src.slice(valStart, valEnd);
+      const val = unescapeIosString(rawVal);
+      i = valEnd + 1;
+
+      // Skip whitespace
+      while (i < len && /\s/.test(src[i])) i++;
+
+      // Expect ';'
+      if (i >= len || src[i] !== ';') {
+        throw new Error(`Malformed iOS .strings catalog: expected ';' after value for key "${key}"`);
+      }
+      i++; // skip ';'
+
+      dict[key] = val;
+      continue;
+    }
+
+    // If we reached here, there is unexpected non-whitespace, non-comment content
+    const snippet = src.slice(i, Math.min(i + 20, len)).replace(/[\r\n]+/g, ' ');
+    throw new Error(`Malformed iOS .strings catalog: unexpected content near "${snippet}"`);
+  }
+
+  return dict;
+}
+
 if (require.main === module) {
   const argv = process.argv.slice(2);
   let showHelp = false;
   let jsonOutput = false;
+  let warnOnly = false;
   let minFallbackLength = 16;
   let sourcePath = null;
   let pronounPolicy = null;
+  const ignoreKeys = new Set();
   const targets = [];
 
   const parseMinFallback = (raw) => {
@@ -932,6 +1338,25 @@ if (require.main === module) {
       showHelp = true;
     } else if (arg === '--json') {
       jsonOutput = true;
+    } else if (arg === '--warn-only') {
+      warnOnly = true;
+    } else if (arg === '--ignore-keys') {
+      if (i + 1 >= argv.length) {
+        console.error('❌ Missing value for --ignore-keys (expected comma-separated keys)');
+        process.exit(1);
+      }
+      argv[++i]
+        .split(',')
+        .map((k) => k.trim())
+        .filter(Boolean)
+        .forEach((k) => ignoreKeys.add(k));
+    } else if (arg.startsWith('--ignore-keys=')) {
+      arg
+        .slice(14)
+        .split(',')
+        .map((k) => k.trim())
+        .filter(Boolean)
+        .forEach((k) => ignoreKeys.add(k));
     } else if (arg === '--min-fallback') {
       if (i + 1 >= argv.length) {
         console.error('❌ Missing value for --min-fallback (expected a non-negative integer)');
@@ -981,7 +1406,9 @@ Usage:
 Options:
   -h, --help            Show this help message and exit
   --json                Output findings in structured JSON format
-  --source <file>       Path to source catalog (.json/.js/.mjs) to compare placeholders and fallbacks
+  --source <file>       Path to source catalog (.json/.js/.mjs/.xml/.strings) to compare placeholders and fallbacks
+  --ignore-keys <keys>  Comma-separated list of keys or wildcard patterns (e.g. "picker.*,app_name") to ignore
+  --warn-only           Report audit findings but exit with code 0 (file-read and parse errors still exit with code 1)
   --min-fallback <n>    Minimum character length for identity fallback check (default: 16)
   --pronoun <name>      Enforce consistent pronoun: "Anda", "kamu", or "any" (default: any)
   --register <mode>     Alias for pronoun policy: "formal" (Anda), "casual" (kamu), or "any"
@@ -1002,9 +1429,13 @@ Options:
         sourceCatalog = JSON.parse(rawSource);
       } else if (absSourcePath.endsWith('.js') || absSourcePath.endsWith('.mjs')) {
         sourceCatalog = parseSimpleJsLocale(rawSource);
+      } else if (absSourcePath.endsWith('.xml')) {
+        sourceCatalog = parseAndroidXmlLocale(rawSource);
+      } else if (absSourcePath.endsWith('.strings')) {
+        sourceCatalog = parseIosStringsLocale(rawSource);
       } else {
         console.error(
-          `❌ Error: --source file must be a .json or .js/.mjs locale dictionary: ${sanitizeDiagnostic(sourcePath)}`,
+          `❌ Error: --source file must be a .json, .js/.mjs, .xml, or .strings locale dictionary: ${sanitizeDiagnostic(sourcePath)}`,
         );
         process.exit(1);
       }
@@ -1016,7 +1447,8 @@ Options:
     }
   }
 
-  let hasFailures = false;
+  let hasFindingFailures = false;
+  let hasOperationalErrors = false;
   const jsonReport = {
     totalFiles: targets.length,
     cleanFiles: 0,
@@ -1042,7 +1474,7 @@ Options:
       } else {
         console.error(`❌ Error reading ${sanitizeDiagnostic(target)}: ${sanitizeDiagnostic(err.message)}`);
       }
-      hasFailures = true;
+      hasOperationalErrors = true;
       continue;
     }
 
@@ -1053,12 +1485,28 @@ Options:
           minFallbackLength,
           source: sourceCatalog,
           pronoun: pronounPolicy,
+          ignoreKeys,
         });
       } else if (absPath.endsWith('.js') || absPath.endsWith('.mjs')) {
         findings = auditDictionary(parseSimpleJsLocale(raw), {
           minFallbackLength,
           source: sourceCatalog,
           pronoun: pronounPolicy,
+          ignoreKeys,
+        });
+      } else if (absPath.endsWith('.xml')) {
+        findings = auditDictionary(parseAndroidXmlLocale(raw), {
+          minFallbackLength,
+          source: sourceCatalog,
+          pronoun: pronounPolicy,
+          ignoreKeys,
+        });
+      } else if (absPath.endsWith('.strings')) {
+        findings = auditDictionary(parseIosStringsLocale(raw), {
+          minFallbackLength,
+          source: sourceCatalog,
+          pronoun: pronounPolicy,
+          ignoreKeys,
         });
       } else {
         findings = auditText(raw, { pronoun: pronounPolicy }).map((f) => ({ key: path.basename(absPath), ...f }));
@@ -1075,7 +1523,7 @@ Options:
       } else {
         console.error(`❌ Error parsing ${sanitizeDiagnostic(target)}: ${sanitizeDiagnostic(err.message)}`);
       }
-      hasFailures = true;
+      hasOperationalErrors = true;
       continue;
     }
 
@@ -1090,7 +1538,7 @@ Options:
         });
       } else {
         jsonReport.failedFiles++;
-        hasFailures = true;
+        hasFindingFailures = true;
         jsonReport.files.push({
           file: target,
           clean: false,
@@ -1101,12 +1549,12 @@ Options:
       if (findings.length === 0) {
         console.log(`✅ Clean: 0 findings in ${sanitizeDiagnostic(target)}`);
       } else {
-        hasFailures = true;
+        hasFindingFailures = true;
         console.error(`❌ Found ${findings.length} issue(s) in ${sanitizeDiagnostic(target)}:`);
         let printedBytes = 0;
         let truncated = false;
         for (const f of findings) {
-          const line = `  - [${sanitizeDiagnostic(f.rule)}] (${sanitizeDiagnostic(f.key)}): ${sanitizeDiagnostic(f.message)}\n`;
+          const line = `  - [${sanitizeDiagnostic(f.rule)}] [${sanitizeDiagnostic(f.category || 'general')}] (${sanitizeDiagnostic(f.key)}): ${sanitizeDiagnostic(f.message)}\n`;
           const lineBytes = Buffer.byteLength(line, 'utf8');
           if (printedBytes + lineBytes > MAX_CLI_DIAGNOSTIC_BYTES) {
             truncated = true;
@@ -1134,7 +1582,7 @@ Options:
     process.stdout.write(JSON.stringify(jsonReport, null, 2) + '\n');
   }
 
-  process.exitCode = hasFailures ? 1 : 0;
+  process.exitCode = hasOperationalErrors || (hasFindingFailures && !warnOnly) ? 1 : 0;
 }
 
 module.exports = {
@@ -1144,6 +1592,8 @@ module.exports = {
   hasMalformedBraces,
   checkPronounPolicy,
   parseSimpleJsLocale,
+  parseAndroidXmlLocale,
+  parseIosStringsLocale,
   sanitizeDiagnostic,
   truncateToUtf8ByteLimit,
 };

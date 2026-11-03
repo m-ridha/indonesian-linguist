@@ -83,3 +83,18 @@ Name the specific object and consequence in the heading/body, and make the confi
 Lead with the actionable news in the first clause so it survives lock-screen truncation:
 - ✅ **Title**: `Istirahat selesai 💪`, **Body**: `Saatnya set berikutnya.`
 - ✅ **Title**: `Latihan direncanakan hari ini`, **Body**: `Sudah ada di jadwalmu. Ayo mulai latihan 💪`
+
+**Caller & Lifecycle State Audit (Notifications & Shared Strings)**:
+When reviewing notifications and system banners, verify the runtime trigger context:
+- **Inspect all callers of a shared string**: If a string resource is reused across multiple events, verify that the wording accurately reflects every trigger condition.
+- **Differentiate scheduled reminders from live execution**: A reminder saying a scheduled time *"has started"* is misleading if dispatched after the window ends or if the background worker hasn't run. Prefer neutral, action-oriented wording: **`Buka aplikasi untuk memeriksa alarm terjadwal.`**
+- **Audit the source text first**: When a translated notification feels ambiguous or contradictory, check whether the English source itself conflated lifecycle states before attempting to fix it in Indonesian.
+
+---
+
+## 4. Text Expansion as Layout Guidance, Not a Test Invariant
+
+Indonesian text expansion (+20% to +35%) is an empirical spatial layout guideline for UI containers and mobile viewports, **not** a validation invariant or test assertion:
+- **Do not enforce the expansion-ratio heuristic in test suites**: Do not require `indonesianText.length > englishText.length`. Lexical compaction legitimately produces shorter Indonesian strings in many UI controls (e.g., *Lewati alarm berikutnya* vs *Lewati alarm terjadwal berikutnya*; *Sesuai input* vs *As entered*). Explicit maximum-length and layout-fit boundary tests (e.g., `text.length <= MAX_CHARS`) remain recommended.
+- **Evaluate layout visually and dynamically**: Test UI strings on narrow viewports (320px–360px width) and with accessibility large-font scaling enabled (Dynamic Type / Android font scaling $\ge 1.5\times$).
+- **Preserve semantic fidelity over artificial padding**: If a concise Indonesian translation accurately conveys the user action or message, keep it compact rather than inflating it to meet arbitrary length heuristics.

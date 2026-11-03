@@ -13,6 +13,8 @@ const {
   auditText,
   auditDictionary,
   parseSimpleJsLocale,
+  parseAndroidXmlLocale,
+  parseIosStringsLocale,
   truncateToUtf8ByteLimit,
 } = require('../scripts/audit-id');
 
@@ -1134,4 +1136,300 @@ test('auditDictionary: permits eponymous/named concepts following Indonesian D-M
   };
   const mismatchFindings = auditDictionary(mismatchedCatalog);
   assert.ok(mismatchFindings.some((f) => f.rule === 'inverted-quantitative-placeholder'));
+});
+
+test('parseAndroidXmlLocale: parses strings, string-arrays, plurals, entities, and comments', () => {
+  const xml = `<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App identity and simple strings -->
+    <string name="app_name">My App</string>
+    <string name="welcome_message">Halo &amp; Selamat Datang! &quot;Semoga harimu menyenangkan&quot;</string>
+    <string name="escaped_apostrophe">It\'s time to workout</string>
+
+    <!-- String Array -->
+    <string-array name="exercise_categories">
+        <item>Dada</item>
+        <item>Punggung</item>
+        <item>Kaki</item>
+    </string-array>
+
+    <!-- Plurals with nested quantities -->
+    <plurals name="days_count">
+        <item quantity="one">%d hari</item>
+        <item quantity="other">%d hari</item>
+    </plurals>
+
+    <!-- CDATA handling -->
+    <string name="terms_html"><![CDATA[Silakan baca <b>Syarat & Ketentuan</b> kami.]]></string>
+</resources>`;
+
+  const dict = parseAndroidXmlLocale(xml);
+
+  assert.equal(dict.app_name, 'My App');
+  assert.equal(dict.welcome_message, 'Halo & Selamat Datang! "Semoga harimu menyenangkan"');
+  assert.equal(dict.escaped_apostrophe, "It's time to workout");
+  assert.deepEqual(dict.exercise_categories, ['Dada', 'Punggung', 'Kaki']);
+  assert.deepEqual(dict.days_count, {
+    one: '%d hari',
+    other: '%d hari',
+  });
+  assert.equal(dict.terms_html, 'Silakan baca <b>Syarat & Ketentuan</b> kami.');
+
+  // Numeric entities (decimal and hex) and single-pass decoding without double-expansion
+  const numericXml = `<resources>
+    <string name="percent">Diskon 50&#37;&#10;Hemat &#x27;banyak&#x27;</string>
+    <string name="literal_entity">&amp;#37;</string>
+    <string name="doubly_encoded">&amp;amp;#37;</string>
+  </resources>`;
+  const numericDict = parseAndroidXmlLocale(numericXml);
+  assert.equal(numericDict.percent, "Diskon 50%\nHemat 'banyak'");
+  assert.equal(numericDict.literal_entity, '&#37;');
+  assert.equal(numericDict.doubly_encoded, '&amp;#37;');
+
+  // Rejects malformed / unclosed tags and unclosed comments
+  assert.throws(
+    () => parseAndroidXmlLocale('<resources><string name="foo">bar</resources>'),
+    /mismatched <string> tags/i,
+  );
+  assert.throws(
+    () => parseAndroidXmlLocale('<resources><!-- unclosed comment<string name="foo">bar</string></resources>'),
+    /unclosed XML comment/i,
+  );
+  assert.throws(
+    () => parseAndroidXmlLocale('<string name="foo">no root</string>'),
+    /document must contain a single root <resources> element/i,
+  );
+  assert.throws(
+    () => parseAndroidXmlLocale('<resources></resources>\n<string name="title">Hello</string>'),
+    /document must contain a single root <resources> element enclosing all entries/i,
+  );
+  assert.throws(
+    () => parseAndroidXmlLocale('<resources><resources><string name="title">Nested</string></resources></resources>'),
+    /nested or multiple <resources> elements are not allowed/i,
+  );
+
+  // Preserves comment markers inside CDATA while stripping outside comments
+  const cdataCommentXml = `<resources>
+    <!-- outer comment before -->
+    <string name="cdata_comment"><![CDATA[<!-- not an xml comment -->]]></string>
+    <!-- outer comment after -->
+  </resources>`;
+  const cdataDict = parseAndroidXmlLocale(cdataCommentXml);
+  assert.equal(cdataDict.cdata_comment, '<!-- not an xml comment -->');
+
+  // Normalizes self-closing entries and ensures subsequent regular entries parse correctly
+  const selfClosingXml = `<resources>
+    <string name="empty_flag"/>
+    <string name="regular_string">Halo Dunia</string>
+    <string-array name="empty_items"/>
+    <string-array name="regular_array">
+      <item>Satu</item>
+      <item>Dua</item>
+    </string-array>
+    <plurals name="empty_plurals"/>
+    <plurals name="regular_plurals">
+      <item quantity="one">%d item</item>
+      <item quantity="other">%d item</item>
+    </plurals>
+  </resources>`;
+  const selfClosingDict = parseAndroidXmlLocale(selfClosingXml);
+  assert.equal(selfClosingDict.empty_flag, '');
+  assert.equal(selfClosingDict.regular_string, 'Halo Dunia');
+  assert.deepEqual(selfClosingDict.empty_items, []);
+  assert.deepEqual(selfClosingDict.regular_array, ['Satu', 'Dua']);
+  assert.deepEqual(selfClosingDict.empty_plurals, {});
+  assert.deepEqual(selfClosingDict.regular_plurals, { one: '%d item', other: '%d item' });
+
+  // Validates child tag structure and rejects unclosed/malformed items in string-array and plurals
+  assert.throws(
+    () => parseAndroidXmlLocale('<resources><string-array name="colors"><item>Red<item>Blue</item></string-array></resources>'),
+    /mismatched <item> tags in <string-array name="colors">/i,
+  );
+  assert.throws(
+    () => parseAndroidXmlLocale('<resources><string-array name="colors"><item>Red</item>unexpected content</string-array></resources>'),
+    /malformed or unconsumed content in <string-array name="colors">/i,
+  );
+  assert.throws(
+    () => parseAndroidXmlLocale('<resources><plurals name="days"><item quantity="one">1 day</plurals></resources>'),
+    /mismatched <item> tags in <plurals name="days">/i,
+  );
+  assert.throws(
+    () => parseAndroidXmlLocale('<resources><plurals name="days"><item>missing quantity attribute</item></plurals></resources>'),
+    /malformed or unconsumed content in <plurals name="days">/i,
+  );
+});
+
+test('parseIosStringsLocale: parses Apple .strings with comments and escaped quotes', () => {
+  const stringsContent = `
+/* Navigation actions */
+"action_cancel" = "Batal";
+"action_save" = "Simpan";
+
+// Dialog confirmations
+"dialog_confirm" = "Tekan \\"Lanjutkan\\" untuk memulai sesi latihan.";
+
+/*
+ Multi-line comment block
+ describing settings keys
+ */
+"settings_title" = "Pengaturan Profil";
+"api_url" = "https://api.example.com//v1/endpoint";
+"code_banner" = "/* Kode Kupon */";
+`;
+
+  const dict = parseIosStringsLocale(stringsContent);
+
+  assert.equal(dict.action_cancel, 'Batal');
+  assert.equal(dict.action_save, 'Simpan');
+  assert.equal(dict.dialog_confirm, 'Tekan "Lanjutkan" untuk memulai sesi latihan.');
+  assert.equal(dict.settings_title, 'Pengaturan Profil');
+  assert.equal(dict.api_url, 'https://api.example.com//v1/endpoint');
+  assert.equal(dict.code_banner, '/* Kode Kupon */');
+
+  // Rejects unclosed comments and malformed entries
+  assert.throws(
+    () => parseIosStringsLocale('/* unclosed block\n"k" = "v";'),
+    /unclosed block comment/i,
+  );
+  assert.throws(
+    () => parseIosStringsLocale('"unterminated_key'),
+    /unterminated string key/i,
+  );
+  assert.throws(
+    () => parseIosStringsLocale('"k" = "missing semicolon"'),
+    /expected ';'/i,
+  );
+  assert.throws(
+    () => parseIosStringsLocale('"k" = "v"; unexpected garbage here'),
+    /unexpected content near/i,
+  );
+
+  // Decodes Apple .strings Unicode escapes (\Uxxxx) in both keys and values
+  const unicodeStrings = `
+"key_\\U00E9" = "Halo\\U00A0Dunia";
+"emoji_\\UD83D\\UDE00" = "Senyum \\UD83D\\UDE00!";
+"literal_escape" = "\\\\U00E9";
+`;
+  const unicodeDict = parseIosStringsLocale(unicodeStrings);
+  assert.equal(unicodeDict['key_é'], 'Halo\u00A0Dunia');
+  assert.equal(unicodeDict['emoji_😀'], 'Senyum 😀!');
+  assert.equal(unicodeDict.literal_escape, '\\U00E9');
+});
+
+test('auditDictionary: permits language picker autonyms and locale tags', () => {
+  const languagePicker = {
+    lang_id: 'Bahasa Indonesia (ID)',
+    lang_ms: 'Bahasa Melayu',
+    lang_en: 'English (US)',
+    locale_code: 'id-ID',
+  };
+  const findings = auditDictionary(languagePicker);
+  assert.equal(findings.filter((f) => f.rule === 'silent-fallback').length, 0);
+});
+
+test('auditDictionary: ignores keys matching exact string or wildcard prefix', () => {
+  const source = {
+    'app.name': 'My App Fallback Here',
+    'nav.Back': 'Back',
+    'picker.one': 'English Fallback Long',
+    'picker.two': 'Another Long Fallback',
+  };
+  const target = {
+    'app.name': 'My App Fallback Here',
+    'nav.Back': 'Punggung',
+    'picker.one': 'English Fallback Long',
+    'picker.two': 'Another Long Fallback',
+  };
+  const findings = auditDictionary(target, {
+    source,
+    ignoreKeys: ['nav.Back', 'picker.*'],
+  });
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].key, 'app.name');
+});
+
+test('CLI: supports .xml and .strings catalogs, --ignore-keys, and --warn-only', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'il-native-'));
+  const xmlSource = path.join(tmpDir, 'strings_en.xml');
+  const xmlTarget = path.join(tmpDir, 'strings_id.xml');
+  const stringsSource = path.join(tmpDir, 'en.strings');
+  const stringsTarget = path.join(tmpDir, 'id.strings');
+
+  fs.writeFileSync(
+    xmlSource,
+    `<resources>
+       <string name="title">Welcome</string>
+       <plurals name="days">
+         <item quantity="one">%d day</item>
+         <item quantity="other">%d days</item>
+       </plurals>
+     </resources>`,
+  );
+
+  fs.writeFileSync(
+    xmlTarget,
+    `<resources>
+       <string name="title">Selamat Datang</string>
+       <plurals name="days">
+         <item quantity="one">%d hari</item>
+         <item quantity="other">%d hari</item>
+       </plurals>
+     </resources>`,
+  );
+
+  fs.writeFileSync(stringsSource, '"action_cancel" = "Cancel";\n"Back" = "Back";\n');
+  fs.writeFileSync(stringsTarget, '"action_cancel" = "Batal";\n"Back" = "Punggung";\n');
+
+  const scriptPath = path.resolve('scripts/audit-id.js');
+
+  const xmlResult = spawnSync(process.execPath, [scriptPath, '--source', xmlSource, xmlTarget], {
+    encoding: 'utf8',
+  });
+  assert.equal(xmlResult.status, 0);
+
+  const stringsIgnored = spawnSync(
+    process.execPath,
+    [scriptPath, '--source', stringsSource, '--ignore-keys', 'Back', stringsTarget],
+    { encoding: 'utf8' },
+  );
+  assert.equal(stringsIgnored.status, 0);
+
+  const stringsFail = spawnSync(
+    process.execPath,
+    [scriptPath, '--source', stringsSource, stringsTarget],
+    { encoding: 'utf8' },
+  );
+  assert.equal(stringsFail.status, 1);
+  assert.match(stringsFail.stderr, /\[polysemy-calque\]/);
+  assert.match(stringsFail.stderr, /\[terminology\]/);
+
+  const stringsWarn = spawnSync(
+    process.execPath,
+    [scriptPath, '--source', stringsSource, '--warn-only', stringsTarget],
+    { encoding: 'utf8' },
+  );
+  assert.equal(stringsWarn.status, 0);
+  assert.match(stringsWarn.stderr, /\[polysemy-calque\]/);
+
+  // Operational error: non-existent file must still exit with status 1 even with --warn-only
+  const missingFileResult = spawnSync(
+    process.execPath,
+    [scriptPath, '--warn-only', path.join(tmpDir, 'does-not-exist.json')],
+    { encoding: 'utf8' },
+  );
+  assert.equal(missingFileResult.status, 1);
+  assert.match(missingFileResult.stderr, /Error reading/);
+
+  // Operational error: malformed syntax must still exit with status 1 even with --warn-only
+  const malformedFile = path.join(tmpDir, 'malformed.strings');
+  fs.writeFileSync(malformedFile, 'not a valid strings file');
+  const malformedResult = spawnSync(
+    process.execPath,
+    [scriptPath, '--warn-only', malformedFile],
+    { encoding: 'utf8' },
+  );
+  assert.equal(malformedResult.status, 1);
+  assert.match(malformedResult.stderr, /Error parsing/);
+
+  fs.rmSync(tmpDir, { recursive: true, force: true });
 });
