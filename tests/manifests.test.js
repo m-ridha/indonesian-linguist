@@ -124,21 +124,15 @@ function extractRelativeMarkdownLinks(content) {
     throw new Error(`Document length (${content.length}) exceeds safety limit of ${MAX_DOC_LENGTH}`);
   }
 
-  const links = [];
-  let i = 0;
   const n = content.length;
-  const bracketStack = [];
+  const codeRanges = []; // Non-overlapping [start, end] ranges for fenced blocks and inline code spans
 
+  // Phase 1: Identify fenced code blocks and inline code spans in linear time
+  let i = 0;
   while (i < n) {
     const ch = content[i];
 
-    // Escaped character
-    if (ch === '\\') {
-      i += 2;
-      continue;
-    }
-
-    // Skip fenced code blocks (``` or ~~~) starting at line start with at most 3 spaces
+    // Check for fenced code block (``` or ~~~) at line start (up to 3 leading spaces)
     if (ch === '`' || ch === '~') {
       const fenceChar = ch;
       let fenceLen = 0;
@@ -153,7 +147,9 @@ function extractRelativeMarkdownLinks(content) {
           p--;
         }
         if ((p < 0 || content[p] === '\n') && spaces <= 3) {
+          const fenceStart = i;
           i += fenceLen;
+          let fenceEnd = n;
           while (i < n) {
             if (content[i] === '\n') {
               i++;
@@ -171,6 +167,7 @@ function extractRelativeMarkdownLinks(content) {
                 if (closeFenceLen >= fenceLen) {
                   i = pClose + closeFenceLen;
                   while (i < n && content[i] !== '\n') i++;
+                  fenceEnd = i;
                   break;
                 }
               }
@@ -178,49 +175,111 @@ function extractRelativeMarkdownLinks(content) {
               i++;
             }
           }
+          codeRanges.push([fenceStart, fenceEnd]);
           continue;
         }
       }
+    }
 
-      // Inline code span: backtick run matching opening length
-      if (ch === '`') {
-        let delimLen = 0;
-        while (i + delimLen < n && content[i + delimLen] === '`') {
-          delimLen++;
-        }
-        const spanStart = i;
-        i += delimLen;
-        let closed = false;
-        while (i < n) {
-          // A blank line ends the paragraph; an inline code span cannot cross it
-          if (content[i] === '\n') {
-            let p = i + 1;
-            while (p < n && (content[p] === ' ' || content[p] === '\t')) p++;
-            if (p >= n || content[p] === '\n' || content[p] === '\r') {
+    // Process inline code spans within the current paragraph
+    if (ch === '`') {
+      let paraEnd = n;
+      let p = i;
+      while (p < n) {
+        if (content[p] === '\n') {
+          let q = p + 1;
+          while (q < n && (content[q] === ' ' || content[q] === '\t')) q++;
+          if (q >= n || content[q] === '\n' || content[q] === '\r') {
+            paraEnd = p;
+            break;
+          }
+          const spaces = q - (p + 1);
+          if (spaces <= 3 && (content[q] === '`' || content[q] === '~')) {
+            const fc = content[q];
+            let fl = 0;
+            while (q + fl < n && content[q + fl] === fc) fl++;
+            if (fl >= 3) {
+              paraEnd = p;
               break;
             }
           }
-          if (content[i] === '`') {
-            let runLen = 0;
-            while (i + runLen < n && content[i + runLen] === '`') {
-              runLen++;
-            }
-            if (runLen === delimLen) {
-              i += runLen;
-              closed = true;
-              break;
-            } else {
-              i += runLen;
-            }
-          } else {
-            i++;
-          }
         }
-        if (!closed) {
-          i = spanStart + delimLen;
-        }
-        continue;
+        p++;
       }
+
+      // Collect all backtick runs in [i, paraEnd)
+      const runs = [];
+      let cur = i;
+      while (cur < paraEnd) {
+        if (content[cur] === '`') {
+          let rLen = 0;
+          while (cur + rLen < paraEnd && content[cur + rLen] === '`') {
+            rLen++;
+          }
+          runs.push({ start: cur, len: rLen });
+          cur += rLen;
+        } else {
+          cur++;
+        }
+      }
+
+      // Index runs by delimiter length: len -> array of run indices
+      const runsByLen = new Map();
+      for (let r = 0; r < runs.length; r++) {
+        const l = runs[r].len;
+        if (!runsByLen.has(l)) runsByLen.set(l, []);
+        runsByLen.get(l).push(r);
+      }
+
+      // Match code spans per CommonMark Section 6.2 in a single linear pass
+      let r = 0;
+      while (r < runs.length) {
+        const openRun = runs[r];
+        const list = runsByLen.get(openRun.len);
+        let matchIdx = -1;
+        for (const idx of list) {
+          if (idx > r) {
+            matchIdx = idx;
+            break;
+          }
+        }
+        if (matchIdx !== -1) {
+          const closeRun = runs[matchIdx];
+          codeRanges.push([openRun.start, closeRun.start + closeRun.len]);
+          r = matchIdx + 1;
+        } else {
+          r++;
+        }
+      }
+
+      i = paraEnd;
+      continue;
+    }
+
+    i++;
+  }
+
+  // Phase 2: Extract links outside code ranges using bounded bracket stack
+  const links = [];
+  let rangeIdx = 0;
+  const bracketStack = [];
+  i = 0;
+
+  while (i < n) {
+    while (rangeIdx < codeRanges.length && i >= codeRanges[rangeIdx][1]) {
+      rangeIdx++;
+    }
+    if (rangeIdx < codeRanges.length && i >= codeRanges[rangeIdx][0]) {
+      i = codeRanges[rangeIdx][1];
+      rangeIdx++;
+      continue;
+    }
+
+    const ch = content[i];
+
+    if (ch === '\\') {
+      i += 2;
+      continue;
     }
 
     // Candidate link start bracket
@@ -357,6 +416,21 @@ test('extractRelativeMarkdownLinks handles link titles, code spans, fences, and 
   const durationMs = Date.now() - start;
   assert.deepEqual(links, []);
   assert.ok(durationMs < 200, `20,000 unmatched brackets took ${durationMs}ms (expected < 200ms)`);
+
+  // Linear scan bound check for many distinct unmatched backtick runs (lengths 1..1400)
+  let distinctRuns = '';
+  for (let len = 1; len <= 1400; len++) {
+    distinctRuns += '`'.repeat(len) + ' ';
+  }
+  distinctRuns += '\n\nSee [valid](./docs/testing.md)';
+  const t0 = Date.now();
+  const distinctLinks = extractRelativeMarkdownLinks(distinctRuns);
+  const elapsedDistinct = Date.now() - t0;
+  assert.deepEqual(distinctLinks, ['./docs/testing.md']);
+  assert.ok(
+    elapsedDistinct < 200,
+    `1,400 distinct unmatched backtick runs took ${elapsedDistinct}ms (expected < 200ms)`,
+  );
 });
 
 test('package.json files list ships all required assets and scripts', () => {
