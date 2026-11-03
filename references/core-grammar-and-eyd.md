@@ -25,7 +25,7 @@ Memorize and enforce these 60 most frequently misspelled words in Indonesian dig
 | **baterai** | batere / batre | **metode** | metoda |
 | **belum** | belom | **miliar** | milyard / milyar |
 | **beri tahu** *(base)* | beritahu | **napas** | nafas |
-| **besok** *(common / UI)* | esok *(literary / formal register)* | **narasumber** | nara sumber |
+| **besok** *(common / UI)* / **esok** *(literary / formal)* | | **narasumber** | nara sumber |
 | **bus** | bis | **objek** | obyek |
 | **cabai** | cabe | **olahraga** | olah raga |
 | **camilan** | cemilan | **paham** | faham |
