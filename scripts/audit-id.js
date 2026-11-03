@@ -227,13 +227,6 @@ function auditDictionary(dict, options = {}) {
   const visited = options.visited ?? new Set();
   const counter = options.counter ?? { entries: 0 };
 
-  if (dict && typeof dict === 'object') {
-    if (visited.has(dict)) {
-      return findings;
-    }
-    visited.add(dict);
-  }
-
   if (currentDepth > MAX_DICTIONARY_DEPTH) {
     findings.push({
       key: currentPrefix || 'root',
@@ -243,7 +236,18 @@ function auditDictionary(dict, options = {}) {
     return findings;
   }
 
-  for (const [key, value] of Object.entries(dict || {})) {
+  if (dict && typeof dict === 'object') {
+    if (visited.has(dict)) {
+      return findings;
+    }
+    visited.add(dict);
+  }
+
+  for (const key in dict || {}) {
+    if (!Object.prototype.hasOwnProperty.call(dict, key)) {
+      continue;
+    }
+
     counter.entries++;
     if (counter.entries > MAX_DICTIONARY_ENTRIES) {
       findings.push({
@@ -263,6 +267,7 @@ function auditDictionary(dict, options = {}) {
       break;
     }
 
+    const value = dict[key];
     const fullKey = currentPrefix ? `${currentPrefix}.${key}` : key;
 
     if (value && typeof value === 'object' && !Array.isArray(value)) {
