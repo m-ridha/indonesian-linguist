@@ -858,7 +858,7 @@ test('auditDictionary: pronoun policy enforcement (Anda vs kamu)', () => {
     error: 'Silakan periksa kata sandi Anda',
     slip: 'Masukkan alamat email kamu',
     encliticSlip: 'Silakan periksa kata sandimu',
-    nonPronounMu: 'Ilmu pengetahuan untuk tamu di ruang pertemuan',
+    nonPronounMu: 'Ilmu pengetahuan untuk tamu berilmu yang bertamu, meramu jamu, dan menemu solusi',
   };
 
   const andaFindings = auditDictionary(formalCatalog, { pronoun: 'Anda' });

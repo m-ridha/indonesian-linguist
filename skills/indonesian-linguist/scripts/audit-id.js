@@ -472,7 +472,7 @@ function auditDictionary(dict, options = {}) {
     // 4. Pronoun policy check (when explicit project override is specified)
     if (pronoun === 'Anda') {
       const hasEncliticMu = (value.match(/\b[a-zA-Z\u00C0-\u024F]{2,}-?mu\b/gi) || []).some(
-        (w) => !/^(?:kamu|ilmu|tamu|temu|bertemu|ketemu|ditemu|jamu|ramu|semu|jemu)$/i.test(w),
+        (w) => !/^(?:kamu|ilmu|berilmu|tamu|bertamu|temu|bertemu|ketemu|ditemu|menemu|jamu|ramu|meramu|diramu|semu|bersemu|jemu)$/i.test(w),
       );
       if (/\b(?:kamu|kau)\b/i.test(value) || hasEncliticMu) {
         findings.push({
