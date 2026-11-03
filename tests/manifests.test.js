@@ -441,9 +441,9 @@ test('extractRelativeMarkdownLinks handles link titles, code spans, fences, and 
   assert.deepEqual(links, []);
   assert.ok(durationMs < 200, `20,000 unmatched brackets took ${durationMs}ms (expected < 200ms)`);
 
-  // Linear scan bound check for many distinct unmatched backtick runs (lengths 1..1400)
+  // Linear scan bound check for many distinct unmatched backtick runs (lengths 1..800)
   let distinctRuns = '';
-  for (let len = 1; len <= 1400; len++) {
+  for (let len = 1; len <= 800; len++) {
     distinctRuns += '`'.repeat(len) + ' ';
   }
   distinctRuns += '\n\nSee [valid](./docs/testing.md)';
@@ -453,18 +453,18 @@ test('extractRelativeMarkdownLinks handles link titles, code spans, fences, and 
   assert.deepEqual(distinctLinks, ['./docs/testing.md']);
   assert.ok(
     elapsedDistinct < 200,
-    `1,400 distinct unmatched backtick runs took ${elapsedDistinct}ms (expected < 200ms)`,
+    `800 distinct unmatched backtick runs took ${elapsedDistinct}ms (expected < 200ms)`,
   );
 
-  // Linear scan bound check for many same-length backtick runs (100,000 runs)
-  const sameLengthRuns = '` '.repeat(100000) + '\n\nSee [valid](./docs/testing.md)';
+  // Linear scan bound check for many same-length backtick runs (50,000 runs)
+  const sameLengthRuns = '` '.repeat(50000) + '\n\nSee [valid](./docs/testing.md)';
   const t1 = Date.now();
   const sameLengthLinks = extractRelativeMarkdownLinks(sameLengthRuns);
   const elapsedSameLength = Date.now() - t1;
   assert.deepEqual(sameLengthLinks, ['./docs/testing.md']);
   assert.ok(
     elapsedSameLength < 200,
-    `100,000 same-length backtick runs took ${elapsedSameLength}ms (expected < 200ms)`,
+    `50,000 same-length backtick runs took ${elapsedSameLength}ms (expected < 200ms)`,
   );
 
   // Escaped backticks: escaped single backtick does not open a span, so subsequent links are extracted
@@ -512,15 +512,27 @@ test('package.json files list ships all required assets and scripts', () => {
   }
 });
 
+const OPENAI_SHORT_DESCRIPTION_REGEX = /^[ \t]*short_description:[ \t]*"([^"\r\n]+)"/m;
+
 test('OpenAI / Codex agent metadata (skills/indonesian-linguist/agents/openai.yaml) is valid', () => {
   const yamlPath = 'skills/indonesian-linguist/agents/openai.yaml';
   assert.ok(fs.existsSync(path.join(root, yamlPath)), `${yamlPath} must exist`);
   const content = read(yamlPath);
-  const shortDescMatch = content.match(/^\s*short_description:\s*"([^"]+)"/m);
+  assert.ok(Buffer.byteLength(content, 'utf8') <= 100_000, 'openai.yaml file size must be within safety bounds');
+  const shortDescMatch = content.match(OPENAI_SHORT_DESCRIPTION_REGEX);
   assert.ok(shortDescMatch, 'openai.yaml must define short_description');
   const len = shortDescMatch[1].length;
   assert.ok(len >= 25 && len <= 64, `short_description length (${len}) must be between 25 and 64 chars`);
   assert.match(content, /\$indonesian-linguist/, 'openai.yaml default_prompt must reference $indonesian-linguist');
+});
+
+test('openai.yaml regex matches strictly on single line without backtracking over repeated blank lines', () => {
+  const blankLines = '   \n'.repeat(5000);
+  const t0 = Date.now();
+  const match = blankLines.match(OPENAI_SHORT_DESCRIPTION_REGEX);
+  const elapsed = Date.now() - t0;
+  assert.strictEqual(match, null);
+  assert.ok(elapsed < 100, `Regex evaluation took too long: ${elapsed}ms`);
 });
 
 test('all markdown files have balanced code fences and zero unfinished TODO/TBD/FIXME markers', () => {

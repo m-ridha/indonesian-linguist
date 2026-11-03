@@ -211,6 +211,16 @@ const MAX_DICTIONARY_FINDINGS = 5000;
 const MAX_DICTIONARY_ENTRIES = 50_000;
 
 /**
+ * Maximum character length for nested dictionary key paths to prevent amplification attacks.
+ */
+const MAX_PATH_LENGTH = 1024;
+
+/**
+ * Maximum cumulative diagnostic bytes printed by the CLI for findings per file (64 KB).
+ */
+const MAX_CLI_DIAGNOSTIC_BYTES = 64_000;
+
+/**
  * Audit a key-value i18n dictionary object (including nested namespace objects).
  * Collects findings in a single accumulator with explicit depth, size, and traversal bounds.
  * Tracks visited object references to prevent exponential work on compact shared-reference graphs,
@@ -275,7 +285,29 @@ function auditDictionary(dict, options = {}) {
     }
 
     const value = dict[key];
-    const fullKey = currentPrefix ? `${currentPrefix}.${key}` : key;
+    let fullKey;
+    if (!currentPrefix) {
+      const truncationMarker = '...[truncated]';
+      fullKey =
+        key.length > MAX_PATH_LENGTH
+          ? `${key.slice(0, Math.max(0, MAX_PATH_LENGTH - truncationMarker.length))}${truncationMarker}`
+          : key;
+    } else {
+      const combined = `${currentPrefix}.${key}`;
+      if (combined.length <= MAX_PATH_LENGTH) {
+        fullKey = combined;
+      } else {
+        const truncationMarker = '...[truncated]';
+        const maxLeafLength = Math.min(256, Math.max(16, Math.floor(MAX_PATH_LENGTH / 4)));
+        const leaf =
+          key.length > maxLeafLength
+            ? `${key.slice(0, Math.max(0, maxLeafLength - truncationMarker.length))}${truncationMarker}`
+            : key;
+        const availableForPrefix = Math.max(0, MAX_PATH_LENGTH - leaf.length - 1 - truncationMarker.length);
+        const head = currentPrefix.slice(0, availableForPrefix);
+        fullKey = `${head}${truncationMarker}.${leaf}`;
+      }
+    }
 
     if (value && typeof value === 'object' && !Array.isArray(value)) {
       auditDictionary(value, {
@@ -362,6 +394,29 @@ function sanitizeDiagnostic(str) {
       ? '\\u' + code.toString(16).padStart(4, '0')
       : '\\x' + code.toString(16).padStart(2, '0');
   });
+}
+
+/**
+ * Truncates a string to fit within a given UTF-8 byte budget without breaking UTF-8 code point boundaries.
+ * @param {string} str
+ * @param {number} maxBytes
+ * @returns {string}
+ */
+function truncateToUtf8ByteLimit(str, maxBytes) {
+  if (maxBytes <= 0) return '';
+  let sliceLen = Math.min(str.length, maxBytes);
+  let candidate = str.slice(0, sliceLen);
+  while (true) {
+    const bytes = Buffer.byteLength(candidate, 'utf8');
+    if (bytes <= maxBytes) break;
+    const excess = bytes - maxBytes;
+    const charsToTrim = Math.max(1, Math.ceil(excess / 4));
+    candidate = candidate.slice(0, -charsToTrim);
+  }
+  if (/[\uD800-\uDBFF]$/.test(candidate)) {
+    candidate = candidate.slice(0, -1);
+  }
+  return candidate;
 }
 
 /**
@@ -583,15 +638,33 @@ if (require.main === module) {
     } else {
       hasFailures = true;
       console.error(`❌ Found ${findings.length} issue(s) in ${sanitizeDiagnostic(target)}:`);
+      let printedBytes = 0;
+      let truncated = false;
       for (const f of findings) {
+        const line = `  - [${sanitizeDiagnostic(f.rule)}] (${sanitizeDiagnostic(f.key)}): ${sanitizeDiagnostic(f.message)}\n`;
+        const lineBytes = Buffer.byteLength(line, 'utf8');
+        if (printedBytes + lineBytes > MAX_CLI_DIAGNOSTIC_BYTES) {
+          truncated = true;
+          const remainingBudget = Math.max(0, MAX_CLI_DIAGNOSTIC_BYTES - printedBytes);
+          if (remainingBudget > 0) {
+            const truncatedLine = truncateToUtf8ByteLimit(line, remainingBudget);
+            process.stderr.write(truncatedLine);
+            process.stderr.write('\n');
+          }
+          break;
+        }
+        printedBytes += lineBytes;
+        process.stderr.write(line);
+      }
+      if (truncated) {
         console.error(
-          `  - [${sanitizeDiagnostic(f.rule)}] (${sanitizeDiagnostic(f.key)}): ${sanitizeDiagnostic(f.message)}`,
+          `  ... remaining findings truncated (cumulative output exceeded ${MAX_CLI_DIAGNOSTIC_BYTES} bytes limit)`,
         );
       }
     }
   }
 
-  process.exit(hasFailures ? 1 : 0);
+  process.exitCode = hasFailures ? 1 : 0;
 }
 
 module.exports = {
@@ -600,4 +673,5 @@ module.exports = {
   extractPlaceholders,
   parseSimpleJsLocale,
   sanitizeDiagnostic,
+  truncateToUtf8ByteLimit,
 };
