@@ -619,11 +619,18 @@ if (require.main === module) {
       let truncated = false;
       for (const f of findings) {
         const line = `  - [${sanitizeDiagnostic(f.rule)}] (${sanitizeDiagnostic(f.key)}): ${sanitizeDiagnostic(f.message)}\n`;
-        printedBytes += Buffer.byteLength(line, 'utf8');
-        if (printedBytes > MAX_CLI_DIAGNOSTIC_BYTES) {
+        const lineBytes = Buffer.byteLength(line, 'utf8');
+        if (printedBytes + lineBytes > MAX_CLI_DIAGNOSTIC_BYTES) {
           truncated = true;
+          const remainingBudget = Math.max(0, MAX_CLI_DIAGNOSTIC_BYTES - printedBytes);
+          if (remainingBudget > 0) {
+            const buf = Buffer.from(line, 'utf8');
+            process.stderr.write(buf.subarray(0, remainingBudget));
+            process.stderr.write('\n');
+          }
           break;
         }
+        printedBytes += lineBytes;
         process.stderr.write(line);
       }
       if (truncated) {

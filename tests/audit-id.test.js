@@ -486,3 +486,28 @@ test('CLI: bounds cumulative diagnostic output bytes on files with many findings
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });
+
+test('CLI: prints key and rule for an oversized single finding before truncating', () => {
+  const scriptPath = path.join(__dirname, '..', 'scripts', 'audit-id.js');
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'audit-cli-single-'));
+
+  try {
+    // Single finding with value > 100,000 bytes
+    const oversizedValue = 'Punggung ' + 'aman '.repeat(25000);
+    const testFile = path.join(tmpDir, 'single.json');
+    fs.writeFileSync(testFile, JSON.stringify({ Back: oversizedValue }), 'utf8');
+
+    const result = spawnSync(process.execPath, [scriptPath, testFile], {
+      encoding: 'utf8',
+    });
+
+    assert.equal(result.status, 1);
+    // Key and rule must remain identifiable even though message is truncated
+    assert.match(result.stderr, /\[polysemy-calque\]/);
+    assert.match(result.stderr, /\(Back\)/);
+    assert.match(result.stderr, /remaining findings truncated/);
+    assert.ok(Buffer.byteLength(result.stderr, 'utf8') <= 70_000);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});

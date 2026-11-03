@@ -441,9 +441,9 @@ test('extractRelativeMarkdownLinks handles link titles, code spans, fences, and 
   assert.deepEqual(links, []);
   assert.ok(durationMs < 200, `20,000 unmatched brackets took ${durationMs}ms (expected < 200ms)`);
 
-  // Linear scan bound check for many distinct unmatched backtick runs (lengths 1..1400)
+  // Linear scan bound check for many distinct unmatched backtick runs (lengths 1..800)
   let distinctRuns = '';
-  for (let len = 1; len <= 1400; len++) {
+  for (let len = 1; len <= 800; len++) {
     distinctRuns += '`'.repeat(len) + ' ';
   }
   distinctRuns += '\n\nSee [valid](./docs/testing.md)';
@@ -452,19 +452,19 @@ test('extractRelativeMarkdownLinks handles link titles, code spans, fences, and 
   const elapsedDistinct = Date.now() - t0;
   assert.deepEqual(distinctLinks, ['./docs/testing.md']);
   assert.ok(
-    elapsedDistinct < 1000,
-    `1,400 distinct unmatched backtick runs took ${elapsedDistinct}ms (expected < 1000ms)`,
+    elapsedDistinct < 200,
+    `800 distinct unmatched backtick runs took ${elapsedDistinct}ms (expected < 200ms)`,
   );
 
-  // Linear scan bound check for many same-length backtick runs (100,000 runs)
-  const sameLengthRuns = '` '.repeat(100000) + '\n\nSee [valid](./docs/testing.md)';
+  // Linear scan bound check for many same-length backtick runs (50,000 runs)
+  const sameLengthRuns = '` '.repeat(50000) + '\n\nSee [valid](./docs/testing.md)';
   const t1 = Date.now();
   const sameLengthLinks = extractRelativeMarkdownLinks(sameLengthRuns);
   const elapsedSameLength = Date.now() - t1;
   assert.deepEqual(sameLengthLinks, ['./docs/testing.md']);
   assert.ok(
-    elapsedSameLength < 1000,
-    `100,000 same-length backtick runs took ${elapsedSameLength}ms (expected < 1000ms)`,
+    elapsedSameLength < 200,
+    `50,000 same-length backtick runs took ${elapsedSameLength}ms (expected < 200ms)`,
   );
 
   // Escaped backticks: escaped single backtick does not open a span, so subsequent links are extracted
