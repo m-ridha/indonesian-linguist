@@ -776,3 +776,362 @@ test('auditText: flags non-standard merged prepositions (disini, diatas, kesana)
   const cleanKemari = auditText('Silakan datang kemari untuk memulai latihan.');
   assert.equal(cleanKemari.length, 0);
 });
+
+test('auditDictionary: standalone mode does not flag slug keys with placeholders, but catches unmatched braces', () => {
+  const slugLocale = {
+    calendar: {
+      dayLabel: '{date}, {hasEntry}, {today}, {future}',
+      showMonths: '{year}',
+    },
+    entries: {
+      recentDescription: '{listLimit}',
+    },
+  };
+  const cleanFindings = auditDictionary(slugLocale);
+  assert.equal(cleanFindings.filter((f) => f.rule === 'placeholder-mismatch').length, 0);
+  assert.equal(cleanFindings.filter((f) => f.rule === 'malformed-placeholder').length, 0);
+
+  const malformed = {
+    'user.info': '{name, selamat datang',
+  };
+  const malformedFindings = auditDictionary(malformed);
+  assert.ok(malformedFindings.some((f) => f.rule === 'malformed-placeholder'));
+
+  // Regression test: balanced-count string with unmatched or misordered braces
+  const balancedUnmatched = {
+    greeting: 'Halo {name}} {',
+  };
+  const balancedFindings = auditDictionary(balancedUnmatched, {
+    source: { greeting: 'Hello {name}' },
+  });
+  assert.ok(balancedFindings.some((f) => f.rule === 'malformed-placeholder'));
+});
+
+test('auditDictionary: source-aware placeholder and fallback auditing with options.source', () => {
+  const sourceEn = {
+    calendar: {
+      dayLabel: '{date}, {hasEntry}, {today}, {future}',
+      showMonths: '{year}',
+    },
+    dashboard: {
+      streak: '{count} days streak',
+      welcome: 'Welcome to your private journal',
+    },
+  };
+
+  // Matching target with correct translations
+  const targetIdClean = {
+    calendar: {
+      dayLabel: '{date}, {hasEntry}, {today}, {future}',
+      showMonths: '{year}',
+    },
+    dashboard: {
+      streak: '{count} hari beruntun',
+      welcome: 'Selamat datang di jurnal pribadi Anda',
+    },
+  };
+  const cleanFindings = auditDictionary(targetIdClean, { source: sourceEn });
+  assert.equal(cleanFindings.length, 0);
+
+  // Target with mismatched placeholders
+  const targetIdMismatch = {
+    calendar: {
+      dayLabel: '{date}, {today}',
+    },
+  };
+  const mismatchFindings = auditDictionary(targetIdMismatch, { source: sourceEn });
+  assert.ok(mismatchFindings.some((f) => f.rule === 'placeholder-mismatch'));
+
+  // Target with inverted quantitative placeholder against source
+  const targetIdInverted = {
+    dashboard: {
+      streak: 'Hari {count} beruntun',
+    },
+  };
+  const invertedFindings = auditDictionary(targetIdInverted, { source: sourceEn });
+  assert.ok(invertedFindings.some((f) => f.rule === 'inverted-quantitative-placeholder'));
+
+  // Target with silent fallback against source
+  const targetIdFallback = {
+    dashboard: {
+      welcome: 'Welcome to your private journal',
+    },
+  };
+  const fallbackFindings = auditDictionary(targetIdFallback, { source: sourceEn });
+  assert.ok(fallbackFindings.some((f) => f.rule === 'silent-fallback'));
+});
+
+test('auditDictionary: pronoun policy enforcement (Anda vs kamu)', () => {
+  const formalCatalog = {
+    welcome: 'Selamat datang di aplikasi Anda',
+    error: 'Silakan periksa kata sandi Anda',
+    slip: 'Masukkan alamat email kamu',
+    encliticSlip: 'Silakan periksa kata sandimu',
+    nonPronounMu: 'Ilmu pengetahuan untuk tamu berilmu yang bertamu, meramu jamu, dan menemu solusi',
+  };
+
+  const andaFindings = auditDictionary(formalCatalog, { pronoun: 'Anda' });
+  const mismatches = andaFindings.filter((f) => f.rule === 'pronoun-mismatch');
+  assert.equal(mismatches.length, 2);
+  assert.ok(mismatches.some((f) => f.key === 'slip'));
+  assert.ok(mismatches.some((f) => f.key === 'encliticSlip'));
+  assert.ok(!mismatches.some((f) => f.key === 'nonPronounMu'));
+
+  const casualCatalog = {
+    welcome: 'Selamat datang di aplikasimu',
+    error: 'Silakan periksa kata sandimu',
+    formalSlip: 'Masukkan alamat email Anda',
+  };
+
+  const kamuFindings = auditDictionary(casualCatalog, { pronoun: 'kamu' });
+  assert.equal(kamuFindings.filter((f) => f.rule === 'pronoun-mismatch').length, 1);
+  assert.equal(kamuFindings.find((f) => f.rule === 'pronoun-mismatch').key, 'formalSlip');
+
+  // Placeholders named after pronouns should not trigger false positive pronoun-mismatch
+  const formalWithPlaceholder = {
+    greeting: 'Halo {kamu}, silakan masukkan kata sandi Anda',
+  };
+  const formalPlFindings = auditDictionary(formalWithPlaceholder, { pronoun: 'Anda' });
+  assert.equal(formalPlFindings.filter((f) => f.rule === 'pronoun-mismatch').length, 0);
+
+  const casualWithPlaceholder = {
+    greeting: 'Halo {Anda}, silakan masukkan kata sandimu',
+  };
+  const casualPlFindings = auditDictionary(casualWithPlaceholder, { pronoun: 'kamu' });
+  assert.equal(casualPlFindings.filter((f) => f.rule === 'pronoun-mismatch').length, 0);
+
+  // Lowercase "anda" should also be detected under casual policy
+  const casualWithLowercaseAnda = {
+    slip: 'Silakan periksa akun anda',
+  };
+  const lowercaseAndaFindings = auditDictionary(casualWithLowercaseAnda, { pronoun: 'kamu' });
+  assert.equal(lowercaseAndaFindings.filter((f) => f.rule === 'pronoun-mismatch').length, 1);
+
+  // URLs containing pronoun tokens should not trigger false positive pronoun-mismatch
+  const formalWithUrl = {
+    docs: 'Kunjungi https://example.com/user/kamu/reset-mu untuk mengatur ulang kata sandi Anda',
+  };
+  const formalUrlFindings = auditDictionary(formalWithUrl, { pronoun: 'Anda' });
+  assert.equal(formalUrlFindings.filter((f) => f.rule === 'pronoun-mismatch').length, 0);
+
+  const casualWithUrl = {
+    docs: 'Kunjungi https://example.com/panduan-anda untuk panduan akunmu',
+  };
+  const casualUrlFindings = auditDictionary(casualWithUrl, { pronoun: 'kamu' });
+  assert.equal(casualUrlFindings.filter((f) => f.rule === 'pronoun-mismatch').length, 0);
+});
+
+test('auditText: applies pronoun policy to prose and ignores inline code / placeholders', () => {
+  const formalProse = 'Silakan masukkan kata sandi Anda. Gunakan perintah `git checkout kamu`.';
+  assert.equal(auditText(formalProse, { pronoun: 'Anda' }).filter((f) => f.rule === 'pronoun-mismatch').length, 0);
+
+  const formalProseWithUrl = 'Baca panduan di https://myjournal.app/v1/kamu untuk akun Anda.';
+  assert.equal(auditText(formalProseWithUrl, { pronoun: 'Anda' }).filter((f) => f.rule === 'pronoun-mismatch').length, 0);
+
+  const informalProse = 'Silakan masukkan kata sandimu di formulir.';
+  const issues = auditText(informalProse, { pronoun: 'Anda' });
+  assert.ok(issues.some((f) => f.rule === 'pronoun-mismatch'));
+
+  const casualProse = 'Silakan periksa akun kamu. Jangan berikan kata sandi Anda.';
+  const casualIssues = auditText(casualProse, { pronoun: 'kamu' });
+  assert.ok(casualIssues.some((f) => f.rule === 'pronoun-mismatch'));
+});
+
+test('CLI: supports --source, --pronoun, and --register flags', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'audit-cli-source-'));
+  try {
+    const sourcePath = path.join(tmpDir, 'en.json');
+    const targetPath = path.join(tmpDir, 'id.json');
+
+    fs.writeFileSync(
+      sourcePath,
+      JSON.stringify({
+        calendar: { dayLabel: '{date}, {hasEntry}, {today}, {future}' },
+        auth: { prompt: 'Enter your password' },
+      }),
+    );
+    fs.writeFileSync(
+      targetPath,
+      JSON.stringify({
+        calendar: { dayLabel: '{date}, {hasEntry}, {today}, {future}' },
+        auth: { prompt: 'Masukkan kata sandi Anda' },
+      }),
+    );
+
+    // 1. Should pass cleanly with --source and --register formal
+    const resClean = spawnSync(
+      process.execPath,
+      [path.resolve('scripts/audit-id.js'), '--source', sourcePath, '--register', 'formal', targetPath],
+      { encoding: 'utf8' },
+    );
+    assert.equal(resClean.status, 0);
+
+    // 2. Should fail if --register casual is enforced (since text contains "Anda")
+    const resCasual = spawnSync(
+      process.execPath,
+      [path.resolve('scripts/audit-id.js'), '--source', sourcePath, '--register', 'casual', targetPath],
+      { encoding: 'utf8' },
+    );
+    assert.equal(resCasual.status, 1);
+    assert.match(resCasual.stderr, /pronoun-mismatch/);
+
+    // 3. Validates invalid --pronoun and --register values
+    const resBadPronoun = spawnSync(
+      process.execPath,
+      [path.resolve('scripts/audit-id.js'), '--pronoun', 'invalid', targetPath],
+      { encoding: 'utf8' },
+    );
+    assert.equal(resBadPronoun.status, 1);
+    assert.match(resBadPronoun.stderr, /Invalid value for --pronoun/);
+
+    const resBadRegister = spawnSync(
+      process.execPath,
+      [path.resolve('scripts/audit-id.js'), '--register', 'invalid', targetPath],
+      { encoding: 'utf8' },
+    );
+    assert.equal(resBadRegister.status, 1);
+    assert.match(resBadRegister.stderr, /Invalid value for --register/);
+
+    // 4. Validates empty --source= operand
+    const resEmptySource = spawnSync(
+      process.execPath,
+      [path.resolve('scripts/audit-id.js'), '--source=', targetPath],
+      { encoding: 'utf8' },
+    );
+    assert.equal(resEmptySource.status, 1);
+    assert.match(resEmptySource.stderr, /Missing value for --source/);
+
+    // 5. Standalone markdown file with --pronoun Anda
+    const mdPath = path.join(tmpDir, 'guide.md');
+    fs.writeFileSync(mdPath, '# Panduan\n\nSilakan masukkan kata sandi kamu.\n');
+    const resMd = spawnSync(
+      process.execPath,
+      [path.resolve('scripts/audit-id.js'), '--pronoun', 'Anda', mdPath],
+      { encoding: 'utf8' },
+    );
+    assert.equal(resMd.status, 1);
+    assert.match(resMd.stderr, /pronoun-mismatch/);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('parseSimpleJsLocale: handles leading import statements and array-of-strings values', () => {
+  const jsSource = `
+    import { format } from './formatter';
+    import { helperA, helperB } from '@shared/utils';
+
+    export default {
+      welcome: "Selamat datang",
+      guidelines: [
+        "Catat setiap latihanmu",
+        "Gunakan beban yang sesuai"
+      ]
+    };
+  `;
+
+  const parsed = parseSimpleJsLocale(jsSource);
+  assert.equal(parsed.welcome, 'Selamat datang');
+  assert.deepEqual(parsed.guidelines, [
+    'Catat setiap latihanmu',
+    'Gunakan beban yang sesuai',
+  ]);
+
+  // auditDictionary audits array-of-strings
+  const findings = auditDictionary(parsed);
+  assert.equal(findings.length, 0);
+
+  // auditDictionary catches calque traps inside array elements using source string
+  const calqueArray = { nav: ['Punggung'] };
+  const calqueSource = { nav: ['Back'] };
+  const calqueFindings = auditDictionary(calqueArray, { source: calqueSource });
+  assert.ok(calqueFindings.some((f) => f.rule === 'polysemy-calque' && f.key === 'nav.0'));
+
+  // auditDictionary catches errors inside array elements
+  const badParsed = {
+    instructions: [
+      'Silahkan masuk',
+      'Di era digital yang serba cepat ini',
+    ],
+  };
+  const badFindings = auditDictionary(badParsed);
+  assert.ok(badFindings.some((f) => f.rule === 'kata-tidak-baku' && f.key === 'instructions.0'));
+  assert.ok(badFindings.some((f) => f.rule === 'slop-or-pleonasm' && f.key === 'instructions.1'));
+
+  // parseSimpleJsLocale rejects unseparated adjacent array items
+  assert.throws(
+    () => parseSimpleJsLocale('export default { items: ["Satu" "Dua"] };'),
+    /Unsupported JS locale syntax in array/,
+  );
+
+  // parseSimpleJsLocale rejects unclosed array literals
+  assert.throws(
+    () => parseSimpleJsLocale('export default { items: ["Satu" };'),
+    /Unterminated array literal/,
+  );
+});
+
+test('parseSimpleJsLocale: ignores export declarations inside string literals', () => {
+  const jsSource = `
+    const example = "Type export default { fake: 'Palsu' } to start";
+    module.exports = {
+      real: "Teks asli"
+    };
+  `;
+  const parsed = parseSimpleJsLocale(jsSource);
+  assert.equal(parsed.real, 'Teks asli');
+  assert.equal(parsed.fake, undefined);
+});
+
+test('parseSimpleJsLocale: prefers export default over preceding named exports', () => {
+  const jsSource = `
+    export const metadata = { title: "App Config" };
+    export default {
+      welcome: "Selamat datang"
+    };
+  `;
+  const parsed = parseSimpleJsLocale(jsSource);
+  assert.equal(parsed.welcome, 'Selamat datang');
+  assert.equal(parsed.title, undefined);
+});
+
+test('auditDictionary: permits deficit quantifiers (kurang, masih kurang)', () => {
+  const source = {
+    weightDeficit: '{0} kg remaining',
+    repsDeficit: '{count} reps needed',
+  };
+  const target = {
+    weightDeficit: 'Kurang {0} kg lagi',
+    repsDeficit: 'Masih kurang {count} repetisi',
+  };
+
+  const findings = auditDictionary(target, { source });
+  assert.equal(findings.length, 0);
+});
+
+test('auditDictionary: permits eponymous/named concepts following Indonesian D-M word order ({0} formula -> Rumus {0})', () => {
+  const eponymousCatalog = {
+    '{0} formula': 'Rumus {0}',
+    '{{0}} formula': 'Rumus {{0}}',
+    '{0} law': 'Hukum {0}',
+    '{0} theorem': 'Teorema {0}',
+  };
+
+  const findings = auditDictionary(eponymousCatalog);
+  assert.equal(findings.length, 0);
+
+  // Still flags when noun is a counted item rather than an eponymous concept
+  const countCatalog = {
+    '{0} models available': 'Model {0} tersedia',
+    '{0} law available': 'Hukum {0} tersedia',
+  };
+  const countFindings = auditDictionary(countCatalog);
+  assert.equal(countFindings.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 2);
+
+  // Mismatched English/Indonesian eponymous noun pair is not exempt
+  const mismatchedCatalog = {
+    '{0} law': 'Rumus {0}',
+  };
+  const mismatchFindings = auditDictionary(mismatchedCatalog);
+  assert.ok(mismatchFindings.some((f) => f.rule === 'inverted-quantitative-placeholder'));
+});

@@ -98,6 +98,109 @@ function extractPlaceholders(str) {
 }
 
 /**
+ * Detect unmatched, improperly nested, or misplaced curly braces in template placeholders.
+ * Handles both single-brace ({name}) and double-brace ({{name}}) placeholder syntax.
+ * @param {string} str
+ * @returns {boolean}
+ */
+function hasMalformedBraces(str) {
+  let i = 0;
+  const n = str.length;
+  while (i < n) {
+    const ch = str[i];
+    if (ch === '}') {
+      return true; // Unmatched closing brace outside any placeholder
+    }
+    if (ch === '{') {
+      if (i + 1 < n && str[i + 1] === '{') {
+        // Double brace placeholder {{ ... }}
+        i += 2;
+        let closed = false;
+        while (i < n) {
+          if (str[i] === '{') {
+            return true; // Nested opening brace
+          }
+          if (str[i] === '}' && i + 1 < n && str[i + 1] === '}') {
+            i += 2;
+            closed = true;
+            break;
+          }
+          if (str[i] === '}') {
+            return true; // Single closing brace inside double-brace placeholder
+          }
+          i++;
+        }
+        if (!closed) return true; // Unclosed double-brace placeholder
+      } else {
+        // Single brace placeholder { ... }
+        i++;
+        let closed = false;
+        while (i < n) {
+          if (str[i] === '{' || str[i] === '}') {
+            if (str[i] === '}') {
+              i++;
+              closed = true;
+              break;
+            }
+            return true; // Nested opening brace inside single-brace placeholder
+          }
+          i++;
+        }
+        if (!closed) return true; // Unclosed single-brace placeholder
+      }
+    } else {
+      i++;
+    }
+  }
+  return false;
+}
+
+/**
+ * Non-pronoun words ending in "-mu" that should not be flagged as informal enclitic pronouns.
+ */
+const NON_PRONOUN_MU_EXCEPTIONS =
+  /^(?:kamu|ilmu|berilmu|tamu|bertamu|temu|bertemu|ketemu|ditemu|menemu|jamu|ramu|meramu|diramu|semu|bersemu|jemu)$/i;
+
+/**
+ * Check a string against an explicit pronoun policy ('Anda' or 'kamu').
+ * Automatically excludes URLs and supported placeholders before evaluating pronoun occurrences.
+ * @param {string} text
+ * @param {string} pronoun
+ * @returns {Array<{rule: string, message: string}>}
+ */
+function checkPronounPolicy(text, pronoun) {
+  if (!pronoun || (pronoun !== 'Anda' && pronoun !== 'kamu')) {
+    return [];
+  }
+
+  const textWithoutTokens = String(text || '')
+    .replace(/https?:\/\/[^\s<>"'`()]+/g, ' ')
+    .replace(/\{\{[0-9a-zA-Z_.-]+\}\}|\{[0-9a-zA-Z_.-]+\}|%(?:\d+\$)?[sdif]/g, ' ');
+
+  const findings = [];
+  if (pronoun === 'Anda') {
+    const hasEncliticMu = (textWithoutTokens.match(/\b[a-zA-Z\u00C0-\u024F]{2,}-?mu\b/gi) || []).some(
+      (w) => !NON_PRONOUN_MU_EXCEPTIONS.test(w),
+    );
+    if (/\b(?:kamu|kau)\b/i.test(textWithoutTokens) || hasEncliticMu) {
+      findings.push({
+        rule: 'pronoun-mismatch',
+        message: `Informal pronoun found in "${text}"; formal "Anda" is enforced by project policy.`,
+      });
+    }
+  } else if (pronoun === 'kamu') {
+    if (/\bAnda\b/i.test(textWithoutTokens)) {
+      findings.push({
+        rule: 'pronoun-mismatch',
+        message: `Formal pronoun "Anda" found in "${text}"; informal "kamu" is enforced by project policy.`,
+      });
+    }
+  }
+
+  return findings;
+}
+
+/**
  * Strip Markdown 4-space or tab-indented code blocks while preserving indented list continuations
  * and nested list items (e.g., `- Petunjuk\n\n    - Silahkan...`).
  * @param {string} text
@@ -153,15 +256,16 @@ function stripIndentedCodeBlocks(text) {
 }
 
 /**
- * Audit a prose string for Indonesian AI slop, SMS slang, and non-standard spelling.
+ * Audit a prose string for Indonesian AI slop, SMS slang, non-standard spelling, and pronoun policy.
  * Automatically strips protected Markdown fenced code blocks (backticks and tildes),
  * 4-space/tab-indented code blocks, and inline code spans.
  * @param {string} text
- * @param {{ stripIndentedCode?: boolean }} [options] Set `stripIndentedCode: false` for plain-text input (e.g., dictionary values) where indentation does not mark code.
+ * @param {{ stripIndentedCode?: boolean, pronoun?: string }} [options] Set `stripIndentedCode: false` for plain-text input (e.g., dictionary values) where indentation does not mark code.
  * @returns {Array<{rule: string, message: string}>}
  */
 function auditText(text, options = {}) {
   const stripIndentedCode = options.stripIndentedCode ?? true;
+  const pronoun = options.pronoun ?? null;
   const issues = [];
   const withoutFences = String(text || '')
     .replace(/```[\s\S]*?```/g, ' ')
@@ -192,6 +296,12 @@ function auditText(text, options = {}) {
         rule: 'slop-or-pleonasm',
         message: pat.reason,
       });
+    }
+  }
+
+  if (pronoun) {
+    for (const pIssue of checkPronounPolicy(str, pronoun)) {
+      issues.push(pIssue);
     }
   }
 
@@ -241,6 +351,8 @@ function auditDictionary(dict, options = {}) {
   const visited = options.visited ?? new Map();
   const activeStack = options.activeStack ?? new Set();
   const counter = options.counter ?? { entries: 0 };
+  const source = options.source ?? null;
+  const pronoun = options.pronoun ?? null;
 
   const isObject = dict && typeof dict === 'object';
   if (isObject && activeStack.has(dict)) {
@@ -312,11 +424,12 @@ function auditDictionary(dict, options = {}) {
       }
     }
 
-    if (value && typeof value === 'object' && !Array.isArray(value)) {
+    if (value && typeof value === 'object') {
       auditDictionary(value, {
         ...options,
         prefix: fullKey,
         depth: currentDepth + 1,
+        source: (source && typeof source === 'object') ? source[key] : null,
         accumulator: findings,
         visited,
         activeStack,
@@ -326,38 +439,67 @@ function auditDictionary(dict, options = {}) {
     }
     if (typeof value !== 'string') continue;
 
+    const sourceValue = (source && typeof source === 'object') ? source[key] : undefined;
+
     // 1. Silent English identity fallback check
+    const isUntranslated = typeof sourceValue === 'string' ? (value.trim() === sourceValue.trim()) : (key === value);
+    const textOutsidePlaceholders = value.replace(/\{\{[0-9a-zA-Z_.-]+\}\}|\{[0-9a-zA-Z_.-]+\}|%(?:\d+\$)?[sdif]/g, '');
     if (
-      key === value &&
-      key.length >= minFallbackLength &&
+      isUntranslated &&
+      value.length >= minFallbackLength &&
       !allowlistKeys.has(key) &&
-      !RETAINED_LOANWORD_PATTERNS.some((rx) => rx.test(key)) &&
-      /[a-zA-Z]{3,}/.test(key) &&
-      !/^https?:\/\//.test(key)
+      !allowlistKeys.has(fullKey) &&
+      !RETAINED_LOANWORD_PATTERNS.some((rx) => rx.test(value)) &&
+      /[a-zA-Z]{3,}/.test(textOutsidePlaceholders) &&
+      !/^https?:\/\//.test(value)
     ) {
       findings.push({
         key: fullKey,
         rule: 'silent-fallback',
-        message: `Untranslated identity fallback (key === value, ${key.length} chars).`,
+        message: `Untranslated identity fallback (${typeof sourceValue === 'string' ? 'source === value' : 'key === value'}, ${value.length} chars).`,
       });
     }
 
-    // 2. Placeholder parity check (preserves duplicate counts & printf tokens)
-    const keyPh = extractPlaceholders(key);
+    // 2. Placeholder parity and well-formedness check
     const valPh = extractPlaceholders(value);
-    if (keyPh.join(',') !== valPh.join(',')) {
+
+    // 2a. Malformed placeholder check (unmatched or improperly ordered curly braces)
+    if (hasMalformedBraces(value)) {
       findings.push({
         key: fullKey,
-        rule: 'placeholder-mismatch',
-        message: `Placeholders in key [${keyPh.join(', ')}] do not match value [${valPh.join(', ')}].`,
+        rule: 'malformed-placeholder',
+        message: `Unmatched or improperly ordered curly braces in placeholder for "${value}".`,
       });
     }
 
-    // 2b. Inverted quantitative placeholder check
+    // 2b. Placeholder parity check
+    if (typeof sourceValue === 'string') {
+      const srcPh = extractPlaceholders(sourceValue);
+      if (srcPh.join(',') !== valPh.join(',')) {
+        findings.push({
+          key: fullKey,
+          rule: 'placeholder-mismatch',
+          message: `Placeholders in source [${srcPh.join(', ')}] do not match value [${valPh.join(', ')}].`,
+        });
+      }
+    } else {
+      // Standalone mode: only check key placeholders if key itself contains placeholders (flat gettext pattern)
+      const keyPh = extractPlaceholders(key);
+      if (keyPh.length > 0 && keyPh.join(',') !== valPh.join(',')) {
+        findings.push({
+          key: fullKey,
+          rule: 'placeholder-mismatch',
+          message: `Placeholders in key [${keyPh.join(', ')}] do not match value [${valPh.join(', ')}].`,
+        });
+      }
+    }
+
+    // 2c. Inverted quantitative placeholder check
     // Catches when English source has a count/quantity placeholder followed by a noun
     // (e.g., "{0} sets unchecked", "{0} photos", "%d passkeys"),
     // but Indonesian translation flips it to ordinal format after the noun (e.g., "Set {0} belum dicentang", "Foto {0}").
-    const quantMatch = key.match(/^(\{(?:\d+|n|count|total)\}|\{\{(?:\d+|n|count|total)\}\}|%(?:\d+\$)?d)\s+([A-Za-z-]+)/i);
+    const sourceTemplate = typeof sourceValue === 'string' ? sourceValue : key;
+    const quantMatch = sourceTemplate.match(/^(\{(?:\d+|n|count|total)\}|\{\{(?:\d+|n|count|total)\}\}|%(?:\d+\$)?d)\s+([A-Za-z-]+)/i);
     const isCopulaFollowing = quantMatch && /^(?:is|are|was|were|has|have)$/i.test(quantMatch[2]);
     if (quantMatch && !isCopulaFollowing) {
       const ph = quantMatch[1];
@@ -373,9 +515,9 @@ function auditDictionary(dict, options = {}) {
         const leadingWords = leadingPhrase.split(/\s+/);
         const firstLeading = leadingWords[0];
 
-        const permittedQuantifierWord = /^(sebanyak|total|sekitar|hanya|ada|masih|tersisa)$/i;
+        const permittedQuantifierWord = /^(sebanyak|total|sekitar|hanya|ada|masih|tersisa|kurang)$/i;
         const isPermittedQuantifier =
-          /^(kurang dari|lebih dari|masih ada)$/i.test(leadingPhrase) ||
+          /^(kurang dari|lebih dari|masih ada|masih kurang)$/i.test(leadingPhrase) ||
           leadingWords.every((word) => permittedQuantifierWord.test(word));
 
         // Exclude common non-verb nouns (e.g. menit, latihan) from matching verb heuristic
@@ -397,11 +539,25 @@ function auditDictionary(dict, options = {}) {
 
         const isLeadingVerbWithObject = isPredicate && hasObjectOrImplicit;
 
-        if (!isPermittedQuantifier && !isLeadingVerbWithObject) {
+        const eponymousNounPairs = {
+          formula: /^rumus$/i,
+          law: /^hukum$/i,
+          theorem: /^teorema$/i,
+          equation: /^persamaan$/i,
+          principle: /^prinsip$/i,
+        };
+        const enNoun = quantMatch[2].toLowerCase();
+        // Eponymous concepts strictly name a single formula/law (e.g. "{0} formula" -> "Rumus {0}"),
+        // rather than counting items (e.g. "{0} law available" or "{0} laws found").
+        const isEponymousPhrase =
+          /^(?:\{\{[0-9a-zA-Z_.-]+\}\}|\{[0-9a-zA-Z_.-]+\}|%(?:\d+\$)?[sdif])\s+(?:formula|law|theorem|equation|principle)$/i.test(sourceTemplate.trim()) &&
+          Boolean(eponymousNounPairs[enNoun] && eponymousNounPairs[enNoun].test(invertedMatch[1]));
+
+        if (!isPermittedQuantifier && !isLeadingVerbWithObject && !isEponymousPhrase) {
           findings.push({
             key: fullKey,
             rule: 'inverted-quantitative-placeholder',
-            message: `Quantitative placeholder inverted: "${key}" (${ph} count) translated with placeholder placed after noun ("${value}"); in Indonesian, quantity must precede the noun (${ph} ${invertedMatch[1]}).`,
+            message: `Quantitative placeholder inverted: "${sourceTemplate}" (${ph} count) translated with placeholder placed after noun ("${value}"); in Indonesian, quantity must precede the noun (${ph} ${invertedMatch[1]}).`,
           });
         }
       }
@@ -409,7 +565,10 @@ function auditDictionary(dict, options = {}) {
 
     // 3. Known UI/domain polysemy & calque traps
     for (const trap of KNOWN_CALQUE_TRAPS) {
-      if (trap.keyMatch.test(key) && trap.badVal.test(value)) {
+      const isKeyMatch =
+        trap.keyMatch.test(key) ||
+        (typeof sourceValue === 'string' && trap.keyMatch.test(sourceValue));
+      if (isKeyMatch && trap.badVal.test(value)) {
         findings.push({
           key: fullKey,
           rule: 'polysemy-calque',
@@ -418,7 +577,18 @@ function auditDictionary(dict, options = {}) {
       }
     }
 
-    // 4. Text-level checks (SMS slang, kata tidak baku, slop)
+    // 4. Pronoun policy check (when explicit project override is specified)
+    if (pronoun) {
+      for (const pIssue of checkPronounPolicy(value, pronoun)) {
+        findings.push({
+          key: fullKey,
+          rule: pIssue.rule,
+          message: pIssue.message,
+        });
+      }
+    }
+
+    // 5. Text-level checks (SMS slang, kata tidak baku, slop)
     for (const issue of auditText(value, { stripIndentedCode: false })) {
       findings.push({
         key: fullKey,
@@ -495,8 +665,11 @@ function parseSimpleJsLocale(content) {
     throw new Error(`JS locale source exceeds maximum length of ${MAX_JS_LOCALE_LENGTH} characters.`);
   }
 
-  // Linear single-pass strip of comments while preserving string literals
+  // Linear single-pass strip of comments while preserving string literals.
+  // Also builds a same-length masked representation with string contents replaced by spaces
+  // to prevent matching 'export default' or '{' inside string literals.
   let stripped = '';
+  let masked = '';
   let i = 0;
   const n = src.length;
   while (i < n) {
@@ -504,15 +677,18 @@ function parseSimpleJsLocale(content) {
     if (ch === '"' || ch === '\'' || ch === '`') {
       const quote = ch;
       stripped += quote;
+      masked += quote;
       i++;
       let closed = false;
       while (i < n) {
         const c = src[i];
         stripped += c;
+        masked += c === quote ? c : ' ';
         if (c === '\\') {
           i++;
           if (i < n) {
             stripped += src[i];
+            masked += ' ';
             i++;
           }
           continue;
@@ -541,11 +717,17 @@ function parseSimpleJsLocale(content) {
       if (!closed) throw new Error('Unterminated block comment in JS locale.');
     } else {
       stripped += ch;
+      masked += ch;
       i++;
     }
   }
 
-  const openBrace = stripped.indexOf('{');
+  // Prefer export default { ... } if present, otherwise fall back to named export or module.exports = { ... }
+  // to avoid confusing leading import statements or preceding helper object declarations with the exported locale
+  const defaultExportMatch = masked.match(/export\s+default\s*\{/);
+  const namedExportMatch = masked.match(/(?:export\s+(?:const|let|var)\s+[a-zA-Z_$][0-9a-zA-Z_$]*\s*=|module\.exports\s*=)\s*\{/);
+  const exportMatch = defaultExportMatch || namedExportMatch;
+  const openBrace = exportMatch ? exportMatch.index + exportMatch[0].lastIndexOf('{') : masked.indexOf('{');
   const closeBrace = stripped.lastIndexOf('}');
   if (openBrace === -1 || closeBrace === -1 || closeBrace <= openBrace) {
     throw new Error('Unsupported JS locale format: missing object literal braces "{ ... }".');
@@ -628,12 +810,53 @@ function parseSimpleJsLocale(content) {
         throw new Error(`Unexpected end of input after key "${key}".`);
       }
 
-      // Parse value: nested object '{', string literal, or reject dynamic expressions
+      // Parse value: nested object '{', array '[', string literal, or reject dynamic expressions
       const valChar = stripped[pos];
       if (valChar === '{') {
         pos++; // consume '{'
         const subResult = parseObjectLiteral();
         dict[key] = subResult.dict;
+        entryCount++;
+      } else if (valChar === '[') {
+        pos++; // consume '['
+        const arr = [];
+        let expectComma = false;
+        let arrayClosed = false;
+        while (pos < len) {
+          while (pos < len && /\s/.test(stripped[pos])) pos++;
+          if (pos >= len) break;
+          if (stripped[pos] === ']') {
+            pos++; // consume ']'
+            arrayClosed = true;
+            break;
+          }
+          if (expectComma) {
+            if (stripped[pos] === '}') {
+              throw new Error(`Unterminated array literal in JS locale near: ${stripped.slice(pos, pos + 80).replace(/\s+/g, ' ')}`);
+            }
+            if (stripped[pos] !== ',') {
+              throw new Error(`Unsupported JS locale syntax in array near: ${stripped.slice(pos, pos + 80).replace(/\s+/g, ' ')}`);
+            }
+            pos++; // consume ','
+            while (pos < len && /\s/.test(stripped[pos])) pos++;
+            if (pos < len && stripped[pos] === ']') {
+              pos++; // consume ']'
+              arrayClosed = true;
+              break;
+            }
+          }
+          const itemChar = stripped[pos];
+          if (itemChar === '"' || itemChar === '\'' || itemChar === '`') {
+            arr.push(parseStringLiteral());
+            expectComma = true;
+          } else {
+            throw new Error(`Unsupported JS locale syntax in array near: ${stripped.slice(pos, pos + 80).replace(/\s+/g, ' ')}`);
+          }
+        }
+        if (!arrayClosed) {
+          throw new Error(`Unterminated array literal in JS locale near: ${stripped.slice(pos, pos + 80).replace(/\s+/g, ' ')}`);
+        }
+        dict[key] = arr;
         entryCount++;
       } else if (valChar === '"' || valChar === '\'' || valChar === '`') {
         const val = parseStringLiteral();
@@ -666,6 +889,8 @@ if (require.main === module) {
   let showHelp = false;
   let jsonOutput = false;
   let minFallbackLength = 16;
+  let sourcePath = null;
+  let pronounPolicy = null;
   const targets = [];
 
   const parseMinFallback = (raw) => {
@@ -677,6 +902,28 @@ if (require.main === module) {
       process.exit(1);
     }
     return n;
+  };
+
+  const parsePronoun = (raw) => {
+    const val = String(raw || '').toLowerCase();
+    if (val === 'anda') return 'Anda';
+    if (val === 'kamu') return 'kamu';
+    if (val === 'any') return null;
+    console.error(
+      `❌ Invalid value for --pronoun: ${sanitizeDiagnostic(raw ?? '(missing)')} (expected "Anda", "kamu", or "any")`,
+    );
+    process.exit(1);
+  };
+
+  const parseRegister = (raw) => {
+    const val = String(raw || '').toLowerCase();
+    if (val === 'formal') return 'Anda';
+    if (val === 'casual') return 'kamu';
+    if (val === 'any') return null;
+    console.error(
+      `❌ Invalid value for --register: ${sanitizeDiagnostic(raw ?? '(missing)')} (expected "formal", "casual", or "any")`,
+    );
+    process.exit(1);
   };
 
   for (let i = 0; i < argv.length; i++) {
@@ -693,6 +940,30 @@ if (require.main === module) {
       minFallbackLength = parseMinFallback(argv[++i]);
     } else if (arg.startsWith('--min-fallback=')) {
       minFallbackLength = parseMinFallback(arg.slice(15));
+    } else if (arg === '--source') {
+      if (i + 1 >= argv.length) {
+        console.error('❌ Missing value for --source (expected a file path)');
+        process.exit(1);
+      }
+      sourcePath = argv[++i];
+    } else if (arg.startsWith('--source=')) {
+      sourcePath = arg.slice(9);
+    } else if (arg === '--pronoun') {
+      if (i + 1 >= argv.length) {
+        console.error('❌ Missing value for --pronoun (expected "Anda", "kamu", or "any")');
+        process.exit(1);
+      }
+      pronounPolicy = parsePronoun(argv[++i]);
+    } else if (arg.startsWith('--pronoun=')) {
+      pronounPolicy = parsePronoun(arg.slice(10));
+    } else if (arg === '--register') {
+      if (i + 1 >= argv.length) {
+        console.error('❌ Missing value for --register (expected "formal", "casual", or "any")');
+        process.exit(1);
+      }
+      pronounPolicy = parseRegister(argv[++i]);
+    } else if (arg.startsWith('--register=')) {
+      pronounPolicy = parseRegister(arg.slice(11));
     } else if (arg.startsWith('-')) {
       console.error(`❌ Unknown option: ${sanitizeDiagnostic(arg)}`);
       process.exit(1);
@@ -710,9 +981,39 @@ Usage:
 Options:
   -h, --help            Show this help message and exit
   --json                Output findings in structured JSON format
+  --source <file>       Path to source catalog (.json/.js/.mjs) to compare placeholders and fallbacks
   --min-fallback <n>    Minimum character length for identity fallback check (default: 16)
+  --pronoun <name>      Enforce consistent pronoun: "Anda", "kamu", or "any" (default: any)
+  --register <mode>     Alias for pronoun policy: "formal" (Anda), "casual" (kamu), or "any"
 `);
     process.exit(0);
+  }
+
+  let sourceCatalog = null;
+  if (sourcePath !== null) {
+    if (!sourcePath.trim()) {
+      console.error('❌ Missing value for --source (expected a file path)');
+      process.exit(1);
+    }
+    const absSourcePath = path.resolve(process.cwd(), sourcePath);
+    try {
+      const rawSource = fs.readFileSync(absSourcePath, 'utf8');
+      if (absSourcePath.endsWith('.json')) {
+        sourceCatalog = JSON.parse(rawSource);
+      } else if (absSourcePath.endsWith('.js') || absSourcePath.endsWith('.mjs')) {
+        sourceCatalog = parseSimpleJsLocale(rawSource);
+      } else {
+        console.error(
+          `❌ Error: --source file must be a .json or .js/.mjs locale dictionary: ${sanitizeDiagnostic(sourcePath)}`,
+        );
+        process.exit(1);
+      }
+    } catch (err) {
+      console.error(
+        `❌ Error loading source catalog ${sanitizeDiagnostic(sourcePath)}: ${sanitizeDiagnostic(err.message)}`,
+      );
+      process.exit(1);
+    }
   }
 
   let hasFailures = false;
@@ -748,11 +1049,19 @@ Options:
     let findings = [];
     try {
       if (absPath.endsWith('.json')) {
-        findings = auditDictionary(JSON.parse(raw), { minFallbackLength });
+        findings = auditDictionary(JSON.parse(raw), {
+          minFallbackLength,
+          source: sourceCatalog,
+          pronoun: pronounPolicy,
+        });
       } else if (absPath.endsWith('.js') || absPath.endsWith('.mjs')) {
-        findings = auditDictionary(parseSimpleJsLocale(raw), { minFallbackLength });
+        findings = auditDictionary(parseSimpleJsLocale(raw), {
+          minFallbackLength,
+          source: sourceCatalog,
+          pronoun: pronounPolicy,
+        });
       } else {
-        findings = auditText(raw).map((f) => ({ key: path.basename(absPath), ...f }));
+        findings = auditText(raw, { pronoun: pronounPolicy }).map((f) => ({ key: path.basename(absPath), ...f }));
       }
     } catch (err) {
       if (jsonOutput) {
@@ -832,6 +1141,8 @@ module.exports = {
   auditText,
   auditDictionary,
   extractPlaceholders,
+  hasMalformedBraces,
+  checkPronounPolicy,
   parseSimpleJsLocale,
   sanitizeDiagnostic,
   truncateToUtf8ByteLimit,
