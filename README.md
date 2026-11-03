@@ -1,19 +1,49 @@
 <p align="center">
-  <img src="assets/icons/il-icon.png" width="120" alt="Indonesian Linguist">
+  <a href="https://github.com/m-ridha/indonesian-linguist"><img src="assets/logo.svg" width="96" height="96" alt="Indonesian Linguist"></a>
 </p>
 
 <h1 align="center">Indonesian Linguist</h1>
 
 <p align="center">
-  <em>Expert Bahasa Indonesia translation, software localization (i18n/UX), and anti-slop writing for AI agents.</em>
+  <em>Baku tak mesti kaku, santai bukan sembarangan.</em>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/skill-%2Findonesian--linguist-B56969?style=flat-square" alt="Skill: /indonesian-linguist">
-  <img src="https://img.shields.io/badge/standard-EYD%20V%20%26%20KBBI%20VI-111111?style=flat-square" alt="Standard: EYD V & KBBI VI">
-  <img src="https://img.shields.io/badge/works%20with-Claude%20Code%20%7C%20Codex%20%7C%20Antigravity%20%7C%20OpenCode%20%7C%20Cursor-111111?style=flat-square" alt="Multi-Agent Portable">
-  <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT License">
+  <a href="#quickstart">Quickstart</a> &ensp;·&ensp;
+  <a href="#why-indonesian-linguist-exists">Why It Exists</a> &ensp;·&ensp;
+  <a href="#how-it-works-single-skill--progressive-disclosure">How It Works</a> &ensp;·&ensp;
+  <a href="#installation">Installation</a> &ensp;·&ensp;
+  <a href="SKILL.md">Skill Guide</a> &ensp;·&ensp;
+  <a href="https://github.com/m-ridha/indonesian-linguist">GitHub</a>
 </p>
+
+<br>
+
+**Indonesian Linguist** is an expert language, software localization (i18n/UX microcopy), and anti-slop writing engine for AI coding agents. It enforces EYD V and KBBI VI grammar, resolves isolated UI polysemy traps, compacts mobile layouts without SMS slang, retains established developer and fitness loanwords, and eliminates Indonesian AI slop.
+
+---
+
+## Quickstart
+
+### In Chat & Pair Programming
+
+Invoke `/indonesian-linguist` or prompt your agent for any Indonesian language, translation, or localization task:
+
+```text
+/indonesian-linguist Localize assets/locales/id.json using assets/locales/en.json as source.
+```
+
+### Deterministic Localization & Prose Auditor
+
+Audit any locale dictionary (`.json`, `.js`, `.mjs`) or prose file (`.md`, `.txt`) using the built-in CLI:
+
+```bash
+# Compare Indonesian target against English source catalog
+node scripts/audit-id.js --source assets/locales/en.json assets/locales/id.json
+
+# Enforce explicit project pronoun policy (formal Anda or casual kamu/-mu)
+node scripts/audit-id.js --pronoun Anda assets/locales/id.json
+```
 
 ---
 
