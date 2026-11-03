@@ -1175,10 +1175,16 @@ test('parseAndroidXmlLocale: parses strings, string-arrays, plurals, entities, a
   });
   assert.equal(dict.terms_html, 'Silakan baca <b>Syarat & Ketentuan</b> kami.');
 
-  // Numeric entities (decimal and hex)
-  const numericXml = `<resources><string name="percent">Diskon 50&#37;&#10;Hemat &#x27;banyak&#x27;</string></resources>`;
+  // Numeric entities (decimal and hex) and single-pass decoding without double-expansion
+  const numericXml = `<resources>
+    <string name="percent">Diskon 50&#37;&#10;Hemat &#x27;banyak&#x27;</string>
+    <string name="literal_entity">&amp;#37;</string>
+    <string name="doubly_encoded">&amp;amp;#37;</string>
+  </resources>`;
   const numericDict = parseAndroidXmlLocale(numericXml);
   assert.equal(numericDict.percent, "Diskon 50%\nHemat 'banyak'");
+  assert.equal(numericDict.literal_entity, '&#37;');
+  assert.equal(numericDict.doubly_encoded, '&amp;#37;');
 
   // Rejects malformed / unclosed tags and unclosed comments
   assert.throws(
@@ -1191,7 +1197,15 @@ test('parseAndroidXmlLocale: parses strings, string-arrays, plurals, entities, a
   );
   assert.throws(
     () => parseAndroidXmlLocale('<string name="foo">no root</string>'),
-    /missing or unclosed root <resources> tag/i,
+    /document must contain a single root <resources> element/i,
+  );
+  assert.throws(
+    () => parseAndroidXmlLocale('<resources></resources>\n<string name="title">Hello</string>'),
+    /document must contain a single root <resources> element enclosing all entries/i,
+  );
+  assert.throws(
+    () => parseAndroidXmlLocale('<resources><resources><string name="title">Nested</string></resources></resources>'),
+    /nested or multiple <resources> elements are not allowed/i,
   );
 });
 

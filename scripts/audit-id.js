@@ -958,6 +958,7 @@ const MAX_NATIVE_LOCALE_LENGTH = 2_000_000;
 
 /**
  * Unescapes standard Android XML entities, CDATA sections, and backslash-escapes.
+ * Decodes named and numeric character entities in a single pass to prevent double-decoding.
  * @param {string} str
  * @returns {string}
  */
@@ -965,20 +966,12 @@ function unescapeAndroidXml(str) {
   if (!str) return '';
   let res = str.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1');
   res = res.replace(/\\(['"])/g, '$1');
-  res = res
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&')
-    .replace(/&#(\d+);/g, (_, dec) => {
-      const code = parseInt(dec, 10);
-      return Number.isFinite(code) && code >= 0 && code <= 0x10ffff ? String.fromCodePoint(code) : '';
-    })
-    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => {
-      const code = parseInt(hex, 16);
-      return Number.isFinite(code) && code >= 0 && code <= 0x10ffff ? String.fromCodePoint(code) : '';
-    });
+  const named = { quot: '"', apos: "'", lt: '<', gt: '>', amp: '&' };
+  res = res.replace(/&(?:(quot|apos|lt|gt|amp)|#(\d+)|#x([0-9a-fA-F]+));/gi, (_, name, dec, hex) => {
+    if (name) return named[name.toLowerCase()];
+    const code = dec !== undefined ? parseInt(dec, 10) : parseInt(hex, 16);
+    return Number.isFinite(code) && code >= 0 && code <= 0x10ffff ? String.fromCodePoint(code) : '';
+  });
   return res.trim();
 }
 
@@ -989,6 +982,7 @@ function unescapeAndroidXml(str) {
  * - `<string-array name="key"><item>value</item>...</string-array>` -> `"key": ["value", ...]`
  * - `<plurals name="key"><item quantity="qty">value</item>...</plurals>` -> `"key": { "qty": "value", ... }`
  * Handles CDATA, XML entity decoding, and XML comment stripping.
+ * Verifies single root <resources> containment and rejects malformed/unclosed tags.
  * @param {string} content
  * @returns {Record<string, unknown>}
  */
@@ -1007,24 +1001,31 @@ function parseAndroidXmlLocale(content) {
     clean = next;
   }
 
-  if (!/<resources[\s>]/i.test(clean) || !/<\/resources\s*>/i.test(clean)) {
-    throw new Error('Invalid Android strings.xml: missing or unclosed root <resources> tag.');
+  const withoutProlog = clean.replace(/^\s*<\?xml[^>]*\?>/i, '').trim();
+  const rootMatch = /^\s*<resources\b[^>]*>([\s\S]*?)<\/resources\s*>\s*$/i.exec(withoutProlog);
+  if (!rootMatch) {
+    throw new Error('Invalid Android strings.xml: document must contain a single root <resources> element enclosing all entries.');
   }
 
-  const openStringCount = (clean.match(/<string\s/gi) || []).length;
-  const closeStringCount = (clean.match(/<\/string\s*>/gi) || []).length;
+  const innerContent = rootMatch[1];
+  if (/<resources\b/i.test(innerContent) || /<\/resources\s*>/i.test(innerContent)) {
+    throw new Error('Invalid Android strings.xml: nested or multiple <resources> elements are not allowed.');
+  }
+
+  const openStringCount = (innerContent.match(/<string\s/gi) || []).length;
+  const closeStringCount = (innerContent.match(/<\/string\s*>/gi) || []).length;
   if (openStringCount !== closeStringCount) {
     throw new Error(`Invalid Android strings.xml: mismatched <string> tags (${openStringCount} open, ${closeStringCount} close).`);
   }
 
-  const openArrayCount = (clean.match(/<string-array\s/gi) || []).length;
-  const closeArrayCount = (clean.match(/<\/string-array\s*>/gi) || []).length;
+  const openArrayCount = (innerContent.match(/<string-array\s/gi) || []).length;
+  const closeArrayCount = (innerContent.match(/<\/string-array\s*>/gi) || []).length;
   if (openArrayCount !== closeArrayCount) {
     throw new Error(`Invalid Android strings.xml: mismatched <string-array> tags (${openArrayCount} open, ${closeArrayCount} close).`);
   }
 
-  const openPluralsCount = (clean.match(/<plurals\s/gi) || []).length;
-  const closePluralsCount = (clean.match(/<\/plurals\s*>/gi) || []).length;
+  const openPluralsCount = (innerContent.match(/<plurals\s/gi) || []).length;
+  const closePluralsCount = (innerContent.match(/<\/plurals\s*>/gi) || []).length;
   if (openPluralsCount !== closePluralsCount) {
     throw new Error(`Invalid Android strings.xml: mismatched <plurals> tags (${openPluralsCount} open, ${closePluralsCount} close).`);
   }
@@ -1034,13 +1035,13 @@ function parseAndroidXmlLocale(content) {
   // 1. Single strings: <string name="key" ...>value</string>
   const stringRegex = /<string\s+[^>]*name\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/string>/gi;
   let match;
-  while ((match = stringRegex.exec(clean)) !== null) {
+  while ((match = stringRegex.exec(innerContent)) !== null) {
     dict[match[1]] = unescapeAndroidXml(match[2]);
   }
 
   // 2. String arrays: <string-array name="key" ...><item>...</item></string-array>
   const arrayRegex = /<string-array\s+[^>]*name\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/string-array>/gi;
-  while ((match = arrayRegex.exec(clean)) !== null) {
+  while ((match = arrayRegex.exec(innerContent)) !== null) {
     const key = match[1];
     const inner = match[2];
     const items = [];
@@ -1054,7 +1055,7 @@ function parseAndroidXmlLocale(content) {
 
   // 3. Plurals: <plurals name="key" ...><item quantity="one">...</item></plurals>
   const pluralsRegex = /<plurals\s+[^>]*name\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/plurals>/gi;
-  while ((match = pluralsRegex.exec(clean)) !== null) {
+  while ((match = pluralsRegex.exec(innerContent)) !== null) {
     const key = match[1];
     const inner = match[2];
     const pluralsObj = {};
