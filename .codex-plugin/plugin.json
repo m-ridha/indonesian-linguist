@@ -32,7 +32,7 @@
       "Audit this Indonesian i18n file for polysemy errors, silent fallbacks, and AI slop."
     ],
     "brandColor": "#D9232A",
-    "composerIcon": "./assets/icons/il-icon.png",
-    "logo": "./assets/icons/il-icon.png"
+    "composerIcon": "./assets/logo.svg",
+    "logo": "./assets/logo.svg"
   }
 }
