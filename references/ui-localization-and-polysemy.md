@@ -83,16 +83,20 @@ As highlighted in Southeast Asian linguistic diagnostic benchmarks (**SEA-HELM /
 | **4. Perfective / Stative (`ter-`)** | Completed state, status badge, or achieved milestone | Status pills, achievement banners, lifetime totals, disabled button states | **`Tersimpan`** (*Saved*), **`Terhubung`** (*Signed in / Connected*), **`Tercapai!`** (*Goal reached!*,  never dangling *dicapai!*), **`Terputus`** (*Disconnected*), **`Tak terbatas`** (*Unrestricted*), **`Total beban terangkat`** (*Lifted in total*) |
 
 **Compound Instructions (Head Action vs. Subordinate Purpose Clause)**:
-When an interactive label pairs a physical interaction with a target purpose, the head verb takes base imperative (`Zero` prefix) while the purpose clause introduced by *untuk*, *demi*, *agar*, or *supaya* takes active `meN-`:
-- *Source*: `"Slide to stop alarm"` / `"Swipe to turn off alarm"`
-- ❌ **Broken / Slang**: *"Geser untuk matikan alarm"*
-- ✅ **Grammatical Indonesian**: **"Geser untuk mematikan alarm"**
-- *Source*: `"Tap to view details"`
-- ✅ **Grammatical Indonesian**: **"Ketuk untuk melihat detail"**
+When an interactive label pairs a physical interaction with a target purpose, the head verb takes base imperative (`Zero` prefix). The purpose clause voice depends on agency:
+- **Agentive Purpose Clauses**: Subordinate clauses introduced by *untuk*, *demi*, *agar*, or *supaya* where the user actively carries out the action take active `meN-`:
+  - *Source*: `"Slide to stop alarm"` / `"Swipe to turn off alarm"`
+  - ❌ **Broken / Slang**: *"Geser untuk matikan alarm"*
+  - ✅ **Grammatical Indonesian**: **"Geser untuk mematikan alarm"**
+  - *Source*: `"Tap to view details"`
+  - ✅ **Grammatical Indonesian**: **"Ketuk untuk melihat detail"**
+- **Patient-Focused / Passive Purpose Clauses**: Where the entity or target receives the action take passive `di-`:
+  - *Source*: `"Submit to be reviewed"` $\rightarrow$ **"Kirim untuk ditinjau"** (not *untuk meninjau*)
+  - *Source*: `"Tap to be inspected"` $\rightarrow$ **"Ketuk untuk diperiksa"**
 
 **In-Progress vs. Completed States**:
 - In-progress / loading states use active `meN-` with ellipsis: **`Menyimpan…`** (*Saving…*), **`Mengunggah…`** (*Uploading…*), **`Menghubungkan…`** (*Connecting…*).
-- Completed states use perfective `ter-`: **`Tersimpan`** (*Saved*), **`Terunggah`** (*Uploaded*), **`Terhubung`** (*Connected*).
+- Completed states use perfective `ter-` for achieved stative conditions (**`Tersimpan`** for *Saved*, **`Terunggah`** for *Uploaded*, **`Terhubung`** for *Connected*), or explicit past aspect markers with `di-` / base verbs (**`Telah disimpan`**, **`Selesai`**) when emphasizing deliberate agentive completion.
 
 **Title vs. Subtitle Verb Harmony**:
 Align the verb family in a setting row's subtitle with its title. If the setting title is **"Lewati latihan yang sudah selesai"** (*Skip completed exercises*), the explanatory subtitle must use the matching active verb **"melewati"** (*"...Sebelumnya dan Berikutnya melewati latihan yang sudah selesai"*).

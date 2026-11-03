@@ -95,6 +95,6 @@ When reviewing notifications and system banners, verify the runtime trigger cont
 ## 4. Text Expansion as Layout Guidance, Not a Test Invariant
 
 Indonesian text expansion (+20% to +35%) is an empirical spatial layout guideline for UI containers and mobile viewports, **not** a validation invariant or test assertion:
-- **Never enforce length assertions in test suites**: Do not assert that `indonesianText.length > englishText.length`. Lexical compaction legitimately produces shorter Indonesian strings in many UI controls (e.g., *Lewati alarm berikutnya* vs *Lewati alarm terjadwal berikutnya*; *Sesuai input* vs *As entered*).
+- **Do not enforce the expansion-ratio heuristic in test suites**: Do not require `indonesianText.length > englishText.length`. Lexical compaction legitimately produces shorter Indonesian strings in many UI controls (e.g., *Lewati alarm berikutnya* vs *Lewati alarm terjadwal berikutnya*; *Sesuai input* vs *As entered*). Explicit maximum-length and layout-fit boundary tests (e.g., `text.length <= MAX_CHARS`) remain recommended.
 - **Evaluate layout visually and dynamically**: Test UI strings on narrow viewports (320px–360px width) and with accessibility large-font scaling enabled (Dynamic Type / Android font scaling $\ge 1.5\times$).
 - **Preserve semantic fidelity over artificial padding**: If a concise Indonesian translation accurately conveys the user action or message, keep it compact rather than inflating it to meet arbitrary length heuristics.

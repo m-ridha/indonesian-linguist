@@ -1174,6 +1174,25 @@ test('parseAndroidXmlLocale: parses strings, string-arrays, plurals, entities, a
     other: '%d hari',
   });
   assert.equal(dict.terms_html, 'Silakan baca <b>Syarat & Ketentuan</b> kami.');
+
+  // Numeric entities (decimal and hex)
+  const numericXml = `<resources><string name="percent">Diskon 50&#37;&#10;Hemat &#x27;banyak&#x27;</string></resources>`;
+  const numericDict = parseAndroidXmlLocale(numericXml);
+  assert.equal(numericDict.percent, "Diskon 50%\nHemat 'banyak'");
+
+  // Rejects malformed / unclosed tags and unclosed comments
+  assert.throws(
+    () => parseAndroidXmlLocale('<resources><string name="foo">bar</resources>'),
+    /mismatched <string> tags/i,
+  );
+  assert.throws(
+    () => parseAndroidXmlLocale('<resources><!-- unclosed comment<string name="foo">bar</string></resources>'),
+    /unclosed XML comment/i,
+  );
+  assert.throws(
+    () => parseAndroidXmlLocale('<string name="foo">no root</string>'),
+    /missing or unclosed root <resources> tag/i,
+  );
 });
 
 test('parseIosStringsLocale: parses Apple .strings with comments and escaped quotes', () => {
@@ -1190,6 +1209,8 @@ test('parseIosStringsLocale: parses Apple .strings with comments and escaped quo
  describing settings keys
  */
 "settings_title" = "Pengaturan Profil";
+"api_url" = "https://api.example.com//v1/endpoint";
+"code_banner" = "/* Kode Kupon */";
 `;
 
   const dict = parseIosStringsLocale(stringsContent);
@@ -1198,6 +1219,26 @@ test('parseIosStringsLocale: parses Apple .strings with comments and escaped quo
   assert.equal(dict.action_save, 'Simpan');
   assert.equal(dict.dialog_confirm, 'Tekan "Lanjutkan" untuk memulai sesi latihan.');
   assert.equal(dict.settings_title, 'Pengaturan Profil');
+  assert.equal(dict.api_url, 'https://api.example.com//v1/endpoint');
+  assert.equal(dict.code_banner, '/* Kode Kupon */');
+
+  // Rejects unclosed comments and malformed entries
+  assert.throws(
+    () => parseIosStringsLocale('/* unclosed block\n"k" = "v";'),
+    /unclosed block comment/i,
+  );
+  assert.throws(
+    () => parseIosStringsLocale('"unterminated_key'),
+    /unterminated string key/i,
+  );
+  assert.throws(
+    () => parseIosStringsLocale('"k" = "missing semicolon"'),
+    /expected ';'/i,
+  );
+  assert.throws(
+    () => parseIosStringsLocale('"k" = "v"; unexpected garbage here'),
+    /unexpected content near/i,
+  );
 });
 
 test('auditDictionary: permits language picker autonyms and locale tags', () => {
@@ -1294,6 +1335,26 @@ test('CLI: supports .xml and .strings catalogs, --ignore-keys, and --warn-only',
   );
   assert.equal(stringsWarn.status, 0);
   assert.match(stringsWarn.stderr, /\[polysemy-calque\]/);
+
+  // Operational error: non-existent file must still exit with status 1 even with --warn-only
+  const missingFileResult = spawnSync(
+    process.execPath,
+    [scriptPath, '--warn-only', path.join(tmpDir, 'does-not-exist.json')],
+    { encoding: 'utf8' },
+  );
+  assert.equal(missingFileResult.status, 1);
+  assert.match(missingFileResult.stderr, /Error reading/);
+
+  // Operational error: malformed syntax must still exit with status 1 even with --warn-only
+  const malformedFile = path.join(tmpDir, 'malformed.strings');
+  fs.writeFileSync(malformedFile, 'not a valid strings file');
+  const malformedResult = spawnSync(
+    process.execPath,
+    [scriptPath, '--warn-only', malformedFile],
+    { encoding: 'utf8' },
+  );
+  assert.equal(malformedResult.status, 1);
+  assert.match(malformedResult.stderr, /Error parsing/);
 
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });

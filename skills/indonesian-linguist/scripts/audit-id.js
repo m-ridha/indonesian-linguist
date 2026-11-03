@@ -953,13 +953,21 @@ const MAX_NATIVE_LOCALE_LENGTH = 2_000_000;
 function unescapeAndroidXml(str) {
   if (!str) return '';
   let res = str.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1');
-  res = res.replace(/\\'/g, "'").replace(/\\"/g, '"');
+  res = res.replace(/\\(['"])/g, '$1');
   res = res
     .replace(/&quot;/g, '"')
     .replace(/&apos;/g, "'")
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&');
+    .replace(/&amp;/g, '&')
+    .replace(/&#(\d+);/g, (_, dec) => {
+      const code = parseInt(dec, 10);
+      return Number.isFinite(code) && code >= 0 && code <= 0x10ffff ? String.fromCodePoint(code) : '';
+    })
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => {
+      const code = parseInt(hex, 16);
+      return Number.isFinite(code) && code >= 0 && code <= 0x10ffff ? String.fromCodePoint(code) : '';
+    });
   return res.trim();
 }
 
@@ -979,10 +987,35 @@ function parseAndroidXmlLocale(content) {
     throw new Error(`Android XML source exceeds maximum length of ${MAX_NATIVE_LOCALE_LENGTH} characters.`);
   }
 
-  const clean = src.replace(/<!--[\s\S]*?-->/g, '');
+  let clean = src;
+  while (clean.includes('<!--')) {
+    const next = clean.replace(/<!--[\s\S]*?-->/g, '');
+    if (next === clean) {
+      throw new Error('Malformed Android XML: unclosed XML comment <!--');
+    }
+    clean = next;
+  }
 
-  if (!/<resources[\s>]/i.test(clean)) {
-    throw new Error('Invalid Android strings.xml: missing root <resources> tag.');
+  if (!/<resources[\s>]/i.test(clean) || !/<\/resources\s*>/i.test(clean)) {
+    throw new Error('Invalid Android strings.xml: missing or unclosed root <resources> tag.');
+  }
+
+  const openStringCount = (clean.match(/<string\s/gi) || []).length;
+  const closeStringCount = (clean.match(/<\/string\s*>/gi) || []).length;
+  if (openStringCount !== closeStringCount) {
+    throw new Error(`Invalid Android strings.xml: mismatched <string> tags (${openStringCount} open, ${closeStringCount} close).`);
+  }
+
+  const openArrayCount = (clean.match(/<string-array\s/gi) || []).length;
+  const closeArrayCount = (clean.match(/<\/string-array\s*>/gi) || []).length;
+  if (openArrayCount !== closeArrayCount) {
+    throw new Error(`Invalid Android strings.xml: mismatched <string-array> tags (${openArrayCount} open, ${closeArrayCount} close).`);
+  }
+
+  const openPluralsCount = (clean.match(/<plurals\s/gi) || []).length;
+  const closePluralsCount = (clean.match(/<\/plurals\s*>/gi) || []).length;
+  if (openPluralsCount !== closePluralsCount) {
+    throw new Error(`Invalid Android strings.xml: mismatched <plurals> tags (${openPluralsCount} open, ${closePluralsCount} close).`);
   }
 
   const dict = {};
@@ -1026,23 +1059,28 @@ function parseAndroidXmlLocale(content) {
 }
 
 /**
- * Unescapes standard Apple .strings escape sequences.
+ * Unescapes standard Apple .strings escape sequences in a single pass.
  * @param {string} str
  * @returns {string}
  */
 function unescapeIosString(str) {
   if (!str) return '';
-  return str
-    .replace(/\\"/g, '"')
-    .replace(/\\\\/g, '\\')
-    .replace(/\\n/g, '\n')
-    .replace(/\\r/g, '\r')
-    .replace(/\\t/g, '\t');
+  return str.replace(/\\(["\\nrt])/g, (_, ch) => {
+    switch (ch) {
+      case '"': return '"';
+      case '\\': return '\\';
+      case 'n': return '\n';
+      case 'r': return '\r';
+      case 't': return '\t';
+      default: return ch;
+    }
+  });
 }
 
 /**
  * Parse an Apple iOS/macOS `.strings` localization file into a dictionary object.
  * Strips C-style multiline comments and line comments, and extracts `"key" = "value";` pairs.
+ * Rejects unparsed non-comment, non-whitespace content and malformed entries.
  * @param {string} content
  * @returns {Record<string, string>}
  */
@@ -1052,15 +1090,112 @@ function parseIosStringsLocale(content) {
     throw new Error(`iOS strings source exceeds maximum length of ${MAX_NATIVE_LOCALE_LENGTH} characters.`);
   }
 
-  const clean = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
-
   const dict = {};
-  const entryRegex = /"((?:[^"\\]|\\.)*)"\s*=\s*"((?:[^"\\]|\\.)*)"\s*;/g;
-  let match;
-  while ((match = entryRegex.exec(clean)) !== null) {
-    const key = unescapeIosString(match[1]);
-    const val = unescapeIosString(match[2]);
-    dict[key] = val;
+  let i = 0;
+  const len = src.length;
+
+  while (i < len) {
+    // 1. Skip whitespace
+    while (i < len && /\s/.test(src[i])) {
+      i++;
+    }
+    if (i >= len) break;
+
+    // 2. Comments
+    if (src[i] === '/' && src[i + 1] === '/') {
+      i += 2;
+      while (i < len && src[i] !== '\n' && src[i] !== '\r') {
+        i++;
+      }
+      continue;
+    }
+    if (src[i] === '/' && src[i + 1] === '*') {
+      const closeIdx = src.indexOf('*/', i + 2);
+      if (closeIdx === -1) {
+        throw new Error('Malformed iOS .strings catalog: unclosed block comment /*');
+      }
+      i = closeIdx + 2;
+      continue;
+    }
+
+    // 3. String key
+    if (src[i] === '"') {
+      const keyStart = i + 1;
+      let keyEnd = -1;
+      let escaped = false;
+      let j = keyStart;
+      while (j < len) {
+        if (escaped) {
+          escaped = false;
+        } else if (src[j] === '\\') {
+          escaped = true;
+        } else if (src[j] === '"') {
+          keyEnd = j;
+          break;
+        }
+        j++;
+      }
+      if (keyEnd === -1) {
+        throw new Error('Malformed iOS .strings catalog: unterminated string key');
+      }
+      const rawKey = src.slice(keyStart, keyEnd);
+      const key = unescapeIosString(rawKey);
+      i = keyEnd + 1;
+
+      // Skip whitespace
+      while (i < len && /\s/.test(src[i])) i++;
+
+      // Expect '='
+      if (i >= len || src[i] !== '=') {
+        throw new Error(`Malformed iOS .strings catalog: expected '=' after key "${key}"`);
+      }
+      i++; // skip '='
+
+      // Skip whitespace
+      while (i < len && /\s/.test(src[i])) i++;
+
+      // Expect '"'
+      if (i >= len || src[i] !== '"') {
+        throw new Error(`Malformed iOS .strings catalog: expected string value for key "${key}"`);
+      }
+      const valStart = i + 1;
+      let valEnd = -1;
+      escaped = false;
+      j = valStart;
+      while (j < len) {
+        if (escaped) {
+          escaped = false;
+        } else if (src[j] === '\\') {
+          escaped = true;
+        } else if (src[j] === '"') {
+          valEnd = j;
+          break;
+        }
+        j++;
+      }
+      if (valEnd === -1) {
+        throw new Error(`Malformed iOS .strings catalog: unterminated string value for key "${key}"`);
+      }
+      const rawVal = src.slice(valStart, valEnd);
+      const val = unescapeIosString(rawVal);
+      i = valEnd + 1;
+
+      // Skip whitespace
+      while (i < len && /\s/.test(src[i])) i++;
+
+      // Expect ';'
+      if (i >= len || src[i] !== ';') {
+        throw new Error(`Malformed iOS .strings catalog: expected ';' after value for key "${key}"`);
+      }
+      i++; // skip ';'
+
+      dict[key] = val;
+      continue;
+    }
+
+    // If we reached here, there is unexpected non-whitespace, non-comment content
+    const snippet = src.slice(i, Math.min(i + 20, len)).replace(/[\r\n]+/g, ' ');
+    throw new Error(`Malformed iOS .strings catalog: unexpected content near "${snippet}"`);
   }
 
   return dict;
@@ -1225,7 +1360,8 @@ Options:
     }
   }
 
-  let hasFailures = false;
+  let hasFindingFailures = false;
+  let hasOperationalErrors = false;
   const jsonReport = {
     totalFiles: targets.length,
     cleanFiles: 0,
@@ -1251,7 +1387,7 @@ Options:
       } else {
         console.error(`❌ Error reading ${sanitizeDiagnostic(target)}: ${sanitizeDiagnostic(err.message)}`);
       }
-      hasFailures = true;
+      hasOperationalErrors = true;
       continue;
     }
 
@@ -1300,7 +1436,7 @@ Options:
       } else {
         console.error(`❌ Error parsing ${sanitizeDiagnostic(target)}: ${sanitizeDiagnostic(err.message)}`);
       }
-      hasFailures = true;
+      hasOperationalErrors = true;
       continue;
     }
 
@@ -1315,7 +1451,7 @@ Options:
         });
       } else {
         jsonReport.failedFiles++;
-        hasFailures = true;
+        hasFindingFailures = true;
         jsonReport.files.push({
           file: target,
           clean: false,
@@ -1326,7 +1462,7 @@ Options:
       if (findings.length === 0) {
         console.log(`✅ Clean: 0 findings in ${sanitizeDiagnostic(target)}`);
       } else {
-        hasFailures = true;
+        hasFindingFailures = true;
         console.error(`❌ Found ${findings.length} issue(s) in ${sanitizeDiagnostic(target)}:`);
         let printedBytes = 0;
         let truncated = false;
@@ -1359,7 +1495,7 @@ Options:
     process.stdout.write(JSON.stringify(jsonReport, null, 2) + '\n');
   }
 
-  process.exitCode = hasFailures && !warnOnly ? 1 : 0;
+  process.exitCode = hasOperationalErrors || (hasFindingFailures && !warnOnly) ? 1 : 0;
 }
 
 module.exports = {
