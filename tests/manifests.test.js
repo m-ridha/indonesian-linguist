@@ -117,6 +117,230 @@ test('all required reference modules and scripts exist and are reachable from bo
   }
 });
 
+function isEscapedBacktick(content, pos) {
+  let backslashes = 0;
+  for (let p = pos - 1; p >= 0 && content[p] === '\\'; p--) backslashes++;
+  return backslashes % 2 === 1;
+}
+
+// Linear scanner to extract relative Markdown links without quadratic backtracking
+function extractRelativeMarkdownLinks(content) {
+  const MAX_DOC_LENGTH = 1_000_000;
+  if (content.length > MAX_DOC_LENGTH) {
+    throw new Error(`Document length (${content.length}) exceeds safety limit of ${MAX_DOC_LENGTH}`);
+  }
+
+  const n = content.length;
+  const codeRanges = []; // Non-overlapping [start, end] ranges for fenced blocks and inline code spans
+
+  // Phase 1: Identify fenced code blocks and inline code spans in linear time
+  let i = 0;
+  while (i < n) {
+    const ch = content[i];
+
+    // Check for fenced code block (``` or ~~~) at line start (up to 3 leading spaces)
+    if (ch === '`' || ch === '~') {
+      const fenceChar = ch;
+      let fenceLen = 0;
+      while (i + fenceLen < n && content[i + fenceLen] === fenceChar) {
+        fenceLen++;
+      }
+      if (fenceLen >= 3) {
+        let p = i - 1;
+        let spaces = 0;
+        while (p >= 0 && content[p] === ' ') {
+          spaces++;
+          p--;
+        }
+        if ((p < 0 || content[p] === '\n') && spaces <= 3) {
+          const fenceStart = i;
+          i += fenceLen;
+          let fenceEnd = n;
+          while (i < n) {
+            if (content[i] === '\n') {
+              i++;
+              let pClose = i;
+              let closeSpaces = 0;
+              while (pClose < n && content[pClose] === ' ') {
+                closeSpaces++;
+                pClose++;
+              }
+              if (closeSpaces <= 3 && content[pClose] === fenceChar) {
+                let closeFenceLen = 0;
+                while (pClose + closeFenceLen < n && content[pClose + closeFenceLen] === fenceChar) {
+                  closeFenceLen++;
+                }
+                if (closeFenceLen >= fenceLen) {
+                  i = pClose + closeFenceLen;
+                  while (i < n && content[i] !== '\n') i++;
+                  fenceEnd = i;
+                  break;
+                }
+              }
+            } else {
+              i++;
+            }
+          }
+          codeRanges.push([fenceStart, fenceEnd]);
+          continue;
+        }
+      }
+    }
+
+    // Process inline code spans within the current paragraph
+    if (ch === '`') {
+      let paraEnd = n;
+      let p = i;
+      while (p < n) {
+        if (content[p] === '\n') {
+          let q = p + 1;
+          while (q < n && (content[q] === ' ' || content[q] === '\t')) q++;
+          if (q >= n || content[q] === '\n' || content[q] === '\r') {
+            paraEnd = p;
+            break;
+          }
+          const spaces = q - (p + 1);
+          if (spaces <= 3 && (content[q] === '`' || content[q] === '~')) {
+            const fc = content[q];
+            let fl = 0;
+            while (q + fl < n && content[q + fl] === fc) fl++;
+            if (fl >= 3) {
+              paraEnd = p;
+              break;
+            }
+          }
+        }
+        p++;
+      }
+
+      // Collect all backtick runs in [i, paraEnd)
+      const runs = [];
+      let cur = i;
+      while (cur < paraEnd) {
+        if (content[cur] === '`') {
+          let rLen = 0;
+          while (cur + rLen < paraEnd && content[cur + rLen] === '`') {
+            rLen++;
+          }
+          runs.push({ start: cur, len: rLen });
+          cur += rLen;
+        } else {
+          cur++;
+        }
+      }
+
+      // Index runs by delimiter length: len -> array of run indices
+      const runsByLen = new Map();
+      for (let r = 0; r < runs.length; r++) {
+        const l = runs[r].len;
+        if (!runsByLen.has(l)) runsByLen.set(l, []);
+        runsByLen.get(l).push(r);
+      }
+
+      // Match code spans per CommonMark Section 6.2 in a single linear pass
+      let r = 0;
+      const cursors = new Map(); // len -> monotonically advancing position in runsByLen list
+      while (r < runs.length) {
+        const openRun = runs[r];
+        // A backslash-escaped first backtick is literal; the remainder of the run can still open
+        const escaped = isEscapedBacktick(content, openRun.start);
+        const openLen = escaped ? openRun.len - 1 : openRun.len;
+        const openStart = escaped ? openRun.start + 1 : openRun.start;
+        if (openLen === 0) {
+          r++;
+          continue;
+        }
+
+        const list = runsByLen.get(openLen) || [];
+        let c = cursors.get(openLen) || 0;
+        while (c < list.length && list[c] <= r) c++;
+        cursors.set(openLen, c);
+        const matchIdx = c < list.length ? list[c] : -1;
+        if (matchIdx !== -1) {
+          const closeRun = runs[matchIdx];
+          codeRanges.push([openStart, closeRun.start + closeRun.len]);
+          r = matchIdx + 1;
+        } else {
+          r++;
+        }
+      }
+
+      i = paraEnd;
+      continue;
+    }
+
+    i++;
+  }
+
+  // Phase 2: Extract links outside code ranges using bounded bracket stack
+  const links = [];
+  let rangeIdx = 0;
+  const bracketStack = [];
+  i = 0;
+
+  while (i < n) {
+    while (rangeIdx < codeRanges.length && i >= codeRanges[rangeIdx][1]) {
+      rangeIdx++;
+    }
+    if (rangeIdx < codeRanges.length && i >= codeRanges[rangeIdx][0]) {
+      i = codeRanges[rangeIdx][1];
+      rangeIdx++;
+      continue;
+    }
+
+    const ch = content[i];
+
+    if (ch === '\\') {
+      i += 2;
+      continue;
+    }
+
+    // Candidate link start bracket
+    if (ch === '[') {
+      if (bracketStack.length < 32) {
+        bracketStack.push(i);
+      }
+      i++;
+      continue;
+    }
+
+    // Candidate link end bracket
+    if (ch === ']') {
+      if (bracketStack.length > 0) {
+        const openIdx = bracketStack.pop();
+        const labelLen = i - openIdx - 1;
+        // CommonMark: link label length at most 999 characters
+        if (labelLen <= 999 && i + 1 < n && content[i + 1] === '(') {
+          const urlStart = i + 2;
+          let k = urlStart;
+          while (k < n && content[k] !== ')' && content[k] !== '\n') {
+            if (content[k] === '\\') k++;
+            k++;
+          }
+          if (k < n && content[k] === ')') {
+            const rawTarget = content.slice(urlStart, k).trim();
+            // Separate destination from optional title (e.g. [guide](./guide.md "Title") or <path>)
+            const destMatch = rawTarget.match(/^(?:<([^>]+)>|(\S+))/);
+            const destination = destMatch ? (destMatch[1] || destMatch[2]) : '';
+            if (destination && !/^(?:https?:|mailto:|#)/i.test(destination)) {
+              const cleanTarget = destination.split('#')[0].trim();
+              if (cleanTarget) links.push(cleanTarget);
+            }
+            i = k + 1;
+            continue;
+          }
+        }
+      }
+      i++;
+      continue;
+    }
+
+    i++;
+  }
+
+  return links;
+}
+
 test('all relative markdown links in SKILL.md, plugin SKILL.md, README.md, CONTRIBUTING.md, and docs resolve to existing files', () => {
   const filesToCheck = [
     'SKILL.md',
@@ -126,20 +350,20 @@ test('all relative markdown links in SKILL.md, plugin SKILL.md, README.md, CONTR
     'AI_POLICY.md',
     'skills/indonesian-linguist/TEST.md',
     'docs/agent-portability.md',
+    'docs/sources.md',
+    'docs/testing.md',
+    'docs/releases.md',
     'references/README.md',
     'references/domains/README.md',
     'scripts/README.md',
   ];
-  const linkRegex = /\[[^\]]+\]\((?!https?:\/\/|mailto:|#)([^)#]+)(?:#[^)]*)?\)/g;
 
   for (const relFile of filesToCheck) {
     const absFile = path.join(root, relFile);
     if (!fs.existsSync(absFile)) continue;
     const content = fs.readFileSync(absFile, 'utf8');
     const baseDir = path.dirname(absFile);
-    let match;
-    while ((match = linkRegex.exec(content)) !== null) {
-      const targetRel = match[1];
+    for (const targetRel of extractRelativeMarkdownLinks(content)) {
       const resolved = path.resolve(baseDir, targetRel);
       assert.ok(
         fs.existsSync(resolved),
@@ -147,6 +371,101 @@ test('all relative markdown links in SKILL.md, plugin SKILL.md, README.md, CONTR
       );
     }
   }
+});
+
+test('extractRelativeMarkdownLinks handles link titles, code spans, fences, and repeated unmatched brackets safely', () => {
+  // Markdown links with titles
+  assert.deepEqual(
+    extractRelativeMarkdownLinks('See the [guide](./docs/testing.md "Testing Guide") for details.'),
+    ['./docs/testing.md'],
+  );
+  assert.deepEqual(
+    extractRelativeMarkdownLinks("See [releases](./docs/releases.md 'Releases') here."),
+    ['./docs/releases.md'],
+  );
+  assert.deepEqual(
+    extractRelativeMarkdownLinks('Pointy destination [releases](<./docs/releases.md> "Title").'),
+    ['./docs/releases.md'],
+  );
+
+  // Multi-backtick inline code spans containing bracketed link examples must not be extracted
+  assert.deepEqual(
+    extractRelativeMarkdownLinks('Inline single: `[missing](./missing.md)` is skipped.'),
+    [],
+  );
+  assert.deepEqual(
+    extractRelativeMarkdownLinks('Inline double: `` `[missing](./missing.md)` `` is skipped.'),
+    [],
+  );
+
+  // Unmatched backtick runs are treated as literal text and bounded by paragraph / blank line
+  assert.deepEqual(
+    extractRelativeMarkdownLinks('Press the ` key.\n\nSee [valid](./docs/testing.md).'),
+    ['./docs/testing.md'],
+  );
+  assert.deepEqual(
+    extractRelativeMarkdownLinks('Press ` key and see [valid](./docs/testing.md).'),
+    ['./docs/testing.md'],
+  );
+
+  // Fenced blocks at line start are ignored
+  const fenced = '```markdown\n[missing](./missing.md)\n```\n[actual](./docs/testing.md)';
+  assert.deepEqual(extractRelativeMarkdownLinks(fenced), ['./docs/testing.md']);
+
+  // Triple backticks in prose without line start do not act as block fence
+  const inProse = 'Prose ```[not a link](./missing.md)``` but [valid](./docs/testing.md)';
+  assert.deepEqual(extractRelativeMarkdownLinks(inProse), ['./docs/testing.md']);
+
+  // Valid nested link inside bracketed text
+  assert.deepEqual(
+    extractRelativeMarkdownLinks('[outer [inner](./docs/testing.md)]'),
+    ['./docs/testing.md'],
+  );
+
+  // Linear scan bound check for repeated unmatched brackets with no newline
+  const unmatched = '['.repeat(20000);
+  const start = Date.now();
+  const links = extractRelativeMarkdownLinks(unmatched);
+  const durationMs = Date.now() - start;
+  assert.deepEqual(links, []);
+  assert.ok(durationMs < 200, `20,000 unmatched brackets took ${durationMs}ms (expected < 200ms)`);
+
+  // Linear scan bound check for many distinct unmatched backtick runs (lengths 1..1400)
+  let distinctRuns = '';
+  for (let len = 1; len <= 1400; len++) {
+    distinctRuns += '`'.repeat(len) + ' ';
+  }
+  distinctRuns += '\n\nSee [valid](./docs/testing.md)';
+  const t0 = Date.now();
+  const distinctLinks = extractRelativeMarkdownLinks(distinctRuns);
+  const elapsedDistinct = Date.now() - t0;
+  assert.deepEqual(distinctLinks, ['./docs/testing.md']);
+  assert.ok(
+    elapsedDistinct < 200,
+    `1,400 distinct unmatched backtick runs took ${elapsedDistinct}ms (expected < 200ms)`,
+  );
+
+  // Linear scan bound check for many same-length backtick runs (100,000 runs)
+  const sameLengthRuns = '` '.repeat(100000) + '\n\nSee [valid](./docs/testing.md)';
+  const t1 = Date.now();
+  const sameLengthLinks = extractRelativeMarkdownLinks(sameLengthRuns);
+  const elapsedSameLength = Date.now() - t1;
+  assert.deepEqual(sameLengthLinks, ['./docs/testing.md']);
+  assert.ok(
+    elapsedSameLength < 200,
+    `100,000 same-length backtick runs took ${elapsedSameLength}ms (expected < 200ms)`,
+  );
+
+  // Escaped backticks: escaped single backtick does not open a span, so subsequent links are extracted
+  assert.deepEqual(
+    extractRelativeMarkdownLinks('Escaped backtick: \\` followed by [valid](./docs/testing.md) and stray `'),
+    ['./docs/testing.md'],
+  );
+  // Escaped run of length 2 opens a span of length 1 starting after the escaped backtick
+  assert.deepEqual(
+    extractRelativeMarkdownLinks('Escaped run: \\``[missing](./missing.md)` and outside [valid](./docs/testing.md)'),
+    ['./docs/testing.md'],
+  );
 });
 
 test('package.json files list ships all required assets and scripts', () => {

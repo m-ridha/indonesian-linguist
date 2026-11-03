@@ -55,7 +55,7 @@ const KNOWN_CALQUE_TRAPS = [
   { keyMatch: /sets are drawn/i, badVal: /\bdiundi\b/i, fix: 'ditampilkan di grafik' },
   { keyMatch: /logged workout/i, badVal: /\blogin\b/i, fix: 'sesi latihan yang dicatat' },
   { keyMatch: /hop over/i, badVal: /\b(lanjutkan|meneruskan)\b/i, fix: 'melewati / melompati' },
-  { keyMatch: /signs.*out/i, badVal: /\bmenandakan\b/i, fix: 'mengeluarkan' },
+  { keyMatch: /signs\b.*?\bouts?\b/i, badVal: /\bmenandakan\b/i, fix: 'mengeluarkan' },
   { keyMatch: /^abductors$/i, badVal: /\bpenculik\b/i, fix: 'Abduktor' },
   { keyMatch: /^landmine$/i, badVal: /\branjau darat\b/i, fix: 'Landmine' },
   { keyMatch: /^traps$/i, badVal: /\bperangkap\b/i, fix: 'Traps' },
@@ -187,24 +187,57 @@ function auditText(text, options = {}) {
 }
 
 /**
+ * Maximum allowed nesting depth for i18n dictionaries to prevent resource exhaustion.
+ */
+const MAX_DICTIONARY_DEPTH = 32;
+
+/**
+ * Maximum allowed findings collected during a dictionary audit before bounding output.
+ */
+const MAX_DICTIONARY_FINDINGS = 5000;
+
+/**
  * Audit a key-value i18n dictionary object (including nested namespace objects).
+ * Collects findings in a single accumulator with explicit depth and size bounds.
  * @param {Record<string, unknown>} dict
- * @param {{ minFallbackLength?: number, allowlistKeys?: Set<string> }} [options]
+ * @param {{ minFallbackLength?: number, allowlistKeys?: Set<string>, prefix?: string, depth?: number, accumulator?: Array<{key: string, rule: string, message: string}> }} [options]
  * @returns {Array<{key: string, rule: string, message: string}>}
  */
 function auditDictionary(dict, options = {}) {
   const minFallbackLength = options.minFallbackLength ?? 16;
   const allowlistKeys = options.allowlistKeys ?? new Set();
-  const findings = [];
+  const currentPrefix = options.prefix ?? '';
+  const currentDepth = options.depth ?? 0;
+  const findings = options.accumulator ?? [];
+
+  if (currentDepth > MAX_DICTIONARY_DEPTH) {
+    findings.push({
+      key: currentPrefix || 'root',
+      rule: 'nesting-limit-exceeded',
+      message: `Dictionary nesting depth exceeded safety limit of ${MAX_DICTIONARY_DEPTH}.`,
+    });
+    return findings;
+  }
 
   for (const [key, value] of Object.entries(dict || {})) {
+    if (findings.length >= MAX_DICTIONARY_FINDINGS) {
+      findings.push({
+        key: currentPrefix || 'root',
+        rule: 'findings-limit-exceeded',
+        message: `Total dictionary findings exceeded safety limit of ${MAX_DICTIONARY_FINDINGS}.`,
+      });
+      break;
+    }
+
+    const fullKey = currentPrefix ? `${currentPrefix}.${key}` : key;
+
     if (value && typeof value === 'object' && !Array.isArray(value)) {
-      for (const nested of auditDictionary(value, options)) {
-        findings.push({
-          ...nested,
-          key: `${key}.${nested.key}`,
-        });
-      }
+      auditDictionary(value, {
+        ...options,
+        prefix: fullKey,
+        depth: currentDepth + 1,
+        accumulator: findings,
+      });
       continue;
     }
     if (typeof value !== 'string') continue;
@@ -219,7 +252,7 @@ function auditDictionary(dict, options = {}) {
       !/^https?:\/\//.test(key)
     ) {
       findings.push({
-        key,
+        key: fullKey,
         rule: 'silent-fallback',
         message: `Untranslated identity fallback (key === value, ${key.length} chars).`,
       });
@@ -230,7 +263,7 @@ function auditDictionary(dict, options = {}) {
     const valPh = extractPlaceholders(value);
     if (keyPh.join(',') !== valPh.join(',')) {
       findings.push({
-        key,
+        key: fullKey,
         rule: 'placeholder-mismatch',
         message: `Placeholders in key [${keyPh.join(', ')}] do not match value [${valPh.join(', ')}].`,
       });
@@ -240,7 +273,7 @@ function auditDictionary(dict, options = {}) {
     for (const trap of KNOWN_CALQUE_TRAPS) {
       if (trap.keyMatch.test(key) && trap.badVal.test(value)) {
         findings.push({
-          key,
+          key: fullKey,
           rule: 'polysemy-calque',
           message: `Literal calque trap in "${value}"; use "${trap.fix}".`,
         });
@@ -250,7 +283,7 @@ function auditDictionary(dict, options = {}) {
     // 4. Text-level checks (SMS slang, kata tidak baku, slop)
     for (const issue of auditText(value, { stripIndentedCode: false })) {
       findings.push({
-        key,
+        key: fullKey,
         rule: issue.rule,
         message: issue.message,
       });
@@ -261,46 +294,195 @@ function auditDictionary(dict, options = {}) {
 }
 
 /**
+ * Sanitize diagnostic strings to prevent log injection and terminal control sequence tampering.
+ * Escapes C0/C1 control characters, Unicode line/paragraph separators, and bidirectional controls.
+ * @param {string} str
+ * @returns {string}
+ */
+function sanitizeDiagnostic(str) {
+  return String(str || '').replace(/[\x00-\x1f\x7f-\x9f\u200e\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069]/g, (c) => {
+    if (c === '\n') return '\\n';
+    if (c === '\r') return '\\r';
+    if (c === '\t') return '\\t';
+    const code = c.charCodeAt(0);
+    return code > 0xff
+      ? '\\u' + code.toString(16).padStart(4, '0')
+      : '\\x' + code.toString(16).padStart(2, '0');
+  });
+}
+
+/**
+ * Maximum allowed source length for simple JavaScript locale files (1 MB).
+ */
+const MAX_JS_LOCALE_LENGTH = 1_000_000;
+
+/**
  * Parse a flat JavaScript locale dictionary (`export default { ... }` or `module.exports = { ... }`)
  * supporting both quoted keys (`'key'` / `"key"`) and unquoted identifier keys (`Back: 'Punggung'`)
- * without executing the file. Throws if the file cannot be parsed into at least one key-value entry
- * or contains unsupported property values.
+ * without executing the file. Uses a linear single-pass forward scanner to prevent ReDoS.
+ * Throws if the file cannot be parsed into at least one key-value entry or contains unsupported syntax.
  * @param {string} content
  * @returns {Record<string, string>}
  */
 function parseSimpleJsLocale(content) {
-  const src = String(content || '').replace(
-    /(['"])(?:\\.|(?!\1)[^\\])*\1|\/\*[\s\S]*?\*\/|\/\/[^\n]*/g,
-    (match, quote) => (quote ? match : ''),
-  );
-  const openBrace = src.indexOf('{');
-  const closeBrace = src.lastIndexOf('}');
+  const src = String(content || '');
+  if (src.length > MAX_JS_LOCALE_LENGTH) {
+    throw new Error(`JS locale source exceeds maximum length of ${MAX_JS_LOCALE_LENGTH} characters.`);
+  }
+
+  // Linear single-pass strip of comments while preserving string literals
+  let stripped = '';
+  let i = 0;
+  const n = src.length;
+  while (i < n) {
+    const ch = src[i];
+    if (ch === '"' || ch === '\'') {
+      const quote = ch;
+      stripped += quote;
+      i++;
+      let closed = false;
+      while (i < n) {
+        const c = src[i];
+        stripped += c;
+        if (c === '\\') {
+          i++;
+          if (i < n) {
+            stripped += src[i];
+            i++;
+          }
+          continue;
+        } else if (c === quote) {
+          closed = true;
+          i++;
+          break;
+        }
+        i++;
+      }
+      if (!closed) throw new Error('Unterminated string literal in JS locale.');
+    } else if (ch === '/' && src[i + 1] === '/') {
+      i += 2;
+      while (i < n && src[i] !== '\n') i++;
+    } else if (ch === '/' && src[i + 1] === '*') {
+      i += 2;
+      let closed = false;
+      while (i < n) {
+        if (src[i] === '*' && src[i + 1] === '/') {
+          i += 2;
+          closed = true;
+          break;
+        }
+        i++;
+      }
+      if (!closed) throw new Error('Unterminated block comment in JS locale.');
+    } else {
+      stripped += ch;
+      i++;
+    }
+  }
+
+  const openBrace = stripped.indexOf('{');
+  const closeBrace = stripped.lastIndexOf('}');
   if (openBrace === -1 || closeBrace === -1 || closeBrace <= openBrace) {
     throw new Error('Unsupported JS locale format: missing object literal braces "{ ... }".');
   }
 
-  const body = src.slice(openBrace + 1, closeBrace);
+  const body = stripped.slice(openBrace + 1, closeBrace);
   const dict = {};
-  const tokenRegex =
-    /\/\*[\s\S]*?\*\/|\/\/[^\n]*|(?:(['"])((?:\\.|(?!\1)[^\\])*)\1|([A-Za-z_$][A-Za-z0-9_$]*))\s*:\s*(['"])((?:\\.|(?!\4)[^\\])*)\4\s*,?/g;
 
-  let match;
+  let pos = 0;
+  const len = body.length;
   let count = 0;
-  while ((match = tokenRegex.exec(body)) !== null) {
-    if (match[1] || match[3]) {
-      const rawKey = match[1] ? match[2].replace(/\\(['"\\])/g, '$1') : match[3];
-      const rawVal = match[5].replace(/\\(['"\\])/g, '$1');
-      dict[rawKey] = rawVal;
-      count++;
+
+  function skipWhitespaceAndCommas() {
+    while (pos < len && (/\s/.test(body[pos]) || body[pos] === ',')) {
+      pos++;
     }
   }
 
-  const leftover = body.replace(tokenRegex, '').trim();
-  if (leftover.length > 0) {
-    throw new Error(
-      `Unsupported JS locale syntax near: ${leftover.slice(0, 80).replace(/\s+/g, ' ')}`,
-    );
+  while (pos < len) {
+    skipWhitespaceAndCommas();
+    if (pos >= len) break;
+
+    // Parse key: quoted string or identifier
+    let key = null;
+    const startChar = body[pos];
+    if (startChar === '"' || startChar === '\'') {
+      const quote = startChar;
+      pos++;
+      let rawKey = '';
+      let closed = false;
+      while (pos < len) {
+        const c = body[pos];
+        if (c === '\\') {
+          pos++;
+          if (pos < len) {
+            const esc = body[pos];
+            rawKey += (esc === quote || esc === '\\') ? esc : ('\\' + esc);
+          }
+        } else if (c === quote) {
+          closed = true;
+          pos++;
+          break;
+        } else {
+          rawKey += c;
+        }
+        pos++;
+      }
+      if (!closed) throw new Error('Unterminated key string in JS locale object.');
+      key = rawKey;
+    } else if (/[A-Za-z_$]/.test(startChar)) {
+      const idStart = pos;
+      while (pos < len && /[A-Za-z0-9_$]/.test(body[pos])) {
+        pos++;
+      }
+      key = body.slice(idStart, pos);
+    } else {
+      throw new Error(`Unsupported JS locale syntax near: ${body.slice(pos, pos + 80).replace(/\s+/g, ' ')}`);
+    }
+
+    skipWhitespaceAndCommas();
+    if (pos >= len || body[pos] !== ':') {
+      throw new Error(`Unsupported JS locale syntax near: ${body.slice(pos, pos + 80).replace(/\s+/g, ' ')}`);
+    }
+    pos++; // skip ':'
+
+    skipWhitespaceAndCommas();
+    if (pos >= len) {
+      throw new Error(`Unexpected end of input after key "${key}".`);
+    }
+
+    // Parse value: must be quoted string
+    const valQuote = body[pos];
+    if (valQuote !== '"' && valQuote !== '\'') {
+      throw new Error(`Unsupported JS locale syntax near: ${body.slice(pos, pos + 80).replace(/\s+/g, ' ')}`);
+    }
+    pos++;
+    let val = '';
+    let valClosed = false;
+    while (pos < len) {
+      const c = body[pos];
+      if (c === '\\') {
+        pos++;
+        if (pos < len) {
+          const esc = body[pos];
+          val += (esc === valQuote || esc === '\\') ? esc : ('\\' + esc);
+        }
+      } else if (c === valQuote) {
+        valClosed = true;
+        pos++;
+        break;
+      } else {
+        val += c;
+      }
+      pos++;
+    }
+    if (!valClosed) throw new Error(`Unterminated value string for key "${key}".`);
+
+    dict[key] = val;
+    count++;
+    skipWhitespaceAndCommas();
   }
+
   if (count === 0) {
     throw new Error('No key-value string entries found in JS locale object.');
   }
@@ -344,12 +526,14 @@ if (require.main === module) {
     }
 
     if (findings.length === 0) {
-      console.log(`✅ Clean: 0 findings in ${target}`);
+      console.log(`✅ Clean: 0 findings in ${sanitizeDiagnostic(target)}`);
     } else {
       hasFailures = true;
-      console.error(`❌ Found ${findings.length} issue(s) in ${target}:`);
+      console.error(`❌ Found ${findings.length} issue(s) in ${sanitizeDiagnostic(target)}:`);
       for (const f of findings) {
-        console.error(`  - [${f.rule}] (${f.key}): ${f.message}`);
+        console.error(
+          `  - [${sanitizeDiagnostic(f.rule)}] (${sanitizeDiagnostic(f.key)}): ${sanitizeDiagnostic(f.message)}`,
+        );
       }
     }
   }
@@ -362,4 +546,5 @@ module.exports = {
   auditDictionary,
   extractPlaceholders,
   parseSimpleJsLocale,
+  sanitizeDiagnostic,
 };

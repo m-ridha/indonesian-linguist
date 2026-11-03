@@ -161,6 +161,70 @@ test('parseSimpleJsLocale: parses both quoted and unquoted JS keys, ignores brac
     () => parseSimpleJsLocale('export default { Back: getDynamicValue() };'),
     /Unsupported JS locale syntax/,
   );
+  // Regression test: linear scanner rejects unterminated block comments without quadratic backtracking
+  assert.throws(
+    () => parseSimpleJsLocale('/* unterminated comment\nexport default { Back: "Punggung" };'),
+    /Unterminated block comment/,
+  );
+  // Regression test: long identifier without colon is rejected in linear time
+  assert.throws(
+    () => parseSimpleJsLocale(`export default { ${'a'.repeat(2000)} "value" };`),
+    /Unsupported JS locale syntax/,
+  );
+});
+
+test('auditDictionary: bounds nesting depth and prevents exponential allocation', () => {
+  // Construct deep nested object
+  let deepObj = { Back: 'Punggung' };
+  for (let i = 0; i < 40; i++) {
+    deepObj = { level: deepObj };
+  }
+  const findings = auditDictionary(deepObj);
+  assert.ok(findings.some((f) => f.rule === 'nesting-limit-exceeded'));
+});
+
+test('auditDictionary: signs out linear regex handles repetitive "signs" safely without catastrophic backtracking', () => {
+  const repetitiveKey = `${'signs '.repeat(1000)}not_out`;
+  const t0 = Date.now();
+  const findings = auditDictionary({ [repetitiveKey]: 'menandakan' });
+  const elapsed = Date.now() - t0;
+  assert.ok(elapsed < 200, `Regex took too long: ${elapsed}ms`);
+  assert.equal(findings.length, 0);
+
+  // Positive case
+  const matchFindings = auditDictionary({ 'signs the user out': 'menandakan user keluar' });
+  assert.ok(matchFindings.some((f) => f.rule === 'polysemy-calque'));
+});
+
+test('CLI: escapes control characters and newlines in diagnostics to prevent log injection', () => {
+  const scriptPath = path.join(__dirname, '..', 'scripts', 'audit-id.js');
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'audit-id-sec-'));
+
+  try {
+    const maliciousJson = path.join(tmpDir, 'malicious.json');
+    // Key containing actual newline, carriage return, line separator, and bidi control to attempt log injection
+    fs.writeFileSync(
+      maliciousJson,
+      JSON.stringify({
+        'Injected\nFAKE_STATUS: OK\rCR\u2028LS\u202eRLO': 'silahkan',
+      }),
+      'utf8',
+    );
+
+    const result = spawnSync(process.execPath, [scriptPath, maliciousJson], {
+      encoding: 'utf8',
+    });
+
+    assert.equal(result.status, 1);
+    // Control characters must be escaped, never emitted as raw control or line breaks in diagnostic output
+    assert.match(result.stderr, /Injected\\nFAKE_STATUS: OK\\rCR\\u2028LS\\u202eRLO/);
+    assert.doesNotMatch(result.stderr, /Injected\nFAKE_STATUS/);
+    assert.doesNotMatch(result.stderr, /OK\rCR/);
+    assert.doesNotMatch(result.stderr, /\u2028/);
+    assert.doesNotMatch(result.stderr, /\u202e/);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
 });
 
 test('auditDictionary: recursively audits nested namespace objects and prefixes finding keys', () => {
