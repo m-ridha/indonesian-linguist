@@ -229,6 +229,11 @@ function auditDictionary(dict, options = {}) {
   const activeStack = options.activeStack ?? new Set();
   const counter = options.counter ?? { entries: 0 };
 
+  const isObject = dict && typeof dict === 'object';
+  if (isObject && activeStack.has(dict)) {
+    return findings;
+  }
+
   if (currentDepth > MAX_DICTIONARY_DEPTH) {
     findings.push({
       key: currentPrefix || 'root',
@@ -238,11 +243,7 @@ function auditDictionary(dict, options = {}) {
     return findings;
   }
 
-  const isObject = dict && typeof dict === 'object';
   if (isObject) {
-    if (activeStack.has(dict)) {
-      return findings;
-    }
     const deepestVisited = visited.get(dict);
     if (deepestVisited !== undefined && currentDepth <= deepestVisited) {
       return findings;

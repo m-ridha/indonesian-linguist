@@ -397,11 +397,25 @@ test('auditDictionary: does not read property values beyond traversal entry limi
 });
 
 test('auditDictionary: ignores inherited prototype properties without scanning them', () => {
-  const proto = { inheritedBad: 'Punggung' };
+  const proto = { Back: 'Punggung' };
   const child = Object.create(proto);
-  child.Back = 'Kembali';
+  child.Safe = 'Aman';
   const findings = auditDictionary(child);
   assert.strictEqual(findings.length, 0);
+});
+
+test('auditDictionary: stops cycle on active ancestor path at depth limit without reporting nesting-limit-exceeded', () => {
+  const root = {};
+  let current = root;
+  for (let i = 0; i < 32; i++) {
+    const next = {};
+    current.next = next;
+    current = next;
+  }
+  // At depth 32, point back to root (an active ancestor)
+  current.loop = root;
+  const findings = auditDictionary(root);
+  assert.strictEqual(findings.some((f) => f.rule === 'nesting-limit-exceeded'), false);
 });
 
 test('auditDictionary: stops cycle on active ancestor path without overflowing finding limit on self-reference', () => {
