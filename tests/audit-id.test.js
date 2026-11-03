@@ -434,3 +434,42 @@ test('auditDictionary: stops cycle on active ancestor path without overflowing f
   assert.ok(findings.some((f) => f.key === 'first.Back'));
   assert.ok(findings.some((f) => f.key === 'second.Back'));
 });
+
+test('auditDictionary: truncates extremely long key paths to prevent amplification', () => {
+  const deepKey = 'a'.repeat(2000);
+  const dict = {
+    [deepKey]: {
+      Back: 'Punggung',
+    },
+  };
+  const findings = auditDictionary(dict);
+  assert.equal(findings.length, 1);
+  assert.ok(findings[0].key.length <= 1050);
+  assert.ok(findings[0].key.endsWith('...[truncated]'));
+});
+
+test('CLI: bounds cumulative diagnostic output bytes on files with many findings', () => {
+  const scriptPath = path.join(__dirname, '..', 'scripts', 'audit-id.js');
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'audit-cli-ampl-'));
+
+  try {
+    const hugeDict = {};
+    const longPrefix = 'namespace_'.repeat(50);
+    for (let i = 0; i < 3000; i++) {
+      hugeDict[`${longPrefix}_item_${i}`] = 'silahkan';
+    }
+    const testFile = path.join(tmpDir, 'huge.json');
+    fs.writeFileSync(testFile, JSON.stringify({ root: hugeDict }), 'utf8');
+
+    const result = spawnSync(process.execPath, [scriptPath, testFile], {
+      encoding: 'utf8',
+    });
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /remaining findings truncated/);
+    // Cumulative stderr output should not balloon to multi-megabytes
+    assert.ok(Buffer.byteLength(result.stderr, 'utf8') < 600_000);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});

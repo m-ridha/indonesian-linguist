@@ -211,6 +211,16 @@ const MAX_DICTIONARY_FINDINGS = 5000;
 const MAX_DICTIONARY_ENTRIES = 50_000;
 
 /**
+ * Maximum character length for nested dictionary key paths to prevent amplification attacks.
+ */
+const MAX_PATH_LENGTH = 1024;
+
+/**
+ * Maximum cumulative diagnostic bytes printed by the CLI for findings per file.
+ */
+const MAX_CLI_DIAGNOSTIC_BYTES = 500_000;
+
+/**
  * Audit a key-value i18n dictionary object (including nested namespace objects).
  * Collects findings in a single accumulator with explicit depth, size, and traversal bounds.
  * Tracks visited object references to prevent exponential work on compact shared-reference graphs,
@@ -275,7 +285,11 @@ function auditDictionary(dict, options = {}) {
     }
 
     const value = dict[key];
-    const fullKey = currentPrefix ? `${currentPrefix}.${key}` : key;
+    const rawKey = currentPrefix ? `${currentPrefix}.${key}` : key;
+    const fullKey =
+      rawKey.length > MAX_PATH_LENGTH
+        ? `${rawKey.slice(0, MAX_PATH_LENGTH)}...[truncated]`
+        : rawKey;
 
     if (value && typeof value === 'object' && !Array.isArray(value)) {
       auditDictionary(value, {
@@ -583,9 +597,20 @@ if (require.main === module) {
     } else {
       hasFailures = true;
       console.error(`❌ Found ${findings.length} issue(s) in ${sanitizeDiagnostic(target)}:`);
+      let printedBytes = 0;
+      let truncated = false;
       for (const f of findings) {
+        const line = `  - [${sanitizeDiagnostic(f.rule)}] (${sanitizeDiagnostic(f.key)}): ${sanitizeDiagnostic(f.message)}\n`;
+        printedBytes += Buffer.byteLength(line, 'utf8');
+        if (printedBytes > MAX_CLI_DIAGNOSTIC_BYTES) {
+          truncated = true;
+          break;
+        }
+        process.stderr.write(line);
+      }
+      if (truncated) {
         console.error(
-          `  - [${sanitizeDiagnostic(f.rule)}] (${sanitizeDiagnostic(f.key)}): ${sanitizeDiagnostic(f.message)}`,
+          `  ... remaining findings truncated (cumulative output exceeded ${MAX_CLI_DIAGNOSTIC_BYTES} bytes limit)`,
         );
       }
     }

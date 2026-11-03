@@ -516,11 +516,22 @@ test('OpenAI / Codex agent metadata (skills/indonesian-linguist/agents/openai.ya
   const yamlPath = 'skills/indonesian-linguist/agents/openai.yaml';
   assert.ok(fs.existsSync(path.join(root, yamlPath)), `${yamlPath} must exist`);
   const content = read(yamlPath);
-  const shortDescMatch = content.match(/^\s*short_description:\s*"([^"]+)"/m);
+  assert.ok(content.length <= 100_000, 'openai.yaml file size must be within safety bounds');
+  const shortDescMatch = content.match(/^[ \t]*short_description:[ \t]*"([^"\r\n]+)"/m);
   assert.ok(shortDescMatch, 'openai.yaml must define short_description');
   const len = shortDescMatch[1].length;
   assert.ok(len >= 25 && len <= 64, `short_description length (${len}) must be between 25 and 64 chars`);
   assert.match(content, /\$indonesian-linguist/, 'openai.yaml default_prompt must reference $indonesian-linguist');
+});
+
+test('openai.yaml regex matches strictly on single line without backtracking over repeated blank lines', () => {
+  const blankLines = '   \n'.repeat(5000);
+  const regex = /^[ \t]*short_description:[ \t]*"([^"\r\n]+)"/m;
+  const t0 = Date.now();
+  const match = blankLines.match(regex);
+  const elapsed = Date.now() - t0;
+  assert.strictEqual(match, null);
+  assert.ok(elapsed < 100, `Regex evaluation took too long: ${elapsed}ms`);
 });
 
 test('all markdown files have balanced code fences and zero unfinished TODO/TBD/FIXME markers', () => {
