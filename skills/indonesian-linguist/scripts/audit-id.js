@@ -314,12 +314,12 @@ function auditDictionary(dict, options = {}) {
       }
     }
 
-    if (value && typeof value === 'object' && !Array.isArray(value)) {
+    if (value && typeof value === 'object') {
       auditDictionary(value, {
         ...options,
         prefix: fullKey,
         depth: currentDepth + 1,
-        source: (source && typeof source === 'object' && !Array.isArray(source)) ? source[key] : null,
+        source: (source && typeof source === 'object') ? source[key] : null,
         accumulator: findings,
         visited,
         activeStack,
@@ -329,7 +329,7 @@ function auditDictionary(dict, options = {}) {
     }
     if (typeof value !== 'string') continue;
 
-    const sourceValue = (source && typeof source === 'object' && !Array.isArray(source)) ? source[key] : undefined;
+    const sourceValue = (source && typeof source === 'object') ? source[key] : undefined;
 
     // 1. Silent English identity fallback check
     const isUntranslated = typeof sourceValue === 'string' ? (value.trim() === sourceValue.trim()) : (key === value);
@@ -407,9 +407,9 @@ function auditDictionary(dict, options = {}) {
         const leadingWords = leadingPhrase.split(/\s+/);
         const firstLeading = leadingWords[0];
 
-        const permittedQuantifierWord = /^(sebanyak|total|sekitar|hanya|ada|masih|tersisa)$/i;
+        const permittedQuantifierWord = /^(sebanyak|total|sekitar|hanya|ada|masih|tersisa|kurang)$/i;
         const isPermittedQuantifier =
-          /^(kurang dari|lebih dari|masih ada)$/i.test(leadingPhrase) ||
+          /^(kurang dari|lebih dari|masih ada|masih kurang)$/i.test(leadingPhrase) ||
           leadingWords.every((word) => permittedQuantifierWord.test(word));
 
         // Exclude common non-verb nouns (e.g. menit, latihan) from matching verb heuristic
@@ -431,7 +431,21 @@ function auditDictionary(dict, options = {}) {
 
         const isLeadingVerbWithObject = isPredicate && hasObjectOrImplicit;
 
-        if (!isPermittedQuantifier && !isLeadingVerbWithObject) {
+        const eponymousNounPairs = {
+          formula: /^rumus$/i,
+          law: /^hukum$/i,
+          theorem: /^teorema$/i,
+          equation: /^persamaan$/i,
+          principle: /^prinsip$/i,
+        };
+        const enNoun = quantMatch[2].toLowerCase();
+        // Eponymous concepts strictly name a single formula/law (e.g. "{0} formula" -> "Rumus {0}"),
+        // rather than counting items (e.g. "{0} law available" or "{0} laws found").
+        const isEponymousPhrase =
+          /^(?:\{\{[0-9a-zA-Z_.-]+\}\}|\{[0-9a-zA-Z_.-]+\}|%(?:\d+\$)?[sdif])\s+(?:formula|law|theorem|equation|principle)$/i.test(sourceTemplate.trim()) &&
+          Boolean(eponymousNounPairs[enNoun] && eponymousNounPairs[enNoun].test(invertedMatch[1]));
+
+        if (!isPermittedQuantifier && !isLeadingVerbWithObject && !isEponymousPhrase) {
           findings.push({
             key: fullKey,
             rule: 'inverted-quantitative-placeholder',
@@ -443,7 +457,10 @@ function auditDictionary(dict, options = {}) {
 
     // 3. Known UI/domain polysemy & calque traps
     for (const trap of KNOWN_CALQUE_TRAPS) {
-      if (trap.keyMatch.test(key) && trap.badVal.test(value)) {
+      const isKeyMatch =
+        trap.keyMatch.test(key) ||
+        (typeof sourceValue === 'string' && trap.keyMatch.test(sourceValue));
+      if (isKeyMatch && trap.badVal.test(value)) {
         findings.push({
           key: fullKey,
           rule: 'polysemy-calque',
@@ -551,8 +568,11 @@ function parseSimpleJsLocale(content) {
     throw new Error(`JS locale source exceeds maximum length of ${MAX_JS_LOCALE_LENGTH} characters.`);
   }
 
-  // Linear single-pass strip of comments while preserving string literals
+  // Linear single-pass strip of comments while preserving string literals.
+  // Also builds a same-length masked representation with string contents replaced by spaces
+  // to prevent matching 'export default' or '{' inside string literals.
   let stripped = '';
+  let masked = '';
   let i = 0;
   const n = src.length;
   while (i < n) {
@@ -560,15 +580,18 @@ function parseSimpleJsLocale(content) {
     if (ch === '"' || ch === '\'' || ch === '`') {
       const quote = ch;
       stripped += quote;
+      masked += quote;
       i++;
       let closed = false;
       while (i < n) {
         const c = src[i];
         stripped += c;
+        masked += c === quote ? c : ' ';
         if (c === '\\') {
           i++;
           if (i < n) {
             stripped += src[i];
+            masked += ' ';
             i++;
           }
           continue;
@@ -597,11 +620,17 @@ function parseSimpleJsLocale(content) {
       if (!closed) throw new Error('Unterminated block comment in JS locale.');
     } else {
       stripped += ch;
+      masked += ch;
       i++;
     }
   }
 
-  const openBrace = stripped.indexOf('{');
+  // Prefer export default { ... } if present, otherwise fall back to named export or module.exports = { ... }
+  // to avoid confusing leading import statements or preceding helper object declarations with the exported locale
+  const defaultExportMatch = masked.match(/export\s+default\s*\{/);
+  const namedExportMatch = masked.match(/(?:export\s+(?:const|let|var)\s+[a-zA-Z_$][0-9a-zA-Z_$]*\s*=|module\.exports\s*=)\s*\{/);
+  const exportMatch = defaultExportMatch || namedExportMatch;
+  const openBrace = exportMatch ? exportMatch.index + exportMatch[0].lastIndexOf('{') : masked.indexOf('{');
   const closeBrace = stripped.lastIndexOf('}');
   if (openBrace === -1 || closeBrace === -1 || closeBrace <= openBrace) {
     throw new Error('Unsupported JS locale format: missing object literal braces "{ ... }".');
@@ -684,12 +713,53 @@ function parseSimpleJsLocale(content) {
         throw new Error(`Unexpected end of input after key "${key}".`);
       }
 
-      // Parse value: nested object '{', string literal, or reject dynamic expressions
+      // Parse value: nested object '{', array '[', string literal, or reject dynamic expressions
       const valChar = stripped[pos];
       if (valChar === '{') {
         pos++; // consume '{'
         const subResult = parseObjectLiteral();
         dict[key] = subResult.dict;
+        entryCount++;
+      } else if (valChar === '[') {
+        pos++; // consume '['
+        const arr = [];
+        let expectComma = false;
+        let arrayClosed = false;
+        while (pos < len) {
+          while (pos < len && /\s/.test(stripped[pos])) pos++;
+          if (pos >= len) break;
+          if (stripped[pos] === ']') {
+            pos++; // consume ']'
+            arrayClosed = true;
+            break;
+          }
+          if (expectComma) {
+            if (stripped[pos] === '}') {
+              throw new Error(`Unterminated array literal in JS locale near: ${stripped.slice(pos, pos + 80).replace(/\s+/g, ' ')}`);
+            }
+            if (stripped[pos] !== ',') {
+              throw new Error(`Unsupported JS locale syntax in array near: ${stripped.slice(pos, pos + 80).replace(/\s+/g, ' ')}`);
+            }
+            pos++; // consume ','
+            while (pos < len && /\s/.test(stripped[pos])) pos++;
+            if (pos < len && stripped[pos] === ']') {
+              pos++; // consume ']'
+              arrayClosed = true;
+              break;
+            }
+          }
+          const itemChar = stripped[pos];
+          if (itemChar === '"' || itemChar === '\'' || itemChar === '`') {
+            arr.push(parseStringLiteral());
+            expectComma = true;
+          } else {
+            throw new Error(`Unsupported JS locale syntax in array near: ${stripped.slice(pos, pos + 80).replace(/\s+/g, ' ')}`);
+          }
+        }
+        if (!arrayClosed) {
+          throw new Error(`Unterminated array literal in JS locale near: ${stripped.slice(pos, pos + 80).replace(/\s+/g, ' ')}`);
+        }
+        dict[key] = arr;
         entryCount++;
       } else if (valChar === '"' || valChar === '\'' || valChar === '`') {
         const val = parseStringLiteral();

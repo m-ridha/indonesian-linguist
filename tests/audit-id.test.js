@@ -946,3 +946,123 @@ test('CLI: supports --source, --pronoun, and --register flags', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });
+
+test('parseSimpleJsLocale: handles leading import statements and array-of-strings values', () => {
+  const jsSource = `
+    import { format } from './formatter';
+    import { helperA, helperB } from '@shared/utils';
+
+    export default {
+      welcome: "Selamat datang",
+      guidelines: [
+        "Catat setiap latihanmu",
+        "Gunakan beban yang sesuai"
+      ]
+    };
+  `;
+
+  const parsed = parseSimpleJsLocale(jsSource);
+  assert.equal(parsed.welcome, 'Selamat datang');
+  assert.deepEqual(parsed.guidelines, [
+    'Catat setiap latihanmu',
+    'Gunakan beban yang sesuai',
+  ]);
+
+  // auditDictionary audits array-of-strings
+  const findings = auditDictionary(parsed);
+  assert.equal(findings.length, 0);
+
+  // auditDictionary catches calque traps inside array elements using source string
+  const calqueArray = { nav: ['Punggung'] };
+  const calqueSource = { nav: ['Back'] };
+  const calqueFindings = auditDictionary(calqueArray, { source: calqueSource });
+  assert.ok(calqueFindings.some((f) => f.rule === 'polysemy-calque' && f.key === 'nav.0'));
+
+  // auditDictionary catches errors inside array elements
+  const badParsed = {
+    instructions: [
+      'Silahkan masuk',
+      'Di era digital yang serba cepat ini',
+    ],
+  };
+  const badFindings = auditDictionary(badParsed);
+  assert.ok(badFindings.some((f) => f.rule === 'kata-tidak-baku' && f.key === 'instructions.0'));
+  assert.ok(badFindings.some((f) => f.rule === 'slop-or-pleonasm' && f.key === 'instructions.1'));
+
+  // parseSimpleJsLocale rejects unseparated adjacent array items
+  assert.throws(
+    () => parseSimpleJsLocale('export default { items: ["Satu" "Dua"] };'),
+    /Unsupported JS locale syntax in array/,
+  );
+
+  // parseSimpleJsLocale rejects unclosed array literals
+  assert.throws(
+    () => parseSimpleJsLocale('export default { items: ["Satu" };'),
+    /Unterminated array literal/,
+  );
+});
+
+test('parseSimpleJsLocale: ignores export declarations inside string literals', () => {
+  const jsSource = `
+    const example = "Type export default { fake: 'Palsu' } to start";
+    module.exports = {
+      real: "Teks asli"
+    };
+  `;
+  const parsed = parseSimpleJsLocale(jsSource);
+  assert.equal(parsed.real, 'Teks asli');
+  assert.equal(parsed.fake, undefined);
+});
+
+test('parseSimpleJsLocale: prefers export default over preceding named exports', () => {
+  const jsSource = `
+    export const metadata = { title: "App Config" };
+    export default {
+      welcome: "Selamat datang"
+    };
+  `;
+  const parsed = parseSimpleJsLocale(jsSource);
+  assert.equal(parsed.welcome, 'Selamat datang');
+  assert.equal(parsed.title, undefined);
+});
+
+test('auditDictionary: permits deficit quantifiers (kurang, masih kurang)', () => {
+  const source = {
+    weightDeficit: '{0} kg remaining',
+    repsDeficit: '{count} reps needed',
+  };
+  const target = {
+    weightDeficit: 'Kurang {0} kg lagi',
+    repsDeficit: 'Masih kurang {count} repetisi',
+  };
+
+  const findings = auditDictionary(target, { source });
+  assert.equal(findings.length, 0);
+});
+
+test('auditDictionary: permits eponymous/named concepts following Indonesian D-M word order ({0} formula -> Rumus {0})', () => {
+  const eponymousCatalog = {
+    '{0} formula': 'Rumus {0}',
+    '{{0}} formula': 'Rumus {{0}}',
+    '{0} law': 'Hukum {0}',
+    '{0} theorem': 'Teorema {0}',
+  };
+
+  const findings = auditDictionary(eponymousCatalog);
+  assert.equal(findings.length, 0);
+
+  // Still flags when noun is a counted item rather than an eponymous concept
+  const countCatalog = {
+    '{0} models available': 'Model {0} tersedia',
+    '{0} law available': 'Hukum {0} tersedia',
+  };
+  const countFindings = auditDictionary(countCatalog);
+  assert.equal(countFindings.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 2);
+
+  // Mismatched English/Indonesian eponymous noun pair is not exempt
+  const mismatchedCatalog = {
+    '{0} law': 'Rumus {0}',
+  };
+  const mismatchFindings = auditDictionary(mismatchedCatalog);
+  assert.ok(mismatchFindings.some((f) => f.rule === 'inverted-quantitative-placeholder'));
+});
