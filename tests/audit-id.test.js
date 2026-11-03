@@ -1207,6 +1207,56 @@ test('parseAndroidXmlLocale: parses strings, string-arrays, plurals, entities, a
     () => parseAndroidXmlLocale('<resources><resources><string name="title">Nested</string></resources></resources>'),
     /nested or multiple <resources> elements are not allowed/i,
   );
+
+  // Preserves comment markers inside CDATA while stripping outside comments
+  const cdataCommentXml = `<resources>
+    <!-- outer comment before -->
+    <string name="cdata_comment"><![CDATA[<!-- not an xml comment -->]]></string>
+    <!-- outer comment after -->
+  </resources>`;
+  const cdataDict = parseAndroidXmlLocale(cdataCommentXml);
+  assert.equal(cdataDict.cdata_comment, '<!-- not an xml comment -->');
+
+  // Normalizes self-closing entries and ensures subsequent regular entries parse correctly
+  const selfClosingXml = `<resources>
+    <string name="empty_flag"/>
+    <string name="regular_string">Halo Dunia</string>
+    <string-array name="empty_items"/>
+    <string-array name="regular_array">
+      <item>Satu</item>
+      <item>Dua</item>
+    </string-array>
+    <plurals name="empty_plurals"/>
+    <plurals name="regular_plurals">
+      <item quantity="one">%d item</item>
+      <item quantity="other">%d item</item>
+    </plurals>
+  </resources>`;
+  const selfClosingDict = parseAndroidXmlLocale(selfClosingXml);
+  assert.equal(selfClosingDict.empty_flag, '');
+  assert.equal(selfClosingDict.regular_string, 'Halo Dunia');
+  assert.deepEqual(selfClosingDict.empty_items, []);
+  assert.deepEqual(selfClosingDict.regular_array, ['Satu', 'Dua']);
+  assert.deepEqual(selfClosingDict.empty_plurals, {});
+  assert.deepEqual(selfClosingDict.regular_plurals, { one: '%d item', other: '%d item' });
+
+  // Validates child tag structure and rejects unclosed/malformed items in string-array and plurals
+  assert.throws(
+    () => parseAndroidXmlLocale('<resources><string-array name="colors"><item>Red<item>Blue</item></string-array></resources>'),
+    /mismatched <item> tags in <string-array name="colors">/i,
+  );
+  assert.throws(
+    () => parseAndroidXmlLocale('<resources><string-array name="colors"><item>Red</item>unexpected content</string-array></resources>'),
+    /malformed or unconsumed content in <string-array name="colors">/i,
+  );
+  assert.throws(
+    () => parseAndroidXmlLocale('<resources><plurals name="days"><item quantity="one">1 day</plurals></resources>'),
+    /mismatched <item> tags in <plurals name="days">/i,
+  );
+  assert.throws(
+    () => parseAndroidXmlLocale('<resources><plurals name="days"><item>missing quantity attribute</item></plurals></resources>'),
+    /malformed or unconsumed content in <plurals name="days">/i,
+  );
 });
 
 test('parseIosStringsLocale: parses Apple .strings with comments and escaped quotes', () => {
@@ -1253,6 +1303,17 @@ test('parseIosStringsLocale: parses Apple .strings with comments and escaped quo
     () => parseIosStringsLocale('"k" = "v"; unexpected garbage here'),
     /unexpected content near/i,
   );
+
+  // Decodes Apple .strings Unicode escapes (\Uxxxx) in both keys and values
+  const unicodeStrings = `
+"key_\\U00E9" = "Halo\\U00A0Dunia";
+"emoji_\\UD83D\\UDE00" = "Senyum \\UD83D\\UDE00!";
+"literal_escape" = "\\\\U00E9";
+`;
+  const unicodeDict = parseIosStringsLocale(unicodeStrings);
+  assert.equal(unicodeDict['key_é'], 'Halo\u00A0Dunia');
+  assert.equal(unicodeDict['emoji_😀'], 'Senyum 😀!');
+  assert.equal(unicodeDict.literal_escape, '\\U00E9');
 });
 
 test('auditDictionary: permits language picker autonyms and locale tags', () => {

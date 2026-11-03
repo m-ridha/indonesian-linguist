@@ -986,20 +986,66 @@ function unescapeAndroidXml(str) {
  * @param {string} content
  * @returns {Record<string, unknown>}
  */
+/**
+ * Strips XML comments (<!-- ... -->) while preserving comment delimiters inside <![CDATA[...]]> blocks.
+ * Throws if an unclosed XML comment is encountered outside CDATA.
+ * @param {string} src
+ * @returns {string}
+ */
+function stripXmlCommentsPreservingCdata(src) {
+  let current = src;
+  while (true) {
+    let result = '';
+    let i = 0;
+    const len = current.length;
+    let foundComment = false;
+    while (i < len) {
+      if (current.startsWith('<![CDATA[', i)) {
+        const end = current.indexOf(']]>', i + 9);
+        if (end === -1) {
+          result += current.slice(i);
+          break;
+        }
+        result += current.slice(i, end + 3);
+        i = end + 3;
+      } else if (current.startsWith('<!--', i)) {
+        const end = current.indexOf('-->', i + 4);
+        if (end === -1) {
+          throw new Error('Malformed Android XML: unclosed XML comment <!--');
+        }
+        foundComment = true;
+        i = end + 3;
+      } else {
+        result += current[i];
+        i++;
+      }
+    }
+    if (!foundComment) {
+      return result;
+    }
+    current = result;
+  }
+}
+
+/**
+ * Parse an Android `strings.xml` resource file into a dictionary object.
+ * Extracts:
+ * - `<string name="key">value</string>` -> `"key": "value"`
+ * - `<string-array name="key"><item>value</item>...</string-array>` -> `"key": ["value", ...]`
+ * - `<plurals name="key"><item quantity="qty">value</item>...</plurals>` -> `"key": { "qty": "value", ... }`
+ * Handles CDATA, XML entity decoding, and XML comment stripping.
+ * Verifies single root <resources> containment, validates child tag structure, and rejects malformed/unclosed tags.
+ * Normalizes self-closing string, string-array, plurals, and item elements into empty open/close pairs.
+ * @param {string} content
+ * @returns {Record<string, unknown>}
+ */
 function parseAndroidXmlLocale(content) {
   const src = String(content || '');
   if (src.length > MAX_NATIVE_LOCALE_LENGTH) {
     throw new Error(`Android XML source exceeds maximum length of ${MAX_NATIVE_LOCALE_LENGTH} characters.`);
   }
 
-  let clean = src;
-  while (clean.includes('<!--')) {
-    const next = clean.replace(/<!--[\s\S]*?-->/g, '');
-    if (next === clean) {
-      throw new Error('Malformed Android XML: unclosed XML comment <!--');
-    }
-    clean = next;
-  }
+  const clean = stripXmlCommentsPreservingCdata(src);
 
   const withoutProlog = clean.replace(/^\s*<\?xml[^>]*\?>/i, '').trim();
   const rootMatch = /^\s*<resources\b[^>]*>([\s\S]*?)<\/resources\s*>\s*$/i.exec(withoutProlog);
@@ -1012,20 +1058,26 @@ function parseAndroidXmlLocale(content) {
     throw new Error('Invalid Android strings.xml: nested or multiple <resources> elements are not allowed.');
   }
 
-  const openStringCount = (innerContent.match(/<string\s/gi) || []).length;
-  const closeStringCount = (innerContent.match(/<\/string\s*>/gi) || []).length;
+  // Normalize self-closing entries into empty open/close pairs before balance checks and extraction
+  const normalizedInner = innerContent.replace(
+    /<(string-array|string|plurals|item)(\s+[^>]*?|\s*)\/>/gi,
+    '<$1$2></$1>'
+  );
+
+  const openStringCount = (normalizedInner.match(/<string\s/gi) || []).length;
+  const closeStringCount = (normalizedInner.match(/<\/string\s*>/gi) || []).length;
   if (openStringCount !== closeStringCount) {
     throw new Error(`Invalid Android strings.xml: mismatched <string> tags (${openStringCount} open, ${closeStringCount} close).`);
   }
 
-  const openArrayCount = (innerContent.match(/<string-array\s/gi) || []).length;
-  const closeArrayCount = (innerContent.match(/<\/string-array\s*>/gi) || []).length;
+  const openArrayCount = (normalizedInner.match(/<string-array\s/gi) || []).length;
+  const closeArrayCount = (normalizedInner.match(/<\/string-array\s*>/gi) || []).length;
   if (openArrayCount !== closeArrayCount) {
     throw new Error(`Invalid Android strings.xml: mismatched <string-array> tags (${openArrayCount} open, ${closeArrayCount} close).`);
   }
 
-  const openPluralsCount = (innerContent.match(/<plurals\s/gi) || []).length;
-  const closePluralsCount = (innerContent.match(/<\/plurals\s*>/gi) || []).length;
+  const openPluralsCount = (normalizedInner.match(/<plurals\s/gi) || []).length;
+  const closePluralsCount = (normalizedInner.match(/<\/plurals\s*>/gi) || []).length;
   if (openPluralsCount !== closePluralsCount) {
     throw new Error(`Invalid Android strings.xml: mismatched <plurals> tags (${openPluralsCount} open, ${closePluralsCount} close).`);
   }
@@ -1035,34 +1087,52 @@ function parseAndroidXmlLocale(content) {
   // 1. Single strings: <string name="key" ...>value</string>
   const stringRegex = /<string\s+[^>]*name\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/string>/gi;
   let match;
-  while ((match = stringRegex.exec(innerContent)) !== null) {
+  while ((match = stringRegex.exec(normalizedInner)) !== null) {
     dict[match[1]] = unescapeAndroidXml(match[2]);
   }
 
   // 2. String arrays: <string-array name="key" ...><item>...</item></string-array>
   const arrayRegex = /<string-array\s+[^>]*name\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/string-array>/gi;
-  while ((match = arrayRegex.exec(innerContent)) !== null) {
+  while ((match = arrayRegex.exec(normalizedInner)) !== null) {
     const key = match[1];
     const inner = match[2];
+    const openItemCount = (inner.match(/<item(\s|>)/gi) || []).length;
+    const closeItemCount = (inner.match(/<\/item\s*>/gi) || []).length;
+    if (openItemCount !== closeItemCount) {
+      throw new Error(`Invalid Android strings.xml: mismatched <item> tags in <string-array name="${key}"> (${openItemCount} open, ${closeItemCount} close).`);
+    }
     const items = [];
     const itemRegex = /<item[^>]*>([\s\S]*?)<\/item>/gi;
     let itemMatch;
     while ((itemMatch = itemRegex.exec(inner)) !== null) {
       items.push(unescapeAndroidXml(itemMatch[1]));
     }
+    const unconsumed = inner.replace(/<item[^>]*>[\s\S]*?<\/item>/gi, '').trim();
+    if (unconsumed) {
+      throw new Error(`Invalid Android strings.xml: malformed or unconsumed content in <string-array name="${key}">.`);
+    }
     dict[key] = items;
   }
 
   // 3. Plurals: <plurals name="key" ...><item quantity="one">...</item></plurals>
   const pluralsRegex = /<plurals\s+[^>]*name\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/plurals>/gi;
-  while ((match = pluralsRegex.exec(innerContent)) !== null) {
+  while ((match = pluralsRegex.exec(normalizedInner)) !== null) {
     const key = match[1];
     const inner = match[2];
+    const openItemCount = (inner.match(/<item(\s|>)/gi) || []).length;
+    const closeItemCount = (inner.match(/<\/item\s*>/gi) || []).length;
+    if (openItemCount !== closeItemCount) {
+      throw new Error(`Invalid Android strings.xml: mismatched <item> tags in <plurals name="${key}"> (${openItemCount} open, ${closeItemCount} close).`);
+    }
     const pluralsObj = {};
     const itemRegex = /<item\s+[^>]*quantity\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/item>/gi;
     let itemMatch;
     while ((itemMatch = itemRegex.exec(inner)) !== null) {
       pluralsObj[itemMatch[1]] = unescapeAndroidXml(itemMatch[2]);
+    }
+    const unconsumed = inner.replace(/<item\s+[^>]*quantity\s*=\s*["'][^"']+["'][^>]*>[\s\S]*?<\/item>/gi, '').trim();
+    if (unconsumed) {
+      throw new Error(`Invalid Android strings.xml: malformed or unconsumed content in <plurals name="${key}">.`);
     }
     dict[key] = pluralsObj;
   }
@@ -1072,12 +1142,17 @@ function parseAndroidXmlLocale(content) {
 
 /**
  * Unescapes standard Apple .strings escape sequences in a single pass.
+ * Supports standard escapes (\", \\, \n, \r, \t) and Unicode escapes (\Uxxxx, \uxxxx).
  * @param {string} str
  * @returns {string}
  */
 function unescapeIosString(str) {
   if (!str) return '';
-  return str.replace(/\\(["\\nrt])/g, (_, ch) => {
+  return str.replace(/\\(?:(["\\nrt])|[uU]([0-9a-fA-F]{4}))/g, (_, ch, hex) => {
+    if (hex) {
+      const code = parseInt(hex, 16);
+      return Number.isFinite(code) && code >= 0 && code <= 0xffff ? String.fromCharCode(code) : '';
+    }
     switch (ch) {
       case '"': return '"';
       case '\\': return '\\';

@@ -18,7 +18,7 @@ Contains the zero-dependency Node.js CLI and library module [`audit-id.js`](audi
 
 - **Zero External Dependencies**: Uses only Node.js built-in modules (`fs`, `path`). `[scripts/audit-id.js]`
 - **Case-Sensitive UI Key Disambiguation**: Flags `'Back': 'Punggung'` (capital `B`, UI navigation button) while permitting `'back': 'punggung'` (lowercase `b`, anatomical muscle filter). `[scripts/audit-id.js:KNOWN_CALQUE_TRAPS]`
-- **Retained Loanword & Autonym Allowlist**: Excludes canonical retained fitness/developer loanwords, Latin anatomical terms, official brand names (`Face ID`, `Touch ID`, `iCloud Keychain`, `Google Password Manager`, `Health Connect`, `Apple Watch`, `Cloudflare`), and language-picker autonyms (`Bahasa Indonesia (ID)`, `Bahasa Melayu`, `English (US)`, locale codes) from false-positive `silent-fallback` warnings. `[scripts/audit-id.js:RETAINED_LOANWORD_PATTERNS]`
+- **Retained Loanword & Autonym Allowlist**: Excludes canonical retained fitness/developer loanwords, Latin anatomical terms, official brand names (`Face ID`, `Touch ID`, `iCloud Keychain`, `Google Password Manager`, `Health Connect`, `Apple Watch`, `Cloudflare Access`), and language-picker autonyms (`Bahasa Indonesia (ID)`, `Bahasa Melayu`, `English (US)`, locale codes) from false-positive `silent-fallback` warnings. `[scripts/audit-id.js:RETAINED_LOANWORD_PATTERNS]`
 
 ## Side Effects
 
