@@ -217,7 +217,7 @@ All rules are backed by official standards and empirical localization research (
 
 Contributions are welcome! Every contribution must be submitted via a Pull Request and reviewed by the repository maintainer before merging. Please read [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`AI_POLICY.md`](AI_POLICY.md) for our two-track contribution workflow, linguistic evidence requirements, and testing checklist.
 
-For responsible disclosure of security vulnerabilities in `scripts/audit-id.js` or project manifests, please consult our [Security Policy](SECURITY.md).
+For responsible disclosure of security vulnerabilities affecting any part of this project, please consult our [Security Policy](SECURITY.md).
 
 ---
 

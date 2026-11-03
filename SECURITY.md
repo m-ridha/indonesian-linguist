@@ -29,7 +29,7 @@ We use GitHub's **Private Vulnerability Reporting** to handle security disclosur
    - Clear steps to reproduce the issue, including proof-of-concept scripts or payload files (`.json`, `.js`, `.md`).
    - The affected component (e.g., `scripts/audit-id.js`, parser helpers, or bundled skill manifests).
    - Potential impact and any suggested mitigations.
-3. Submit the advisory. It will only be visible to the repository maintainer (`@m-ridha`).
+3. Submit the advisory. It will only be visible to authorized repository maintainers, administrators, and security managers.
 
 If you are unable to use GitHub Private Vulnerability Reporting for any reason, you can contact the maintainer directly via the profile contact options listed on [GitHub @m-ridha](https://github.com/m-ridha).
 
