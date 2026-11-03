@@ -13,6 +13,7 @@ const {
   auditText,
   auditDictionary,
   parseSimpleJsLocale,
+  parseAndroidXmlLocale,
   truncateToUtf8ByteLimit,
 } = require('../scripts/audit-id');
 
@@ -1134,4 +1135,42 @@ test('auditDictionary: permits eponymous/named concepts following Indonesian D-M
   };
   const mismatchFindings = auditDictionary(mismatchedCatalog);
   assert.ok(mismatchFindings.some((f) => f.rule === 'inverted-quantitative-placeholder'));
+});
+
+test('parseAndroidXmlLocale: parses strings, string-arrays, plurals, entities, and comments', () => {
+  const xml = `<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App identity and simple strings -->
+    <string name="app_name">My App</string>
+    <string name="welcome_message">Halo &amp; Selamat Datang! &quot;Semoga harimu menyenangkan&quot;</string>
+    <string name="escaped_apostrophe">It\'s time to workout</string>
+
+    <!-- String Array -->
+    <string-array name="exercise_categories">
+        <item>Dada</item>
+        <item>Punggung</item>
+        <item>Kaki</item>
+    </string-array>
+
+    <!-- Plurals with nested quantities -->
+    <plurals name="days_count">
+        <item quantity="one">%d hari</item>
+        <item quantity="other">%d hari</item>
+    </plurals>
+
+    <!-- CDATA handling -->
+    <string name="terms_html"><![CDATA[Silakan baca <b>Syarat & Ketentuan</b> kami.]]></string>
+</resources>`;
+
+  const dict = parseAndroidXmlLocale(xml);
+
+  assert.equal(dict.app_name, 'My App');
+  assert.equal(dict.welcome_message, 'Halo & Selamat Datang! "Semoga harimu menyenangkan"');
+  assert.equal(dict.escaped_apostrophe, "It's time to workout");
+  assert.deepEqual(dict.exercise_categories, ['Dada', 'Punggung', 'Kaki']);
+  assert.deepEqual(dict.days_count, {
+    one: '%d hari',
+    other: '%d hari',
+  });
+  assert.equal(dict.terms_html, 'Silakan baca <b>Syarat & Ketentuan</b> kami.');
 });

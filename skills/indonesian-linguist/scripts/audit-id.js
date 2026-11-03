@@ -884,6 +884,91 @@ function parseSimpleJsLocale(content) {
   return dict;
 }
 
+/**
+ * Maximum allowed source length for Android XML and iOS strings files (2 MB).
+ */
+const MAX_NATIVE_LOCALE_LENGTH = 2_000_000;
+
+/**
+ * Unescapes standard Android XML entities, CDATA sections, and backslash-escapes.
+ * @param {string} str
+ * @returns {string}
+ */
+function unescapeAndroidXml(str) {
+  if (!str) return '';
+  let res = str.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1');
+  res = res.replace(/\\'/g, "'").replace(/\\"/g, '"');
+  res = res
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+  return res.trim();
+}
+
+/**
+ * Parse an Android `strings.xml` resource file into a dictionary object.
+ * Extracts:
+ * - `<string name="key">value</string>` -> `"key": "value"`
+ * - `<string-array name="key"><item>value</item>...</string-array>` -> `"key": ["value", ...]`
+ * - `<plurals name="key"><item quantity="qty">value</item>...</plurals>` -> `"key": { "qty": "value", ... }`
+ * Handles CDATA, XML entity decoding, and XML comment stripping.
+ * @param {string} content
+ * @returns {Record<string, unknown>}
+ */
+function parseAndroidXmlLocale(content) {
+  const src = String(content || '');
+  if (src.length > MAX_NATIVE_LOCALE_LENGTH) {
+    throw new Error(`Android XML source exceeds maximum length of ${MAX_NATIVE_LOCALE_LENGTH} characters.`);
+  }
+
+  const clean = src.replace(/<!--[\s\S]*?-->/g, '');
+
+  if (!/<resources[\s>]/i.test(clean)) {
+    throw new Error('Invalid Android strings.xml: missing root <resources> tag.');
+  }
+
+  const dict = {};
+
+  // 1. Single strings: <string name="key" ...>value</string>
+  const stringRegex = /<string\s+[^>]*name\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/string>/gi;
+  let match;
+  while ((match = stringRegex.exec(clean)) !== null) {
+    dict[match[1]] = unescapeAndroidXml(match[2]);
+  }
+
+  // 2. String arrays: <string-array name="key" ...><item>...</item></string-array>
+  const arrayRegex = /<string-array\s+[^>]*name\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/string-array>/gi;
+  while ((match = arrayRegex.exec(clean)) !== null) {
+    const key = match[1];
+    const inner = match[2];
+    const items = [];
+    const itemRegex = /<item[^>]*>([\s\S]*?)<\/item>/gi;
+    let itemMatch;
+    while ((itemMatch = itemRegex.exec(inner)) !== null) {
+      items.push(unescapeAndroidXml(itemMatch[1]));
+    }
+    dict[key] = items;
+  }
+
+  // 3. Plurals: <plurals name="key" ...><item quantity="one">...</item></plurals>
+  const pluralsRegex = /<plurals\s+[^>]*name\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/plurals>/gi;
+  while ((match = pluralsRegex.exec(clean)) !== null) {
+    const key = match[1];
+    const inner = match[2];
+    const pluralsObj = {};
+    const itemRegex = /<item\s+[^>]*quantity\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/item>/gi;
+    let itemMatch;
+    while ((itemMatch = itemRegex.exec(inner)) !== null) {
+      pluralsObj[itemMatch[1]] = unescapeAndroidXml(itemMatch[2]);
+    }
+    dict[key] = pluralsObj;
+  }
+
+  return dict;
+}
+
 if (require.main === module) {
   const argv = process.argv.slice(2);
   let showHelp = false;
@@ -1144,6 +1229,7 @@ module.exports = {
   hasMalformedBraces,
   checkPronounPolicy,
   parseSimpleJsLocale,
+  parseAndroidXmlLocale,
   sanitizeDiagnostic,
   truncateToUtf8ByteLimit,
 };
