@@ -188,8 +188,18 @@ function extractRelativeMarkdownLinks(content) {
         while (i + delimLen < n && content[i + delimLen] === '`') {
           delimLen++;
         }
+        const spanStart = i;
         i += delimLen;
+        let closed = false;
         while (i < n) {
+          // A blank line ends the paragraph; an inline code span cannot cross it
+          if (content[i] === '\n') {
+            let p = i + 1;
+            while (p < n && (content[p] === ' ' || content[p] === '\t')) p++;
+            if (p >= n || content[p] === '\n' || content[p] === '\r') {
+              break;
+            }
+          }
           if (content[i] === '`') {
             let runLen = 0;
             while (i + runLen < n && content[i + runLen] === '`') {
@@ -197,6 +207,7 @@ function extractRelativeMarkdownLinks(content) {
             }
             if (runLen === delimLen) {
               i += runLen;
+              closed = true;
               break;
             } else {
               i += runLen;
@@ -204,6 +215,9 @@ function extractRelativeMarkdownLinks(content) {
           } else {
             i++;
           }
+        }
+        if (!closed) {
+          i = spanStart + delimLen;
         }
         continue;
       }
@@ -310,6 +324,16 @@ test('extractRelativeMarkdownLinks handles link titles, code spans, fences, and 
   assert.deepEqual(
     extractRelativeMarkdownLinks('Inline double: `` `[missing](./missing.md)` `` is skipped.'),
     [],
+  );
+
+  // Unmatched backtick runs are treated as literal text and bounded by paragraph / blank line
+  assert.deepEqual(
+    extractRelativeMarkdownLinks('Press the ` key.\n\nSee [valid](./docs/testing.md).'),
+    ['./docs/testing.md'],
+  );
+  assert.deepEqual(
+    extractRelativeMarkdownLinks('Press ` key and see [valid](./docs/testing.md).'),
+    ['./docs/testing.md'],
   );
 
   // Fenced blocks at line start are ignored
