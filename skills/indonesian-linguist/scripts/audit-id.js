@@ -103,10 +103,21 @@ const RULE_CATEGORIES = {
   'findings-limit-exceeded': 'structure',
 };
 
+/**
+ * Maps a diagnostic rule identifier to its high-level audit category.
+ * @param {string} rule - The rule identifier string.
+ * @returns {string} The categorized domain (grammar, terminology, style, parity, structure, or general).
+ */
 function getRuleCategory(rule) {
   return RULE_CATEGORIES[rule] || 'general';
 }
 
+/**
+ * Checks if a given key path is excluded by exact match or wildcard prefix.
+ * @param {string} keyPath - The dot-separated key path being checked.
+ * @param {Set<string>|Array<string>|null|undefined} ignoreKeys - Collection of ignored keys or wildcards.
+ * @returns {boolean} True if the key path is ignored.
+ */
 function isKeyIgnored(keyPath, ignoreKeys) {
   if (!ignoreKeys) return false;
   const set = ignoreKeys instanceof Set ? ignoreKeys : new Set(Array.isArray(ignoreKeys) ? ignoreKeys : [ignoreKeys]);
