@@ -445,11 +445,20 @@ test('auditDictionary: truncates extremely long key paths while preserving leaf 
   };
   const findings = auditDictionary(dict);
   assert.equal(findings.length, 2);
-  assert.ok(findings[0].key.length <= 1050);
-  assert.ok(findings[1].key.length <= 1050);
+  assert.ok(findings[0].key.length <= 1024);
+  assert.ok(findings[1].key.length <= 1024);
   assert.ok(findings[0].key.endsWith('...[truncated].Back'));
   assert.ok(findings[1].key.endsWith('...[truncated].light'));
   assert.notEqual(findings[0].key, findings[1].key);
+
+  // Long root-level key
+  const rootDict = {
+    ['b'.repeat(2000)]: 'silahkan',
+  };
+  const rootFindings = auditDictionary(rootDict);
+  assert.equal(rootFindings.length, 1);
+  assert.ok(rootFindings[0].key.length <= 1024);
+  assert.ok(rootFindings[0].key.endsWith('...[truncated]'));
 });
 
 test('CLI: bounds cumulative diagnostic output bytes on files with many findings', () => {

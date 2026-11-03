@@ -287,16 +287,25 @@ function auditDictionary(dict, options = {}) {
     const value = dict[key];
     let fullKey;
     if (!currentPrefix) {
-      fullKey = key.length > MAX_PATH_LENGTH ? `${key.slice(0, MAX_PATH_LENGTH)}...[truncated]` : key;
+      const truncationMarker = '...[truncated]';
+      fullKey =
+        key.length > MAX_PATH_LENGTH
+          ? `${key.slice(0, Math.max(0, MAX_PATH_LENGTH - truncationMarker.length))}${truncationMarker}`
+          : key;
     } else {
       const combined = `${currentPrefix}.${key}`;
       if (combined.length <= MAX_PATH_LENGTH) {
         fullKey = combined;
       } else {
-        const leaf = key.length > 256 ? `${key.slice(0, 256)}...[truncated]` : key;
-        const availableForPrefix = Math.max(0, MAX_PATH_LENGTH - leaf.length - 17); // 17 for "...[truncated]."
+        const truncationMarker = '...[truncated]';
+        const maxLeafLength = Math.min(256, Math.max(16, Math.floor(MAX_PATH_LENGTH / 4)));
+        const leaf =
+          key.length > maxLeafLength
+            ? `${key.slice(0, Math.max(0, maxLeafLength - truncationMarker.length))}${truncationMarker}`
+            : key;
+        const availableForPrefix = Math.max(0, MAX_PATH_LENGTH - leaf.length - 1 - truncationMarker.length);
         const head = currentPrefix.slice(0, availableForPrefix);
-        fullKey = `${head}...[truncated].${leaf}`;
+        fullKey = `${head}${truncationMarker}.${leaf}`;
       }
     }
 

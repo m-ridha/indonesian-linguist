@@ -512,12 +512,14 @@ test('package.json files list ships all required assets and scripts', () => {
   }
 });
 
+const OPENAI_SHORT_DESCRIPTION_REGEX = /^[ \t]*short_description:[ \t]*"([^"\r\n]+)"/m;
+
 test('OpenAI / Codex agent metadata (skills/indonesian-linguist/agents/openai.yaml) is valid', () => {
   const yamlPath = 'skills/indonesian-linguist/agents/openai.yaml';
   assert.ok(fs.existsSync(path.join(root, yamlPath)), `${yamlPath} must exist`);
   const content = read(yamlPath);
   assert.ok(Buffer.byteLength(content, 'utf8') <= 100_000, 'openai.yaml file size must be within safety bounds');
-  const shortDescMatch = content.match(/^[ \t]*short_description:[ \t]*"([^"\r\n]+)"/m);
+  const shortDescMatch = content.match(OPENAI_SHORT_DESCRIPTION_REGEX);
   assert.ok(shortDescMatch, 'openai.yaml must define short_description');
   const len = shortDescMatch[1].length;
   assert.ok(len >= 25 && len <= 64, `short_description length (${len}) must be between 25 and 64 chars`);
@@ -526,9 +528,8 @@ test('OpenAI / Codex agent metadata (skills/indonesian-linguist/agents/openai.ya
 
 test('openai.yaml regex matches strictly on single line without backtracking over repeated blank lines', () => {
   const blankLines = '   \n'.repeat(5000);
-  const regex = /^[ \t]*short_description:[ \t]*"([^"\r\n]+)"/m;
   const t0 = Date.now();
-  const match = blankLines.match(regex);
+  const match = blankLines.match(OPENAI_SHORT_DESCRIPTION_REGEX);
   const elapsed = Date.now() - t0;
   assert.strictEqual(match, null);
   assert.ok(elapsed < 100, `Regex evaluation took too long: ${elapsed}ms`);
