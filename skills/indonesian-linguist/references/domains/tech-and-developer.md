@@ -1,6 +1,6 @@
 # Domain Glossary: Software Engineering, Developer Tools & Native Mobile OS
 
-Empirical testing across Indonesian developer communication and software localization alongside **PUPI §6.4** show that translating foundational developer infrastructure terms into formal Indonesian calques reduces comprehension and causes configuration errors. Conversely, user-facing mobile OS permission instructions must match the exact Indonesian strings shipped by **Apple iOS** and **Google Android (AOSP `id-ID`)**.
+This project retains established technical terms for foundational developer infrastructure instead of translating them into formal Indonesian calques. Conversely, user-facing mobile OS permission instructions must match the exact Indonesian strings shipped by **Apple iOS** and **Google Android (AOSP `id-ID`)**.
 
 Use this reference when localizing developer settings, self-hosted app configurations, authentication flows, privacy permissions, or mobile companion instructions.
 
