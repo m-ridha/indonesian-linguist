@@ -607,6 +607,10 @@ test('auditDictionary: flags inverted quantitative placeholders ({0} sets unchec
   const inverted8 = auditDictionary({ '{{0}} selected photos': 'Foto yang dipilih {{0}}' });
   assert.ok(inverted8.some((f) => f.rule === 'inverted-quantitative-placeholder'));
 
+  // Inverted with word like "Menit {0} tersisa" where "Menit" is a noun
+  const inverted9 = auditDictionary({ '{0} minutes left': 'Menit {0} tersisa' });
+  assert.ok(inverted9.some((f) => f.rule === 'inverted-quantitative-placeholder'));
+
   // Correct: quantity placeholder precedes noun
   const correct1 = auditDictionary({ '{0} sets unchecked': '{0} set belum dicentang' });
   assert.equal(correct1.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 0);
@@ -614,9 +618,15 @@ test('auditDictionary: flags inverted quantitative placeholders ({0} sets unchec
   const correct2 = auditDictionary({ '{0} sets unchecked': 'Sebanyak {0} set belum dicentang' });
   assert.equal(correct2.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 0);
 
-  // Multiword permitted quantifiers like "Tersisa sekitar"
+  // Multiword permitted quantifiers like "Tersisa sekitar" and "Masih ada"
   const correct3 = auditDictionary({ '{0} sets left': 'Tersisa sekitar {0} set' });
   assert.equal(correct3.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 0);
+
+  const correct3b = auditDictionary({ '{0} photos left': 'Masih ada {0} foto' });
+  assert.equal(correct3b.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 0);
+
+  const correct3c = auditDictionary({ '{0} exercises left': 'Masih ada {0} gerakan' });
+  assert.equal(correct3c.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 0);
 
   // Count placeholder precedes its noun after a verb / predicate: valid
   const correct4 = auditDictionary({ '{{0}} files deleted': 'Dihapus {{0}} file' });

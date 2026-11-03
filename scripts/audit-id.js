@@ -362,25 +362,34 @@ function auditDictionary(dict, options = {}) {
     if (quantMatch && !isCopulaFollowing) {
       const ph = quantMatch[1];
       const escapedPh = ph.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const keyNoun = quantMatch[2].toLowerCase().replace(/s$/, '');
       const followingWordMatch = value.match(new RegExp(`${escapedPh}\\s+([A-Za-z\\u00C0-\\u024F-]+)`, 'i'));
-      const countedNounFollows =
-        followingWordMatch !== null &&
-        followingWordMatch[1].toLowerCase().replace(/s$/, '') === keyNoun;
+      const followingWord = followingWordMatch !== null ? followingWordMatch[1].toLowerCase() : null;
 
       const invertedMatch = value.match(
         new RegExp(`^([A-Za-z\\u00C0-\\u024F-]+(?:\\s+[A-Za-z\\u00C0-\\u024F-]+)*)\\s+${escapedPh}`, 'i'),
       );
       if (invertedMatch) {
-        const leadingWord = invertedMatch[1].toLowerCase();
-        const permittedQuantifierWord = /^(sebanyak|total|sekitar|hanya|ada|tersisa)$/i;
-        const isPermittedQuantifier =
-          /^(kurang dari|lebih dari)$/i.test(leadingWord) ||
-          leadingWord.split(/\s+/).every((word) => permittedQuantifierWord.test(word));
-        const isLeadingVerbWithObject =
-          followingWordMatch !== null && /^(?:di|ter|ber|me)[a-z\u00C0-\u024F]+/i.test(leadingWord);
+        const leadingPhrase = invertedMatch[1].toLowerCase();
+        const leadingWords = leadingPhrase.split(/\s+/);
+        const firstLeading = leadingWords[0];
 
-        if (!isPermittedQuantifier && !countedNounFollows && !isLeadingVerbWithObject) {
+        const permittedQuantifierWord = /^(sebanyak|total|sekitar|hanya|ada|masih|tersisa)$/i;
+        const isPermittedQuantifier =
+          /^(kurang dari|lebih dari|masih ada)$/i.test(leadingPhrase) ||
+          leadingWords.every((word) => permittedQuantifierWord.test(word));
+
+        // Exclude common non-verb nouns (e.g. menit, latihan) from matching verb heuristic
+        const pseudoVerbNoun = /^(?:menit|detik|jam|hari|minggu|bulan|tahun|set|foto|item|video|kunci|latihan|pesan)$/i;
+        const postPlaceholderAdverb = /^(?:tersisa|belum|sudah|telah|akan|sedang|tidak|lagi|dulu)$/i;
+        const isPredicate =
+          !pseudoVerbNoun.test(firstLeading) &&
+          /^(?:di|ter|ber|me)[a-z\u00C0-\u024F]+/i.test(firstLeading);
+        const hasObjectFollowing =
+          followingWord !== null && !postPlaceholderAdverb.test(followingWord);
+
+        const isLeadingVerbWithObject = isPredicate && hasObjectFollowing;
+
+        if (!isPermittedQuantifier && !isLeadingVerbWithObject) {
           findings.push({
             key: fullKey,
             rule: 'inverted-quantitative-placeholder',
