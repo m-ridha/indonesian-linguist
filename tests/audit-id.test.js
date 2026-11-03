@@ -579,3 +579,114 @@ test('CLI: preserves valid UTF-8 when multibyte character crosses the diagnostic
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });
+
+test('auditDictionary: flags inverted quantitative placeholders ({0} sets unchecked -> Set {0} belum dicentang)', () => {
+  // Inverted: quantity placeholder moved after noun (making it read as ordinal #0)
+  const inverted1 = auditDictionary({ '{0} sets unchecked': 'Set {0} belum dicentang' });
+  assert.ok(inverted1.some((f) => f.rule === 'inverted-quantitative-placeholder'));
+
+  const inverted2 = auditDictionary({ '{0} photos': 'Foto {0}' });
+  assert.ok(inverted2.some((f) => f.rule === 'inverted-quantitative-placeholder'));
+
+  const inverted3 = auditDictionary({ '%d passkeys': 'Kunci sandi %d' });
+  assert.ok(inverted3.some((f) => f.rule === 'inverted-quantitative-placeholder'));
+
+  // Correct: quantity placeholder precedes noun
+  const correct1 = auditDictionary({ '{0} sets unchecked': '{0} set belum dicentang' });
+  assert.equal(correct1.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 0);
+
+  const correct2 = auditDictionary({ '{0} sets unchecked': 'Sebanyak {0} set belum dicentang' });
+  assert.equal(correct2.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 0);
+
+  // Ordinal English source should not trigger false positives
+  const ordinalSource = auditDictionary({ 'Set {0}': 'Set {0}' });
+  assert.equal(ordinalSource.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 0);
+});
+
+test('parseSimpleJsLocale: parses nested objects, export const, and backtick literals', () => {
+  const src = `
+    export const COPY = {
+      nudge: {
+        title: "Pengingat latihan",
+        body: \`Sesi latihanmu menunggumu\`,
+      },
+      cta: 'Buka Sekarang',
+    };
+  `;
+  const parsed = parseSimpleJsLocale(src);
+  assert.deepEqual(parsed, {
+    nudge: {
+      title: 'Pengingat latihan',
+      body: 'Sesi latihanmu menunggumu',
+    },
+    cta: 'Buka Sekarang',
+  });
+
+  const findings = auditDictionary(parsed);
+  assert.equal(findings.length, 0);
+});
+
+test('CLI: supports --help, -h, and --json output flags', () => {
+  const scriptPath = path.join(__dirname, '..', 'scripts', 'audit-id.js');
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'audit-cli-flags-'));
+
+  try {
+    // Test --help and -h exit 0 with usage
+    const helpResult = spawnSync(process.execPath, [scriptPath, '--help'], { encoding: 'utf8' });
+    assert.equal(helpResult.status, 0);
+    assert.match(helpResult.stdout, /Usage:/);
+    assert.match(helpResult.stdout, /--json/);
+
+    const shortHelpResult = spawnSync(process.execPath, [scriptPath, '-h'], { encoding: 'utf8' });
+    assert.equal(shortHelpResult.status, 0);
+    assert.match(shortHelpResult.stdout, /Usage:/);
+
+    // Test --json output format
+    const testFile = path.join(tmpDir, 'test.json');
+    fs.writeFileSync(testFile, JSON.stringify({ Back: 'Punggung' }), 'utf8');
+
+    const jsonResult = spawnSync(process.execPath, [scriptPath, '--json', testFile], { encoding: 'utf8' });
+    assert.equal(jsonResult.status, 1);
+    const parsedJson = JSON.parse(jsonResult.stdout);
+    assert.equal(parsedJson.totalFiles, 1);
+    assert.equal(parsedJson.failedFiles, 1);
+    assert.equal(parsedJson.cleanFiles, 0);
+    assert.ok(parsedJson.totalFindings >= 1);
+    assert.equal(parsedJson.files[0].clean, false);
+    assert.ok(parsedJson.files[0].findings.some((f) => f.rule === 'polysemy-calque'));
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('auditDictionary: retains barbell loanword variations (high-bar, low-bar, zercher, bulgarian split squat)', () => {
+  const exercises = {
+    'High-bar back squat (anchor)': 'High-bar back squat (anchor)',
+    'Low-bar back squat': 'Low-bar back squat',
+    'Safety-bar squat': 'Safety-bar squat',
+    'Bulgarian split squat': 'Bulgarian split squat',
+    'Zercher squat': 'Zercher squat',
+    'Belt squat': 'Belt squat',
+    'Box squat': 'Box squat',
+    'Hack squat': 'Hack squat',
+  };
+
+  const findings = auditDictionary(exercises);
+  assert.equal(findings.filter((f) => f.rule === 'silent-fallback').length, 0);
+});
+
+test('auditText: flags non-standard merged prepositions (disini, diatas, kesana) while permitting standard kemari', () => {
+  // Flag non-standard merged prepositions
+  const badTexts = ['Tersimpan disini', 'Lihat diatas meja', 'Pergi kesana segera'];
+  for (const text of badTexts) {
+    const issues = auditText(text);
+    assert.ok(
+      issues.some((i) => i.rule === 'kata-tidak-baku'),
+      `Expected "${text}" to be flagged as kata-tidak-baku`,
+    );
+  }
+
+  // Permit standard KBBI VI / EYD V single-word form "kemari"
+  const cleanKemari = auditText('Silakan datang kemari untuk memulai latihan.');
+  assert.equal(cleanKemari.length, 0);
+});

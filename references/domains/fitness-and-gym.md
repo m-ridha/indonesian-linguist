@@ -58,6 +58,7 @@ Never force stiff literal translations onto terms that have established Indonesi
 | **Personal Record (PR) / New best** | Catatan pribadi / Baru yang terbaik | **PR / Rekor pribadi / Rekor terbaik baru (PR)** | Personal best lift (`Last PR` $\rightarrow$ **PR terakhir**) |
 | **Exercise Library** | Perpustakaan latihan | **Katalog latihan** | Searchable database of exercises |
 | **Progression (Linear / Double / Triple)** | Kemajuan / Perkembangan linier | **Progresi (linear / ganda / tripel)** | Overload methodology; always use **progresi / progres** |
+| **Top of the range** *(progression)* | Puncak rentang / Di atas | **Batas atas repetisi / batas atas rentang repetisi** | Reaching maximum reps in double/triple progression (e.g. 12 reps in 8-12 scheme), signaling ready to increase load |
 | **Progress photos** | Foto kemajuan | **Foto progres** | Visual physique tracking photos |
 | **Effort per set** | Upaya per set | **Tingkat usaha per set** | RPE / RIR effort logging setting |
 | **Cutting & Lean bulk** | Pemotongan & potongan tanpa lemak | **Fase cutting & Lean bulk** | Body composition phases |
@@ -100,6 +101,7 @@ Automated translators notoriously mangle exercise names, gym equipment, and musc
 | **Watch app** | Aplikasi Tonton *(verb 'to watch'!)* | **Aplikasi Apple Watch / Smartwatch** | Companion wearable app |
 | **Phone watches gyms** | Ponsel menonton gym | **Ponsel memantau lokasi gym** | Background geofencing arrival detection |
 | **Quick arrival check** | Pemeriksaan kedatangan cepat | **Deteksi kedatangan cepat** | GPS geofence check-in toggle |
+| **Where an exercise is drawn on both figures** *(setting)* | Ketika latihan digambar pada kedua figur | **Pilihan figur untuk latihan yang digambar pada kedua figur tubuh** | Settings description for anatomical illustration options; avoid temporal conjunction (*Ketika...*) |
 
 ---
 

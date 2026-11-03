@@ -99,3 +99,5 @@ Even without AI buzzwords, direct translation from English often produces unnatu
 | **Bureaucratic Padding** (*"can be done by", "in order to", "at this point in time", "there is a"*) | *dapat dilakukan dengan cara, dalam rangka untuk, pada saat ini, terdapat sebuah* | **caranya / bisa dengan, untuk, sekarang / saat ini, ada** |
 | **Copula + Verb** (*"The goal is to improve..."*) | *Tujuannya **adalah untuk meningkatkan**...* | **Tujuannya meningkatkan...** |
 | **Preposition Before Subject** (*"In this report shows..."*, *"For users who want..."*) | ***Dalam** laporan ini menunjukkan...* | **Laporan ini menunjukkan...** / **Dalam laporan ini ditunjukkan...** |
+| **Availability Idiom `And it's there`** (*"Sync your data and it's there"*) | *dan itu ada di sana* | **dan semua datamu langsung tersedia** / **datamu langsung siap digunakan** |
+| **Notification Sample `This is what alerts look like`** | *Ini adalah tampilan pemberitahuan* | **Begini tampilan notifikasinya.** |
