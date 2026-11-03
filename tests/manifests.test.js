@@ -107,14 +107,73 @@ test('AGENTS.md and SKILL.md contain all load-bearing linguistic invariants', ()
   }
 });
 
-test('all required reference modules and scripts exist and are reachable from both root and plugin skill path', () => {
-  for (const rel of [...REQUIRED_REFERENCES, 'scripts/audit-id.js']) {
-    assert.ok(fs.existsSync(path.join(root, rel)), `Missing root path: ${rel}`);
-    assert.ok(
-      fs.existsSync(path.join(root, 'skills', SKILL_NAME, rel)),
-      `Missing plugin-resolved path: skills/${SKILL_NAME}/${rel}`,
-    );
+function isGitIgnored(relPath) {
+  try {
+    execFileSync('git', ['check-ignore', '-q', relPath], { cwd: root, stdio: 'pipe' });
+    return true;
+  } catch {
+    return false;
   }
+}
+
+function getAllFilesRecursively(dir, ignoreNames = []) {
+  const results = [];
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (ignoreNames.includes(entry.name)) continue;
+    const full = path.join(dir, entry.name);
+    const rel = path.relative(root, full);
+    if (isGitIgnored(rel)) continue;
+
+    if (entry.isDirectory()) {
+      results.push(...getAllFilesRecursively(full, ignoreNames));
+    } else if (entry.isFile()) {
+      results.push(full);
+    }
+  }
+  return results;
+}
+
+test('all required reference modules and scripts exist and are reachable from both root and plugin skill path without symlinks', () => {
+  // Collect all files from root references/ and scripts/ (excluding sync-skill.js)
+  const rootReferencesFiles = getAllFilesRecursively(path.join(root, 'references')).map((p) =>
+    path.relative(root, p),
+  );
+  const rootScriptsFiles = getAllFilesRecursively(path.join(root, 'scripts'), ['sync-skill.js']).map((p) =>
+    path.relative(root, p),
+  );
+
+  const allTrackedAssets = [...rootReferencesFiles, ...rootScriptsFiles];
+
+  for (const rel of allTrackedAssets) {
+    const rootPath = path.join(root, rel);
+    const pluginPath = path.join(root, 'skills', SKILL_NAME, rel);
+
+    assert.ok(fs.existsSync(rootPath), `Missing root path: ${rel}`);
+    assert.ok(fs.existsSync(pluginPath), `Missing plugin-resolved path: skills/${SKILL_NAME}/${rel}`);
+
+    // Verify plugin paths are real files and directories, not dangling symlinks (ensures Codex/Claude standalone portability)
+    const lstat = fs.lstatSync(pluginPath);
+    assert.ok(!lstat.isSymbolicLink(), `skills/${SKILL_NAME}/${rel} must be a real file, not a symlink`);
+
+    // Verify intermediate path segments are also real directories and not symlinks
+    const relParts = rel.split('/');
+    let curPluginSegment = path.join(root, 'skills', SKILL_NAME);
+    for (const part of relParts.slice(0, -1)) {
+      curPluginSegment = path.join(curPluginSegment, part);
+      const segmentStat = fs.lstatSync(curPluginSegment);
+      assert.ok(!segmentStat.isSymbolicLink(), `${curPluginSegment} must not be a symlink`);
+    }
+
+    // Verify contents match root verbatim
+    const rootContent = fs.readFileSync(rootPath);
+    const pluginContent = fs.readFileSync(pluginPath);
+    assert.ok(rootContent.equals(pluginContent), `skills/${SKILL_NAME}/${rel} content drifted from root ${rel}`);
+  }
+
+  // Verify the directory containers themselves are real directories and not symlinks
+  assert.ok(!fs.lstatSync(path.join(root, 'skills', SKILL_NAME, 'references')).isSymbolicLink(), 'skills references must not be a symlink');
+  assert.ok(!fs.lstatSync(path.join(root, 'skills', SKILL_NAME, 'scripts')).isSymbolicLink(), 'skills scripts must not be a symlink');
 });
 
 function isEscapedBacktick(content, pos) {
@@ -352,23 +411,26 @@ function extractRelativeMarkdownLinks(content) {
   return links;
 }
 
-test('all relative markdown links in SKILL.md, plugin SKILL.md, README.md, CONTRIBUTING.md, and docs resolve to existing files', () => {
-  const filesToCheck = [
-    'SKILL.md',
-    'skills/indonesian-linguist/SKILL.md',
-    'README.md',
-    'CONTRIBUTING.md',
-    'AI_POLICY.md',
-    'SECURITY.md',
-    'skills/indonesian-linguist/TEST.md',
-    'docs/agent-portability.md',
-    'docs/sources.md',
-    'docs/testing.md',
-    'docs/releases.md',
-    'references/README.md',
-    'references/domains/README.md',
-    'scripts/README.md',
-  ];
+function getAllMarkdownFilesRecursively(dir) {
+  const results = [];
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (entry.name === 'node_modules' || entry.name === '.git') continue;
+    const full = path.join(dir, entry.name);
+    const rel = path.relative(root, full);
+    if (isGitIgnored(rel)) continue;
+
+    if (entry.isDirectory()) {
+      results.push(...getAllMarkdownFilesRecursively(full));
+    } else if (entry.isFile() && entry.name.endsWith('.md')) {
+      results.push(rel);
+    }
+  }
+  return results;
+}
+
+test('all relative markdown links across all documentation, skill files, and references resolve to existing files', () => {
+  const filesToCheck = getAllMarkdownFilesRecursively(root);
 
   for (const relFile of filesToCheck) {
     const absFile = path.join(root, relFile);
