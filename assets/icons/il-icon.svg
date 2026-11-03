@@ -1,23 +1,56 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="128" height="128">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
   <defs>
-    <clipPath id="flag-clip">
-      <rect x="4" y="8" width="56" height="48" rx="12" ry="12" />
-    </clipPath>
+    <!-- Standard SVG drop shadow filter -->
+    <filter id="shadowBlur" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="1.5" />
+    </filter>
+
+    <!-- Red gradient for the top half, adding volume with shading -->
+    <linearGradient id="redGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#E52D32" />
+      <stop offset="65%" stop-color="#C61F23" />
+      <stop offset="100%" stop-color="#910D11" />
+    </linearGradient>
+
+    <!-- White gradient for the bottom half, incorporating subtle grey shadowing -->
+    <linearGradient id="whiteGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="70%" stop-color="#EFEFEF" />
+      <stop offset="100%" stop-color="#C4C4C4" />
+    </linearGradient>
+
+    <!-- Overlay gradient to emulate the natural vertical lighting and highlight on the waves -->
+    <linearGradient id="lightOverlay" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#000000" stop-opacity="0.16" />
+      <stop offset="16%" stop-color="#FFFFFF" stop-opacity="0.14" />
+      <stop offset="36%" stop-color="#000000" stop-opacity="0.08" />
+      <stop offset="56%" stop-color="#FFFFFF" stop-opacity="0.10" />
+      <stop offset="84%" stop-color="#000000" stop-opacity="0.05" />
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.28" />
+    </linearGradient>
+
+    <!-- Flag edge shadows and 3D volume mask -->
+    <linearGradient id="edgeShadow" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#000000" stop-opacity="0.25" />
+      <stop offset="6%" stop-color="#000000" stop-opacity="0" />
+      <stop offset="92%" stop-color="#000000" stop-opacity="0" />
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.40" />
+    </linearGradient>
   </defs>
 
-  <!-- Drop shadow base plate -->
-  <rect x="4" y="10" width="56" height="48" rx="12" ry="12" fill="rgba(0, 0, 0, 0.16)" />
+  <!-- Grounding Drop Shadow underneath the waving flag -->
+  <path d="M 18,97 Q 44,99 70,93 Q 96,87 110,95 L 110,99 Q 96,91 70,97 Q 44,103 18,101 Z" fill="#000000" opacity="0.15" filter="url(#shadowBlur)" />
 
-  <!-- Main flag body clipped to rounded corners -->
-  <g clip-path="url(#flag-clip)">
-    <!-- Top Red Band (Sang Saka Merah) -->
-    <rect x="4" y="8" width="56" height="24" fill="#CE1126" />
-    <!-- Bottom White Band (Sang Saka Putih) -->
-    <rect x="4" y="32" width="56" height="24" fill="#FFFFFF" />
-    <!-- Subtle divider line between red and white -->
-    <line x1="4" y1="32" x2="60" y2="32" stroke="rgba(0, 0, 0, 0.08)" stroke-width="0.75" />
-  </g>
+  <!-- Combined Red and White Flag Shapes utilizing wave curves -->
+  <!-- Top Red Half -->
+  <path d="M 18,34.4 Q 44,40 70,34 Q 96,28 110,33 L 110,64.4 Q 96,59.4 70,65.4 Q 44,71.4 18,65.8 Z" fill="url(#redGrad)" />
 
-  <!-- Outer border stroke ensuring crisp contrast on dark & light backgrounds -->
-  <rect x="4" y="8" width="56" height="48" rx="12" ry="12" fill="none" stroke="rgba(0, 0, 0, 0.15)" stroke-width="1.5" />
+  <!-- Bottom White Half -->
+  <path d="M 18,65.8 Q 44,71.4 70,65.4 Q 96,59.4 110,64.4 L 110,95 Q 96,90 70,96 Q 44,102 18,96.4 Z" fill="url(#whiteGrad)" />
+
+  <!-- The entire flag outline for shadows, shading and highlighting overlays -->
+  <path d="M 18,34.4 Q 44,40 70,34 Q 96,28 110,33 L 110,95 Q 96,90 70,96 Q 44,102 18,96.4 Z" fill="url(#lightOverlay)" />
+
+  <!-- Natural Top and Bottom Shadow Edge Overlay to enhance 3D appearance -->
+  <path d="M 18,34.4 Q 44,40 70,34 Q 96,28 110,33 L 110,95 Q 96,90 70,96 Q 44,102 18,96.4 Z" fill="url(#edgeShadow)" />
 </svg>
