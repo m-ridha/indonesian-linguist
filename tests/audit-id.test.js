@@ -184,7 +184,7 @@ test('auditDictionary: bounds nesting depth and prevents exponential allocation'
 });
 
 test('auditDictionary: signs out linear regex handles repetitive "signs" safely without catastrophic backtracking', () => {
-  const repetitiveKey = `${'signs '.repeat(1000)}not_out`;
+  const repetitiveKey = `${'signs '.repeat(20000)}not_out`;
   const t0 = Date.now();
   const findings = auditDictionary({ [repetitiveKey]: 'menandakan' });
   const elapsed = Date.now() - t0;
@@ -196,17 +196,37 @@ test('auditDictionary: signs out linear regex handles repetitive "signs" safely 
   assert.ok(matchFindings.some((f) => f.rule === 'polysemy-calque'));
 });
 
+test('auditDictionary: handles compact shared-reference DAGs and cyclic objects without exponential calls', () => {
+  // Shared-reference DAG: 2 children pointing to same node across 25 levels (would be 2^25 = 33M calls without object tracking)
+  const leaf = { Back: 'Punggung' };
+  let node = leaf;
+  for (let i = 0; i < 25; i++) {
+    node = { left: node, right: node };
+  }
+  const t0 = Date.now();
+  const findings = auditDictionary(node);
+  const elapsed = Date.now() - t0;
+  assert.ok(elapsed < 200, `DAG traversal took ${elapsed}ms (expected < 200ms)`);
+  assert.ok(findings.length > 0);
+
+  // Cyclic object
+  const cycle = { a: 'test' };
+  cycle.self = cycle;
+  const cycleFindings = auditDictionary(cycle);
+  assert.ok(Array.isArray(cycleFindings));
+});
+
 test('CLI: escapes control characters and newlines in diagnostics to prevent log injection', () => {
   const scriptPath = path.join(__dirname, '..', 'scripts', 'audit-id.js');
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'audit-id-sec-'));
 
   try {
     const maliciousJson = path.join(tmpDir, 'malicious.json');
-    // Key containing actual newline, carriage return, line separator, and bidi control to attempt log injection
+    // Key containing actual newline, carriage return, line separator, bidi control, and arabic letter mark to attempt log injection
     fs.writeFileSync(
       maliciousJson,
       JSON.stringify({
-        'Injected\nFAKE_STATUS: OK\rCR\u2028LS\u202eRLO': 'silahkan',
+        'Injected\nFAKE_STATUS: OK\rCR\u2028LS\u202eRLO\u061cALM': 'silahkan',
       }),
       'utf8',
     );
@@ -217,11 +237,43 @@ test('CLI: escapes control characters and newlines in diagnostics to prevent log
 
     assert.equal(result.status, 1);
     // Control characters must be escaped, never emitted as raw control or line breaks in diagnostic output
-    assert.match(result.stderr, /Injected\\nFAKE_STATUS: OK\\rCR\\u2028LS\\u202eRLO/);
+    assert.match(result.stderr, /Injected\\nFAKE_STATUS: OK\\rCR\\u2028LS\\u202eRLO\\u061cALM/);
     assert.doesNotMatch(result.stderr, /Injected\nFAKE_STATUS/);
     assert.doesNotMatch(result.stderr, /OK\rCR/);
     assert.doesNotMatch(result.stderr, /\u2028/);
     assert.doesNotMatch(result.stderr, /\u202e/);
+    assert.doesNotMatch(result.stderr, /\u061c/);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('CLI: error handlers escape control characters in filenames and syntax error messages', () => {
+  const scriptPath = path.join(__dirname, '..', 'scripts', 'audit-id.js');
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'audit-id-err-'));
+
+  try {
+    // 1. Missing file path with newline
+    const resultMissing = spawnSync(process.execPath, [scriptPath, 'missing\nFAKE_HEADER: injection'], {
+      encoding: 'utf8',
+    });
+    assert.equal(resultMissing.status, 1);
+    assert.match(resultMissing.stderr, /missing\\nFAKE_HEADER/);
+    assert.doesNotMatch(resultMissing.stderr, /missing\nFAKE_HEADER/);
+
+    // 2. Malformed JS file with control characters in key
+    const malformedJs = path.join(tmpDir, 'malformed.js');
+    fs.writeFileSync(
+      malformedJs,
+      'module.exports = { "bad\nkey\x1b[31m": };',
+      'utf8',
+    );
+    const resultParse = spawnSync(process.execPath, [scriptPath, malformedJs], {
+      encoding: 'utf8',
+    });
+    assert.equal(resultParse.status, 1);
+    assert.match(resultParse.stderr, /bad\\nkey/);
+    assert.doesNotMatch(resultParse.stderr, /bad\nkey/);
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
@@ -307,4 +359,78 @@ test('auditDictionary: passes accurate OpenGym Indonesian localizations with 0 f
   };
   const findings = auditDictionary(goodDict);
   assert.deepEqual(findings, []);
+});
+
+test('auditDictionary: reports nesting-limit-exceeded on deep path even if object visited via shallow path', () => {
+  const sharedLeaf = { Back: 'Punggung' };
+  let deepNode = sharedLeaf;
+  for (let i = 0; i < 32; i++) {
+    deepNode = { next: deepNode };
+  }
+  const graph = {
+    shallow: sharedLeaf,
+    deep: deepNode,
+  };
+  const findings = auditDictionary(graph);
+  assert.ok(findings.some((f) => f.rule === 'nesting-limit-exceeded'));
+});
+
+test('auditDictionary: does not read property values beyond traversal entry limit', () => {
+  const obj = {};
+  let getterCalledPastLimit = false;
+  for (let i = 0; i <= 50005; i++) {
+    const key = `k${i}`;
+    if (i >= 50000) {
+      Object.defineProperty(obj, key, {
+        enumerable: true,
+        get() {
+          getterCalledPastLimit = true;
+          return 'value';
+        },
+      });
+    } else {
+      obj[key] = 'value';
+    }
+  }
+  const findings = auditDictionary(obj);
+  assert.ok(findings.some((f) => f.rule === 'traversal-limit-exceeded'));
+  assert.strictEqual(getterCalledPastLimit, false);
+});
+
+test('auditDictionary: ignores inherited prototype properties without scanning them', () => {
+  const proto = { Back: 'Punggung' };
+  const child = Object.create(proto);
+  child.Safe = 'Aman';
+  const findings = auditDictionary(child);
+  assert.strictEqual(findings.length, 0);
+});
+
+test('auditDictionary: stops cycle on active ancestor path at depth limit without reporting nesting-limit-exceeded', () => {
+  const root = {};
+  let current = root;
+  for (let i = 0; i < 32; i++) {
+    const next = {};
+    current.next = next;
+    current = next;
+  }
+  // At depth 32, point back to root (an active ancestor)
+  current.loop = root;
+  const findings = auditDictionary(root);
+  assert.strictEqual(findings.some((f) => f.rule === 'nesting-limit-exceeded'), false);
+});
+
+test('auditDictionary: stops cycle on active ancestor path without overflowing finding limit on self-reference', () => {
+  const cyclic = { Back: 'Punggung' };
+  cyclic.self = cyclic;
+  const sibling = { Back: 'Punggung' };
+  const root = {
+    first: cyclic,
+    second: sibling,
+  };
+  const findings = auditDictionary(root);
+  // Both cyclic and sibling should be audited once without repeating cycles
+  const backFindings = findings.filter((f) => f.rule === 'polysemy-calque');
+  assert.strictEqual(backFindings.length, 2);
+  assert.ok(findings.some((f) => f.key === 'first.Back'));
+  assert.ok(findings.some((f) => f.key === 'second.Back'));
 });

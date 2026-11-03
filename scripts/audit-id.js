@@ -55,7 +55,16 @@ const KNOWN_CALQUE_TRAPS = [
   { keyMatch: /sets are drawn/i, badVal: /\bdiundi\b/i, fix: 'ditampilkan di grafik' },
   { keyMatch: /logged workout/i, badVal: /\blogin\b/i, fix: 'sesi latihan yang dicatat' },
   { keyMatch: /hop over/i, badVal: /\b(lanjutkan|meneruskan)\b/i, fix: 'melewati / melompati' },
-  { keyMatch: /signs\b.*?\bouts?\b/i, badVal: /\bmenandakan\b/i, fix: 'mengeluarkan' },
+  {
+    keyMatch: {
+      test(key) {
+        const idx = String(key || '').search(/\bsigns\b/i);
+        return idx !== -1 && /\bouts?\b/i.test(key.slice(idx + 5));
+      },
+    },
+    badVal: /\bmenandakan\b/i,
+    fix: 'mengeluarkan',
+  },
   { keyMatch: /^abductors$/i, badVal: /\bpenculik\b/i, fix: 'Abduktor' },
   { keyMatch: /^landmine$/i, badVal: /\branjau darat\b/i, fix: 'Landmine' },
   { keyMatch: /^traps$/i, badVal: /\bperangkap\b/i, fix: 'Traps' },
@@ -197,10 +206,17 @@ const MAX_DICTIONARY_DEPTH = 32;
 const MAX_DICTIONARY_FINDINGS = 5000;
 
 /**
+ * Maximum total entries (keys + sub-objects) traversed across an entire dictionary audit.
+ */
+const MAX_DICTIONARY_ENTRIES = 50_000;
+
+/**
  * Audit a key-value i18n dictionary object (including nested namespace objects).
- * Collects findings in a single accumulator with explicit depth and size bounds.
+ * Collects findings in a single accumulator with explicit depth, size, and traversal bounds.
+ * Tracks visited object references to prevent exponential work on compact shared-reference graphs,
+ * and tracks active ancestors to immediately break cycles.
  * @param {Record<string, unknown>} dict
- * @param {{ minFallbackLength?: number, allowlistKeys?: Set<string>, prefix?: string, depth?: number, accumulator?: Array<{key: string, rule: string, message: string}> }} [options]
+ * @param {{ minFallbackLength?: number, allowlistKeys?: Set<string>, prefix?: string, depth?: number, accumulator?: Array<{key: string, rule: string, message: string}>, visited?: Map<object, number>, activeStack?: Set<object>, counter?: { entries: number } }} [options]
  * @returns {Array<{key: string, rule: string, message: string}>}
  */
 function auditDictionary(dict, options = {}) {
@@ -209,6 +225,14 @@ function auditDictionary(dict, options = {}) {
   const currentPrefix = options.prefix ?? '';
   const currentDepth = options.depth ?? 0;
   const findings = options.accumulator ?? [];
+  const visited = options.visited ?? new Map();
+  const activeStack = options.activeStack ?? new Set();
+  const counter = options.counter ?? { entries: 0 };
+
+  const isObject = dict && typeof dict === 'object';
+  if (isObject && activeStack.has(dict)) {
+    return findings;
+  }
 
   if (currentDepth > MAX_DICTIONARY_DEPTH) {
     findings.push({
@@ -219,7 +243,28 @@ function auditDictionary(dict, options = {}) {
     return findings;
   }
 
-  for (const [key, value] of Object.entries(dict || {})) {
+  if (isObject) {
+    const deepestVisited = visited.get(dict);
+    if (deepestVisited !== undefined && currentDepth <= deepestVisited) {
+      return findings;
+    }
+    visited.set(dict, currentDepth);
+    activeStack.add(dict);
+  }
+
+  const keys = isObject ? Object.keys(dict) : [];
+
+  for (const key of keys) {
+    counter.entries++;
+    if (counter.entries > MAX_DICTIONARY_ENTRIES) {
+      findings.push({
+        key: currentPrefix || 'root',
+        rule: 'traversal-limit-exceeded',
+        message: `Total dictionary traversal work exceeded safety limit of ${MAX_DICTIONARY_ENTRIES} entries.`,
+      });
+      break;
+    }
+
     if (findings.length >= MAX_DICTIONARY_FINDINGS) {
       findings.push({
         key: currentPrefix || 'root',
@@ -229,6 +274,7 @@ function auditDictionary(dict, options = {}) {
       break;
     }
 
+    const value = dict[key];
     const fullKey = currentPrefix ? `${currentPrefix}.${key}` : key;
 
     if (value && typeof value === 'object' && !Array.isArray(value)) {
@@ -237,6 +283,9 @@ function auditDictionary(dict, options = {}) {
         prefix: fullKey,
         depth: currentDepth + 1,
         accumulator: findings,
+        visited,
+        activeStack,
+        counter,
       });
       continue;
     }
@@ -290,6 +339,10 @@ function auditDictionary(dict, options = {}) {
     }
   }
 
+  if (isObject) {
+    activeStack.delete(dict);
+  }
+
   return findings;
 }
 
@@ -300,7 +353,7 @@ function auditDictionary(dict, options = {}) {
  * @returns {string}
  */
 function sanitizeDiagnostic(str) {
-  return String(str || '').replace(/[\x00-\x1f\x7f-\x9f\u200e\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069]/g, (c) => {
+  return String(str || '').replace(/[\x00-\x1f\x7f-\x9f\u061c\u200e\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069]/g, (c) => {
     if (c === '\n') return '\\n';
     if (c === '\r') return '\\r';
     if (c === '\t') return '\\t';
@@ -505,7 +558,7 @@ if (require.main === module) {
     try {
       raw = fs.readFileSync(absPath, 'utf8');
     } catch (err) {
-      console.error(`❌ Error reading ${target}: ${err.message}`);
+      console.error(`❌ Error reading ${sanitizeDiagnostic(target)}: ${sanitizeDiagnostic(err.message)}`);
       hasFailures = true;
       continue;
     }
@@ -520,7 +573,7 @@ if (require.main === module) {
         findings = auditText(raw).map((f) => ({ key: path.basename(absPath), ...f }));
       }
     } catch (err) {
-      console.error(`❌ Error parsing ${target}: ${err.message}`);
+      console.error(`❌ Error parsing ${sanitizeDiagnostic(target)}: ${sanitizeDiagnostic(err.message)}`);
       hasFailures = true;
       continue;
     }
