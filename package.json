@@ -45,7 +45,8 @@
     "docs/"
   ],
   "scripts": {
-    "test": "node --test tests/*.test.js",
+    "sync": "node scripts/sync-skill.js",
+    "test": "node scripts/sync-skill.js && node --test tests/*.test.js",
     "audit": "node scripts/audit-id.js"
   }
 }

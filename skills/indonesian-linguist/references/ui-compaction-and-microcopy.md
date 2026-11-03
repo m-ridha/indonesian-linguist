@@ -1,0 +1,85 @@
+# UI Lexical Compaction, Tight Layouts & Microcopy Patterns
+
+Indonesian translations expand character length by **20% to 35%** compared to English. In mobile interfaces, segmented controls (`.seg`), pill selectors, table column headers, and bottom navigation bars, naive translation causes text truncation (`ellipsis`), line-wrapping glitches, or layout overflow.
+
+Use this reference to achieve **lexical compaction** without ever resorting to informal chat/SMS abbreviations.
+
+---
+
+## 1. Absolute Ban on Chat / SMS Abbreviations in UI
+
+**NEVER** shorten UI strings using informal Indonesian text-messaging abbreviations. They destroy product credibility and read like an unedited draft:
+
+| Banned SMS Slang | Standard Full Word | How to Compact Properly in Tight UI |
+| --- | --- | --- |
+| ❌ `yg` | **yang** | Drop `yang` via *Zero Relative Pronoun* (e.g., *Latihan selesai*, not *Latihan yg selesai*) |
+| ❌ `dgn` | **dengan** | Use `via`, `pakai`, or a compound noun (e.g., *Masuk dengan Google* or *Sesuai input*) |
+| ❌ `utk` | **untuk** | Replace with `ke`, `bagi`, or imperative verb phrasing |
+| ❌ `krn` | **karena** | Restructure into cause-effect clauses or concise alerts |
+| ❌ `tdk` / `gk` / `ga` | **tidak / belum** | Use `non-`, `tanpa`, or direct status (`Nonaktif`, `Belum dinilai`) |
+| ❌ `bgt` | **sangat / sekali** | Use a stronger adjective (`berat`, `ketat`, `tinggi`) |
+| ❌ `dlm` | **dalam** | Use `di` or omit where redundant |
+| ❌ `spt` | **seperti** | Use `sesuai` or `mirip` |
+
+---
+
+## 2. Lexical Compaction Strategies for Segmented Controls & Pills
+
+In segmented controls (`grid-auto-columns: 1fr`), every option shares equal width with the widest sibling. Apply these four compaction techniques:
+
+### A. Nominal/Prepositional Compaction (Replace Relative Clauses)
+Instead of translating English participles as long `Seperti yang di-...` clauses, use crisp noun phrases:
+
+| English UI String | Bloated Clause (Clips in UI) | Compact UI Equivalent | Character Savings |
+| --- | --- | --- | --- |
+| **As entered** | *Seperti yang dimasukkan* (23 chars) | **Sesuai input** (12 chars) | **-48%** |
+| **Same as work sets** | *Sama seperti set utama* (22 chars) | **Ikuti set utama** (15 chars) | **-32%** |
+| **Hold** *(weight goal: Lose \| Gain \| Hold)* | *Pertahankan* (11 chars) / *Tahan* (ambiguous) | **Jaga** (4 chars: `[ Turun \| Naik \| Jaga ]`) | **-64%** |
+| **Each** *(dumbbell weight mode)* | *Masing-masing dumbbell* (22 chars) | **Per dumbbell** / **Tiap tangan** (11-12 chars) | **-45%** |
+| **Both** *(dumbbell weight mode)* | *Keduanya bersamaan* (18 chars) | **Total sepasang** (14 chars) | **-22%** |
+| **Weight means** | *Berat artinya* (calque) | **Format input beban** / **Arti angka beban** | Clear & idiomatic |
+| **Less / More time** | *Lebih sedikit / banyak waktu* | **Durasi lebih sedikit / banyak** | Natural metric label |
+| **Less / More volume** | *Volumenya lebih sedikit* | **Volume lebih sedikit / banyak** | Parallel metric structure |
+
+### B. Zero Relative Pronoun (Dropping `yang`)
+In Indonesian UI labels, `yang` before a stative verb or adjective can often be omitted cleanly:
+- *Latihan yang selesai* $\rightarrow$ **`Latihan selesai`**
+- *Perangkat yang terhubung* $\rightarrow$ **`Perangkat terhubung`**
+- *Beban yang diangkat* $\rightarrow$ **`Beban terangkat`** (*Total beban terangkat*)
+
+### C. Permitted Standard Abbreviations (KBBI & UI Convention)
+Only use standard, officially recognized metric and editorial abbreviations when space is constrained:
+- **Time & Duration**: `dtk` (detik), `mnt` (menit), `jam`, `hr` (hari, only in tight chart axes; prefer `hari`), `bln` (bulan), `thn` (tahun).
+  - *Note*: On dashboard summary cards (e.g., `Weight 30d`), write **`Berat badan 30 hari`** rather than cryptic `30h`. Use `dtk` in compact table headers like **`Istirahat (dtk)`** (*Rest (s)*) or **`{0} dtk tahan`** (*{0}s hold*).
+- **Units & Measures**: `kg`, `lb`, `cm`, `m`, `km`, `km/jam`, `kkal`, `%`.
+- **UI Qualifiers**: `mis.` (misalnya, never *misal* or *cth* in formal/clean placeholders), `maks.` (maksimal), `min.` (minimal), `no.` (nomor), `vol.` (volume), `est.` / `perkiraan`.
+
+---
+
+## 3. Component-by-Component UX Writing Standards
+
+Practitioners at major Indonesian digital products (Gojek, Tokopedia, tiket.com) follow four ordered principles: **Jelas** (Clear) > **Ringkas** (Concise) > **Konsisten** (Consistent) > **Berguna** (Helpful). Clarity always beats brevity, and both beat trying to be funny.
+
+### A. Error Messages (*Pesan Galat*)
+Every error message must state **what happened in plain human terms + how to fix it**, without blaming the user or exposing raw status codes:
+- ❌ *"Terjadi kesalahan. Silahkan coba lagi."* (Vague + misspelled *silahkan*)
+- ❌ *"Error 422: Unprocessable Entity"* (Raw developer jargon)
+- ❌ *"Anda salah memasukkan format email."* (Blaming tone)
+- ✅ **"Format email belum lengkap (contoh: `nama@email.com`)."**
+- ✅ **"Kata sandi salah. Coba lagi, atau atur ulang lewat 'Lupa kata sandi'."**
+- ✅ **"Koneksi terputus. Periksa jaringanmu, lalu coba lagi."**
+
+### B. Empty States (*Layar Kosong*)
+An empty state has three jobs: state that it is empty without sounding like an error, explain the value of filling it, and provide one clear action button:
+- ❌ *"Tidak ada data ditemukan."* (Cold database output)
+- ✅ **"Belum ada sesi latihan yang dicatat. Mulai latihan pertamamu agar grafik progres muncul di sini."** + `[ Mulai latihan ]`
+
+### C. Destructive Confirmation Modals
+Name the specific object and consequence in the heading/body, and make the confirm button echo the exact verb (never pair *"Apakah Anda yakin?"* with `[ Ya ]` / `[ Tidak ]`):
+- ❌ *"Apakah Anda yakin ingin menghapus?"* `[ Ya ]` `[ Tidak ]`
+- ✅ **"Hapus 3 sesi latihan? Data yang dihapus tidak bisa dikembalikan."** `[ Batal ]` `[ Hapus ]`
+
+### D. Notifications & Push Copy
+Lead with the actionable news in the first clause so it survives lock-screen truncation:
+- ✅ **Title**: `Istirahat selesai 💪`, **Body**: `Saatnya set berikutnya.`
+- ✅ **Title**: `Latihan direncanakan hari ini`, **Body**: `Sudah ada di jadwalmu. Ayo mulai latihan 💪`

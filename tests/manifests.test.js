@@ -107,14 +107,27 @@ test('AGENTS.md and SKILL.md contain all load-bearing linguistic invariants', ()
   }
 });
 
-test('all required reference modules and scripts exist and are reachable from both root and plugin skill path', () => {
+test('all required reference modules and scripts exist and are reachable from both root and plugin skill path without symlinks', () => {
   for (const rel of [...REQUIRED_REFERENCES, 'scripts/audit-id.js']) {
-    assert.ok(fs.existsSync(path.join(root, rel)), `Missing root path: ${rel}`);
-    assert.ok(
-      fs.existsSync(path.join(root, 'skills', SKILL_NAME, rel)),
-      `Missing plugin-resolved path: skills/${SKILL_NAME}/${rel}`,
-    );
+    const rootPath = path.join(root, rel);
+    const pluginPath = path.join(root, 'skills', SKILL_NAME, rel);
+
+    assert.ok(fs.existsSync(rootPath), `Missing root path: ${rel}`);
+    assert.ok(fs.existsSync(pluginPath), `Missing plugin-resolved path: skills/${SKILL_NAME}/${rel}`);
+
+    // Verify plugin paths are real files and directories, not dangling symlinks (ensures Codex/Claude standalone portability)
+    const lstat = fs.lstatSync(pluginPath);
+    assert.ok(!lstat.isSymbolicLink(), `skills/${SKILL_NAME}/${rel} must be a real file, not a symlink`);
+
+    // Verify contents match root verbatim
+    const rootContent = fs.readFileSync(rootPath);
+    const pluginContent = fs.readFileSync(pluginPath);
+    assert.ok(rootContent.equals(pluginContent), `skills/${SKILL_NAME}/${rel} content drifted from root ${rel}`);
   }
+
+  // Verify the directory containers themselves are real directories and not symlinks
+  assert.ok(!fs.lstatSync(path.join(root, 'skills', SKILL_NAME, 'references')).isSymbolicLink(), 'skills references must not be a symlink');
+  assert.ok(!fs.lstatSync(path.join(root, 'skills', SKILL_NAME, 'scripts')).isSymbolicLink(), 'skills scripts must not be a symlink');
 });
 
 function isEscapedBacktick(content, pos) {

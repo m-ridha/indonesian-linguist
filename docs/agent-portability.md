@@ -27,4 +27,4 @@ Some agent harnesses scan `SKILL.md` at the root of a cloned skill directory (`~
 To guarantee that both installation methods work identically and expose **only one skill** (`indonesian-linguist`):
 - Root [`SKILL.md`](../SKILL.md) is the canonical skill file.
 - [`skills/indonesian-linguist/SKILL.md`](../skills/indonesian-linguist/SKILL.md) is verified by `npm test` (`tests/manifests.test.js`) to remain byte-for-byte identical to root `SKILL.md`.
-- `skills/indonesian-linguist/references` is a relative symlink pointing to `../../references`, so relative links (`references/...`) resolve to the exact same files in every environment.
+- `skills/indonesian-linguist/references/` and `skills/indonesian-linguist/scripts/` are real physical directories (synchronized automatically via `scripts/sync-skill.js` / `npm test`), ensuring that isolated plugin caches in OpenAI Codex, Claude Code, and npm tarballs preserve all relative links and scripts without depending on external symlinks.
