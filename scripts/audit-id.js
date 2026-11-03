@@ -295,15 +295,19 @@ function auditDictionary(dict, options = {}) {
 
 /**
  * Sanitize diagnostic strings to prevent log injection and terminal control sequence tampering.
+ * Escapes C0/C1 control characters, Unicode line/paragraph separators, and bidirectional controls.
  * @param {string} str
  * @returns {string}
  */
 function sanitizeDiagnostic(str) {
-  return String(str || '').replace(/[\r\n\x00-\x1f\x7f-\x9f]/g, (c) => {
+  return String(str || '').replace(/[\x00-\x1f\x7f-\x9f\u200e\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069]/g, (c) => {
     if (c === '\n') return '\\n';
     if (c === '\r') return '\\r';
     if (c === '\t') return '\\t';
-    return '\\x' + c.charCodeAt(0).toString(16).padStart(2, '0');
+    const code = c.charCodeAt(0);
+    return code > 0xff
+      ? '\\u' + code.toString(16).padStart(4, '0')
+      : '\\x' + code.toString(16).padStart(2, '0');
   });
 }
 
@@ -342,7 +346,11 @@ function parseSimpleJsLocale(content) {
         stripped += c;
         if (c === '\\') {
           i++;
-          if (i < n) stripped += src[i];
+          if (i < n) {
+            stripped += src[i];
+            i++;
+          }
+          continue;
         } else if (c === quote) {
           closed = true;
           i++;

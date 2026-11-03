@@ -117,6 +117,144 @@ test('all required reference modules and scripts exist and are reachable from bo
   }
 });
 
+// Linear scanner to extract relative Markdown links without quadratic backtracking
+function extractRelativeMarkdownLinks(content) {
+  const MAX_DOC_LENGTH = 1_000_000;
+  if (content.length > MAX_DOC_LENGTH) {
+    throw new Error(`Document length (${content.length}) exceeds safety limit of ${MAX_DOC_LENGTH}`);
+  }
+
+  const links = [];
+  let i = 0;
+  const n = content.length;
+  const bracketStack = [];
+
+  while (i < n) {
+    const ch = content[i];
+
+    // Escaped character
+    if (ch === '\\') {
+      i += 2;
+      continue;
+    }
+
+    // Skip fenced code blocks (``` or ~~~) starting at line start with at most 3 spaces
+    if (ch === '`' || ch === '~') {
+      const fenceChar = ch;
+      let fenceLen = 0;
+      while (i + fenceLen < n && content[i + fenceLen] === fenceChar) {
+        fenceLen++;
+      }
+      if (fenceLen >= 3) {
+        let p = i - 1;
+        let spaces = 0;
+        while (p >= 0 && content[p] === ' ') {
+          spaces++;
+          p--;
+        }
+        if ((p < 0 || content[p] === '\n') && spaces <= 3) {
+          i += fenceLen;
+          while (i < n) {
+            if (content[i] === '\n') {
+              i++;
+              let pClose = i;
+              let closeSpaces = 0;
+              while (pClose < n && content[pClose] === ' ') {
+                closeSpaces++;
+                pClose++;
+              }
+              if (closeSpaces <= 3 && content[pClose] === fenceChar) {
+                let closeFenceLen = 0;
+                while (pClose + closeFenceLen < n && content[pClose + closeFenceLen] === fenceChar) {
+                  closeFenceLen++;
+                }
+                if (closeFenceLen >= fenceLen) {
+                  i = pClose + closeFenceLen;
+                  while (i < n && content[i] !== '\n') i++;
+                  break;
+                }
+              }
+            } else {
+              i++;
+            }
+          }
+          continue;
+        }
+      }
+
+      // Inline code span: backtick run matching opening length
+      if (ch === '`') {
+        let delimLen = 0;
+        while (i + delimLen < n && content[i + delimLen] === '`') {
+          delimLen++;
+        }
+        i += delimLen;
+        while (i < n) {
+          if (content[i] === '`') {
+            let runLen = 0;
+            while (i + runLen < n && content[i + runLen] === '`') {
+              runLen++;
+            }
+            if (runLen === delimLen) {
+              i += runLen;
+              break;
+            } else {
+              i += runLen;
+            }
+          } else {
+            i++;
+          }
+        }
+        continue;
+      }
+    }
+
+    // Candidate link start bracket
+    if (ch === '[') {
+      if (bracketStack.length < 32) {
+        bracketStack.push(i);
+      }
+      i++;
+      continue;
+    }
+
+    // Candidate link end bracket
+    if (ch === ']') {
+      if (bracketStack.length > 0) {
+        const openIdx = bracketStack.pop();
+        const labelLen = i - openIdx - 1;
+        // CommonMark: link label length at most 999 characters
+        if (labelLen <= 999 && i + 1 < n && content[i + 1] === '(') {
+          const urlStart = i + 2;
+          let k = urlStart;
+          while (k < n && content[k] !== ')' && content[k] !== '\n') {
+            if (content[k] === '\\') k++;
+            k++;
+          }
+          if (k < n && content[k] === ')') {
+            const rawTarget = content.slice(urlStart, k).trim();
+            // Separate destination from optional title (e.g. [guide](./guide.md "Title") or <path>)
+            const destMatch = rawTarget.match(/^(?:<([^>]+)>|(\S+))/);
+            const destination = destMatch ? (destMatch[1] || destMatch[2]) : '';
+            if (destination && !/^(?:https?:|mailto:|#)/i.test(destination)) {
+              const cleanTarget = destination.split('#')[0].trim();
+              if (cleanTarget) links.push(cleanTarget);
+            }
+            i = k + 1;
+            continue;
+          }
+        }
+      }
+      i++;
+      continue;
+    }
+
+    i++;
+  }
+
+  return links;
+}
+
 test('all relative markdown links in SKILL.md, plugin SKILL.md, README.md, CONTRIBUTING.md, and docs resolve to existing files', () => {
   const filesToCheck = [
     'SKILL.md',
@@ -134,90 +272,6 @@ test('all relative markdown links in SKILL.md, plugin SKILL.md, README.md, CONTR
     'scripts/README.md',
   ];
 
-  // Linear scanner to extract relative Markdown links without quadratic backtracking
-  function extractRelativeMarkdownLinks(content) {
-    const MAX_DOC_LENGTH = 1_000_000;
-    if (content.length > MAX_DOC_LENGTH) {
-      throw new Error(`Document length (${content.length}) exceeds safety limit of ${MAX_DOC_LENGTH}`);
-    }
-
-    const links = [];
-    let i = 0;
-    const n = content.length;
-
-    while (i < n) {
-      const ch = content[i];
-
-      // Skip fenced code blocks (``` or ~~~)
-      if ((ch === '`' || ch === '~') && content.slice(i, i + 3) === ch.repeat(3)) {
-        const fence = content.slice(i, i + 3);
-        i += 3;
-        while (i < n) {
-          if (content.slice(i, i + 3) === fence) {
-            i += 3;
-            break;
-          }
-          i++;
-        }
-        continue;
-      }
-
-      // Skip inline code spans
-      if (ch === '`') {
-        i++;
-        while (i < n && content[i] !== '`' && content[i] !== '\n') {
-          i++;
-        }
-        if (i < n && content[i] === '`') i++;
-        continue;
-      }
-
-      // Check candidate markdown link [label](url)
-      if (ch === '[') {
-        const labelStart = i + 1;
-        let depth = 1;
-        let j = labelStart;
-        while (j < n) {
-          if (content[j] === '\\') {
-            j += 2;
-            continue;
-          }
-          if (content[j] === '[') {
-            depth++;
-          } else if (content[j] === ']') {
-            depth--;
-            if (depth === 0) break;
-          } else if (content[j] === '\n' && j - labelStart > 200) {
-            break;
-          }
-          j++;
-        }
-
-        if (depth === 0 && j + 1 < n && content[j + 1] === '(') {
-          const urlStart = j + 2;
-          let k = urlStart;
-          while (k < n && content[k] !== ')' && content[k] !== '\n') {
-            if (content[k] === '\\') k++;
-            k++;
-          }
-          if (k < n && content[k] === ')') {
-            const rawTarget = content.slice(urlStart, k).trim();
-            if (rawTarget && !/^(?:https?:|mailto:|#)/i.test(rawTarget)) {
-              const cleanTarget = rawTarget.split('#')[0].trim();
-              if (cleanTarget) links.push(cleanTarget);
-            }
-            i = k + 1;
-            continue;
-          }
-        }
-      }
-
-      i++;
-    }
-
-    return links;
-  }
-
   for (const relFile of filesToCheck) {
     const absFile = path.join(root, relFile);
     if (!fs.existsSync(absFile)) continue;
@@ -231,6 +285,54 @@ test('all relative markdown links in SKILL.md, plugin SKILL.md, README.md, CONTR
       );
     }
   }
+});
+
+test('extractRelativeMarkdownLinks handles link titles, code spans, fences, and repeated unmatched brackets safely', () => {
+  // Markdown links with titles
+  assert.deepEqual(
+    extractRelativeMarkdownLinks('See the [guide](./docs/testing.md "Testing Guide") for details.'),
+    ['./docs/testing.md'],
+  );
+  assert.deepEqual(
+    extractRelativeMarkdownLinks("See [releases](./docs/releases.md 'Releases') here."),
+    ['./docs/releases.md'],
+  );
+  assert.deepEqual(
+    extractRelativeMarkdownLinks('Pointy destination [releases](<./docs/releases.md> "Title").'),
+    ['./docs/releases.md'],
+  );
+
+  // Multi-backtick inline code spans containing bracketed link examples must not be extracted
+  assert.deepEqual(
+    extractRelativeMarkdownLinks('Inline single: `[missing](./missing.md)` is skipped.'),
+    [],
+  );
+  assert.deepEqual(
+    extractRelativeMarkdownLinks('Inline double: `` `[missing](./missing.md)` `` is skipped.'),
+    [],
+  );
+
+  // Fenced blocks at line start are ignored
+  const fenced = '```markdown\n[missing](./missing.md)\n```\n[actual](./docs/testing.md)';
+  assert.deepEqual(extractRelativeMarkdownLinks(fenced), ['./docs/testing.md']);
+
+  // Triple backticks in prose without line start do not act as block fence
+  const inProse = 'Prose ```[not a link](./missing.md)``` but [valid](./docs/testing.md)';
+  assert.deepEqual(extractRelativeMarkdownLinks(inProse), ['./docs/testing.md']);
+
+  // Valid nested link inside bracketed text
+  assert.deepEqual(
+    extractRelativeMarkdownLinks('[outer [inner](./docs/testing.md)]'),
+    ['./docs/testing.md'],
+  );
+
+  // Linear scan bound check for repeated unmatched brackets with no newline
+  const unmatched = '['.repeat(20000);
+  const start = Date.now();
+  const links = extractRelativeMarkdownLinks(unmatched);
+  const durationMs = Date.now() - start;
+  assert.deepEqual(links, []);
+  assert.ok(durationMs < 200, `20,000 unmatched brackets took ${durationMs}ms (expected < 200ms)`);
 });
 
 test('package.json files list ships all required assets and scripts', () => {

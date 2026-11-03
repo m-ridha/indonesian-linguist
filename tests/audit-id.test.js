@@ -202,11 +202,11 @@ test('CLI: escapes control characters and newlines in diagnostics to prevent log
 
   try {
     const maliciousJson = path.join(tmpDir, 'malicious.json');
-    // Key containing newline and carriage return to attempt log injection
+    // Key containing actual newline, carriage return, line separator, and bidi control to attempt log injection
     fs.writeFileSync(
       maliciousJson,
       JSON.stringify({
-        'Injected\\nFAKE_STATUS: OK': 'silahkan',
+        'Injected\nFAKE_STATUS: OK\rCR\u2028LS\u202eRLO': 'silahkan',
       }),
       'utf8',
     );
@@ -216,8 +216,12 @@ test('CLI: escapes control characters and newlines in diagnostics to prevent log
     });
 
     assert.equal(result.status, 1);
-    // Control characters must be escaped as literal \n, not actual newlines inside the key output
-    assert.match(result.stderr, /Injected\\nFAKE_STATUS/);
+    // Control characters must be escaped, never emitted as raw control or line breaks in diagnostic output
+    assert.match(result.stderr, /Injected\\nFAKE_STATUS: OK\\rCR\\u2028LS\\u202eRLO/);
+    assert.doesNotMatch(result.stderr, /Injected\nFAKE_STATUS/);
+    assert.doesNotMatch(result.stderr, /OK\rCR/);
+    assert.doesNotMatch(result.stderr, /\u2028/);
+    assert.doesNotMatch(result.stderr, /\u202e/);
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
