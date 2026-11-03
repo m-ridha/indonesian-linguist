@@ -635,6 +635,17 @@ test('auditDictionary: flags inverted quantitative placeholders ({0} sets unchec
   const correct5 = auditDictionary({ '{0} photos deleted': 'Dihapus {0} foto' });
   assert.equal(correct5.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 0);
 
+  // Adverb preceding predicate (Sudah diunggah {0} file)
+  const correct6 = auditDictionary({ '{0} files uploaded': 'Sudah diunggah {0} file' });
+  assert.equal(correct6.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 0);
+
+  // Implicit object followed by adverb (Dihapus {0} lagi / Sudah dihapus {0} lagi)
+  const correct7 = auditDictionary({ '{0} more deleted': 'Dihapus {0} lagi' });
+  assert.equal(correct7.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 0);
+
+  const correct8 = auditDictionary({ '{0} more deleted': 'Sudah dihapus {0} lagi' });
+  assert.equal(correct8.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 0);
+
   // Non-count named placeholders (e.g., {name}) should not be flagged when translated as noun phrase
   const nonCount = auditDictionary({ '{name} commented': 'Komentar dari {name}' });
   assert.equal(nonCount.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 0);

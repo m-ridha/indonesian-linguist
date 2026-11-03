@@ -380,14 +380,22 @@ function auditDictionary(dict, options = {}) {
 
         // Exclude common non-verb nouns (e.g. menit, latihan) from matching verb heuristic
         const pseudoVerbNoun = /^(?:menit|detik|jam|hari|minggu|bulan|tahun|set|foto|item|video|kunci|latihan|pesan)$/i;
-        const postPlaceholderAdverb = /^(?:tersisa|belum|sudah|telah|akan|sedang|tidak|lagi|dulu)$/i;
-        const isPredicate =
-          !pseudoVerbNoun.test(firstLeading) &&
-          /^(?:di|ter|ber|me)[a-z\u00C0-\u024F]+/i.test(firstLeading);
-        const hasObjectFollowing =
-          followingWord !== null && !postPlaceholderAdverb.test(followingWord);
+        const leadingAdverb = /^(?:sudah|telah|akan|sedang|belum|pernah|baru|sempat|kembali)$/i;
+        const verbCandidate =
+          leadingAdverb.test(firstLeading) && leadingWords.length > 1
+            ? leadingWords[1]
+            : firstLeading;
 
-        const isLeadingVerbWithObject = isPredicate && hasObjectFollowing;
+        const isPredicate =
+          !pseudoVerbNoun.test(verbCandidate) &&
+          /^(?:di|ter|ber|me)[a-z\u00C0-\u024F]+/i.test(verbCandidate);
+
+        const isTrailingAdverb = followingWord === 'lagi';
+        const isPostState = /^(?:tersisa|belum|sudah|telah|akan|sedang|tidak)$/i.test(followingWord || '');
+        const hasObjectOrImplicit =
+          (followingWord !== null && !isPostState) || isTrailingAdverb;
+
+        const isLeadingVerbWithObject = isPredicate && hasObjectOrImplicit;
 
         if (!isPermittedQuantifier && !isLeadingVerbWithObject) {
           findings.push({
