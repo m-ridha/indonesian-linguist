@@ -77,10 +77,22 @@ As highlighted in Southeast Asian linguistic diagnostic benchmarks (**SEA-HELM /
 
 | Indonesian Voice Form | Grammatical Role | Where to Use in Software & UI | Concrete Examples |
 | --- | --- | --- | --- |
-| **1. Base Verb (`Zero` prefix)** | Direct imperative command | Interactive buttons, menu actions, CTAs | **`Simpan`**, **`Hapus`**, **`Bagikan`**, **`Salin`**, **`Cari`**, **`Catat`**, **`Ciutkan`**, **`Izinkan`**, **`Jaga`** (never `Menyimpan` or `Mencari` on a button) |
-| **2. Active (`meN-`)** | Agent-focused transitive action | Feature descriptions, onboarding prose, tooltips | *"Fitur ini **memungkinkan** kamu **mencatat** beban dan **memantau** progres."* |
+| **1. Base Verb (`Zero` prefix)** | Direct imperative command | Interactive buttons, menu actions, CTAs | **`Simpan`**, **`Hapus`**, **`Bagikan`**, **`Salin`**, **`Cari`**, **`Catat`**, **`Ciutkan`**, **`Izinkan`**, **`Jaga`**, **`Geser`**, **`Ketuk`** (never `Menyimpan` or `Mencari` on a button) |
+| **2. Active (`meN-`)** | Agent-focused transitive action or purpose clause | Feature descriptions, onboarding prose, subordinate purpose clauses (*untuk meN-*), in-progress states | *"Fitur ini **memungkinkan** kamu **mencatat** beban."*, **`Geser untuk mematikan alarm`**, **`Menyimpan…`** |
 | **3. Intentional Passive (`di-`)** | Patient-focused transitive process | Process explanations, confirmation warnings, chart descriptions | *"Data yang **dihapus** tidak bisa **dikembalikan**."*, *"Set **ditampilkan** di grafik."* |
 | **4. Perfective / Stative (`ter-`)** | Completed state, status badge, or achieved milestone | Status pills, achievement banners, lifetime totals, disabled button states | **`Tersimpan`** (*Saved*), **`Terhubung`** (*Signed in / Connected*), **`Tercapai!`** (*Goal reached!*,  never dangling *dicapai!*), **`Terputus`** (*Disconnected*), **`Tak terbatas`** (*Unrestricted*), **`Total beban terangkat`** (*Lifted in total*) |
+
+**Compound Instructions (Head Action vs. Subordinate Purpose Clause)**:
+When an interactive label pairs a physical interaction with a target purpose, the head verb takes base imperative (`Zero` prefix) while the purpose clause introduced by *untuk*, *demi*, *agar*, or *supaya* takes active `meN-`:
+- *Source*: `"Slide to stop alarm"` / `"Swipe to turn off alarm"`
+- ❌ **Broken / Slang**: *"Geser untuk matikan alarm"*
+- ✅ **Grammatical Indonesian**: **"Geser untuk mematikan alarm"**
+- *Source*: `"Tap to view details"`
+- ✅ **Grammatical Indonesian**: **"Ketuk untuk melihat detail"**
+
+**In-Progress vs. Completed States**:
+- In-progress / loading states use active `meN-` with ellipsis: **`Menyimpan…`** (*Saving…*), **`Mengunggah…`** (*Uploading…*), **`Menghubungkan…`** (*Connecting…*).
+- Completed states use perfective `ter-`: **`Tersimpan`** (*Saved*), **`Terunggah`** (*Uploaded*), **`Terhubung`** (*Connected*).
 
 **Title vs. Subtitle Verb Harmony**:
 Align the verb family in a setting row's subtitle with its title. If the setting title is **"Lewati latihan yang sudah selesai"** (*Skip completed exercises*), the explanatory subtitle must use the matching active verb **"melewati"** (*"...Sebelumnya dan Berikutnya melewati latihan yang sudah selesai"*).
