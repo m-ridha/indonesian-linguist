@@ -886,8 +886,8 @@ Options:
   --json                Output findings in structured JSON format
   --source <file>       Path to source catalog (.json/.js) to compare placeholders and fallbacks
   --min-fallback <n>    Minimum character length for identity fallback check (default: 16)
-  --pronoun <name>      Enforce consistent pronoun: "Anda", "kamu", or "any" (default: any)
-  --register <mode>     Alias for pronoun policy: "formal" (Anda), "casual" (kamu), or "any"
+  --pronoun <name>      Enforce consistent pronoun in .json/.js/.mjs dictionaries: "Anda", "kamu", or "any" (default: any)
+  --register <mode>     Alias for pronoun policy (dictionaries only): "formal" (Anda), "casual" (kamu), or "any"
 `);
     process.exit(0);
   }
