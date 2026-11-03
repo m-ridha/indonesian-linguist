@@ -213,9 +213,10 @@ const MAX_DICTIONARY_ENTRIES = 50_000;
 /**
  * Audit a key-value i18n dictionary object (including nested namespace objects).
  * Collects findings in a single accumulator with explicit depth, size, and traversal bounds.
- * Tracks visited object references to prevent exponential work on compact shared-reference graphs.
+ * Tracks visited object references to prevent exponential work on compact shared-reference graphs,
+ * and tracks active ancestors to immediately break cycles.
  * @param {Record<string, unknown>} dict
- * @param {{ minFallbackLength?: number, allowlistKeys?: Set<string>, prefix?: string, depth?: number, accumulator?: Array<{key: string, rule: string, message: string}>, visited?: Map<object, number>, counter?: { entries: number } }} [options]
+ * @param {{ minFallbackLength?: number, allowlistKeys?: Set<string>, prefix?: string, depth?: number, accumulator?: Array<{key: string, rule: string, message: string}>, visited?: Map<object, number>, activeStack?: Set<object>, counter?: { entries: number } }} [options]
  * @returns {Array<{key: string, rule: string, message: string}>}
  */
 function auditDictionary(dict, options = {}) {
@@ -225,6 +226,7 @@ function auditDictionary(dict, options = {}) {
   const currentDepth = options.depth ?? 0;
   const findings = options.accumulator ?? [];
   const visited = options.visited ?? new Map();
+  const activeStack = options.activeStack ?? new Set();
   const counter = options.counter ?? { entries: 0 };
 
   if (currentDepth > MAX_DICTIONARY_DEPTH) {
@@ -236,19 +238,22 @@ function auditDictionary(dict, options = {}) {
     return findings;
   }
 
-  if (dict && typeof dict === 'object') {
+  const isObject = dict && typeof dict === 'object';
+  if (isObject) {
+    if (activeStack.has(dict)) {
+      return findings;
+    }
     const deepestVisited = visited.get(dict);
     if (deepestVisited !== undefined && currentDepth <= deepestVisited) {
       return findings;
     }
     visited.set(dict, currentDepth);
+    activeStack.add(dict);
   }
 
-  for (const key in dict || {}) {
-    if (!Object.prototype.hasOwnProperty.call(dict, key)) {
-      continue;
-    }
+  const keys = isObject ? Object.keys(dict) : [];
 
+  for (const key of keys) {
     counter.entries++;
     if (counter.entries > MAX_DICTIONARY_ENTRIES) {
       findings.push({
@@ -278,6 +283,7 @@ function auditDictionary(dict, options = {}) {
         depth: currentDepth + 1,
         accumulator: findings,
         visited,
+        activeStack,
         counter,
       });
       continue;
@@ -330,6 +336,10 @@ function auditDictionary(dict, options = {}) {
         message: issue.message,
       });
     }
+  }
+
+  if (isObject) {
+    activeStack.delete(dict);
   }
 
   return findings;

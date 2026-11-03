@@ -395,3 +395,27 @@ test('auditDictionary: does not read property values beyond traversal entry limi
   assert.ok(findings.some((f) => f.rule === 'traversal-limit-exceeded'));
   assert.strictEqual(getterCalledPastLimit, false);
 });
+
+test('auditDictionary: ignores inherited prototype properties without scanning them', () => {
+  const proto = { inheritedBad: 'Punggung' };
+  const child = Object.create(proto);
+  child.Back = 'Kembali';
+  const findings = auditDictionary(child);
+  assert.strictEqual(findings.length, 0);
+});
+
+test('auditDictionary: stops cycle on active ancestor path without overflowing finding limit on self-reference', () => {
+  const cyclic = { Back: 'Punggung' };
+  cyclic.self = cyclic;
+  const sibling = { Back: 'Punggung' };
+  const root = {
+    first: cyclic,
+    second: sibling,
+  };
+  const findings = auditDictionary(root);
+  // Both cyclic and sibling should be audited once without repeating cycles
+  const backFindings = findings.filter((f) => f.rule === 'polysemy-calque');
+  assert.strictEqual(backFindings.length, 2);
+  assert.ok(findings.some((f) => f.key === 'first.Back'));
+  assert.ok(findings.some((f) => f.key === 'second.Back'));
+});
