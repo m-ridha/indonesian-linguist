@@ -358,7 +358,8 @@ function auditDictionary(dict, options = {}) {
     // (e.g., "{0} sets unchecked", "{0} photos", "%d passkeys"),
     // but Indonesian translation flips it to ordinal format after the noun (e.g., "Set {0} belum dicentang", "Foto {0}").
     const quantMatch = key.match(/^(\{(?:\d+|n|count|total)\}|\{\{(?:\d+|n|count|total)\}\}|%(?:\d+\$)?d)\s+([A-Za-z-]+)/i);
-    if (quantMatch) {
+    const isCopulaFollowing = quantMatch && /^(?:is|are|was|were|has|have)$/i.test(quantMatch[2]);
+    if (quantMatch && !isCopulaFollowing) {
       const ph = quantMatch[1];
       const escapedPh = ph.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const keyNoun = quantMatch[2].toLowerCase().replace(/s$/, '');

@@ -632,6 +632,13 @@ test('auditDictionary: flags inverted quantitative placeholders ({0} sets unchec
   // Ordinal English source should not trigger false positives
   const ordinalSource = auditDictionary({ 'Set {0}': 'Set {0}' });
   assert.equal(ordinalSource.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 0);
+
+  // Copula-led phrases ({0} is invalid / {{0}} is invalid) are not count phrases
+  const copula1 = auditDictionary({ '{{0}} is invalid': 'Nilai {{0}} tidak valid' });
+  assert.equal(copula1.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 0);
+
+  const copula2 = auditDictionary({ '{0} is invalid': 'Nilai {0} tidak valid' });
+  assert.equal(copula2.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 0);
 });
 
 test('parseSimpleJsLocale: parses nested objects, export const, and backtick literals', () => {
