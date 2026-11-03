@@ -27,22 +27,22 @@
 
 ### In Chat & Pair Programming
 
-Invoke `/indonesian-linguist` or prompt your agent for any Indonesian language, translation, or localization task:
+Invoke `/indonesian-linguist` or prompt your agent for any Indonesian language, translation, or localization task (replace `<path/to/...>` with your catalog paths):
 
 ```text
-/indonesian-linguist Localize assets/locales/id.json using assets/locales/en.json as source.
+/indonesian-linguist Localize <path/to/id.json> using <path/to/en.json> as source.
 ```
 
 ### Deterministic Localization & Prose Auditor
 
-Audit any locale dictionary (`.json`, `.js`, `.mjs`) or prose file (`.md`, `.txt`) using the built-in CLI:
+Audit any locale dictionary (`.json`, `.js`, `.mjs`) or prose file (`.md`, `.txt`) using the built-in CLI (replace `<path/to/...>` with your file paths):
 
 ```bash
 # Compare Indonesian target against English source catalog
-node scripts/audit-id.js --source assets/locales/en.json assets/locales/id.json
+node scripts/audit-id.js --source <path/to/en.json> <path/to/id.json>
 
 # Enforce explicit project pronoun policy (formal Anda or casual kamu/-mu)
-node scripts/audit-id.js --pronoun Anda assets/locales/id.json
+node scripts/audit-id.js --pronoun Anda <path/to/id.json>
 ```
 
 ---
