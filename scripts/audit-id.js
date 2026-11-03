@@ -969,6 +969,47 @@ function parseAndroidXmlLocale(content) {
   return dict;
 }
 
+/**
+ * Unescapes standard Apple .strings escape sequences.
+ * @param {string} str
+ * @returns {string}
+ */
+function unescapeIosString(str) {
+  if (!str) return '';
+  return str
+    .replace(/\\"/g, '"')
+    .replace(/\\\\/g, '\\')
+    .replace(/\\n/g, '\n')
+    .replace(/\\r/g, '\r')
+    .replace(/\\t/g, '\t');
+}
+
+/**
+ * Parse an Apple iOS/macOS `.strings` localization file into a dictionary object.
+ * Strips C-style multiline comments and line comments, and extracts `"key" = "value";` pairs.
+ * @param {string} content
+ * @returns {Record<string, string>}
+ */
+function parseIosStringsLocale(content) {
+  const src = String(content || '');
+  if (src.length > MAX_NATIVE_LOCALE_LENGTH) {
+    throw new Error(`iOS strings source exceeds maximum length of ${MAX_NATIVE_LOCALE_LENGTH} characters.`);
+  }
+
+  const clean = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+
+  const dict = {};
+  const entryRegex = /"((?:[^"\\]|\\.)*)"\s*=\s*"((?:[^"\\]|\\.)*)"\s*;/g;
+  let match;
+  while ((match = entryRegex.exec(clean)) !== null) {
+    const key = unescapeIosString(match[1]);
+    const val = unescapeIosString(match[2]);
+    dict[key] = val;
+  }
+
+  return dict;
+}
+
 if (require.main === module) {
   const argv = process.argv.slice(2);
   let showHelp = false;
@@ -1230,6 +1271,7 @@ module.exports = {
   checkPronounPolicy,
   parseSimpleJsLocale,
   parseAndroidXmlLocale,
+  parseIosStringsLocale,
   sanitizeDiagnostic,
   truncateToUtf8ByteLimit,
 };

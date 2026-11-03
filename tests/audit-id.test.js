@@ -14,6 +14,7 @@ const {
   auditDictionary,
   parseSimpleJsLocale,
   parseAndroidXmlLocale,
+  parseIosStringsLocale,
   truncateToUtf8ByteLimit,
 } = require('../scripts/audit-id');
 
@@ -1173,4 +1174,28 @@ test('parseAndroidXmlLocale: parses strings, string-arrays, plurals, entities, a
     other: '%d hari',
   });
   assert.equal(dict.terms_html, 'Silakan baca <b>Syarat & Ketentuan</b> kami.');
+});
+
+test('parseIosStringsLocale: parses Apple .strings with comments and escaped quotes', () => {
+  const stringsContent = `
+/* Navigation actions */
+"action_cancel" = "Batal";
+"action_save" = "Simpan";
+
+// Dialog confirmations
+"dialog_confirm" = "Tekan \\"Lanjutkan\\" untuk memulai sesi latihan.";
+
+/*
+ Multi-line comment block
+ describing settings keys
+ */
+"settings_title" = "Pengaturan Profil";
+`;
+
+  const dict = parseIosStringsLocale(stringsContent);
+
+  assert.equal(dict.action_cancel, 'Batal');
+  assert.equal(dict.action_save, 'Simpan');
+  assert.equal(dict.dialog_confirm, 'Tekan "Lanjutkan" untuk memulai sesi latihan.');
+  assert.equal(dict.settings_title, 'Pengaturan Profil');
 });
