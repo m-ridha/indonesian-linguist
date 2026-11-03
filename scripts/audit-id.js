@@ -285,11 +285,20 @@ function auditDictionary(dict, options = {}) {
     }
 
     const value = dict[key];
-    const rawKey = currentPrefix ? `${currentPrefix}.${key}` : key;
-    const fullKey =
-      rawKey.length > MAX_PATH_LENGTH
-        ? `${rawKey.slice(0, MAX_PATH_LENGTH)}...[truncated]`
-        : rawKey;
+    let fullKey;
+    if (!currentPrefix) {
+      fullKey = key.length > MAX_PATH_LENGTH ? `${key.slice(0, MAX_PATH_LENGTH)}...[truncated]` : key;
+    } else {
+      const combined = `${currentPrefix}.${key}`;
+      if (combined.length <= MAX_PATH_LENGTH) {
+        fullKey = combined;
+      } else {
+        const leaf = key.length > 256 ? `${key.slice(0, 256)}...[truncated]` : key;
+        const availableForPrefix = Math.max(0, MAX_PATH_LENGTH - leaf.length - 17); // 17 for "...[truncated]."
+        const head = currentPrefix.slice(0, availableForPrefix);
+        fullKey = `${head}...[truncated].${leaf}`;
+      }
+    }
 
     if (value && typeof value === 'object' && !Array.isArray(value)) {
       auditDictionary(value, {
@@ -616,7 +625,7 @@ if (require.main === module) {
     }
   }
 
-  process.exit(hasFailures ? 1 : 0);
+  process.exitCode = hasFailures ? 1 : 0;
 }
 
 module.exports = {

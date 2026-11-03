@@ -435,17 +435,21 @@ test('auditDictionary: stops cycle on active ancestor path without overflowing f
   assert.ok(findings.some((f) => f.key === 'second.Back'));
 });
 
-test('auditDictionary: truncates extremely long key paths to prevent amplification', () => {
+test('auditDictionary: truncates extremely long key paths while preserving leaf key distinction', () => {
   const deepKey = 'a'.repeat(2000);
   const dict = {
     [deepKey]: {
       Back: 'Punggung',
+      light: 'lampu',
     },
   };
   const findings = auditDictionary(dict);
-  assert.equal(findings.length, 1);
+  assert.equal(findings.length, 2);
   assert.ok(findings[0].key.length <= 1050);
-  assert.ok(findings[0].key.endsWith('...[truncated]'));
+  assert.ok(findings[1].key.length <= 1050);
+  assert.ok(findings[0].key.endsWith('...[truncated].Back'));
+  assert.ok(findings[1].key.endsWith('...[truncated].light'));
+  assert.notEqual(findings[0].key, findings[1].key);
 });
 
 test('CLI: bounds cumulative diagnostic output bytes on files with many findings', () => {

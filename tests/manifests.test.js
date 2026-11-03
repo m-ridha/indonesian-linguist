@@ -516,7 +516,7 @@ test('OpenAI / Codex agent metadata (skills/indonesian-linguist/agents/openai.ya
   const yamlPath = 'skills/indonesian-linguist/agents/openai.yaml';
   assert.ok(fs.existsSync(path.join(root, yamlPath)), `${yamlPath} must exist`);
   const content = read(yamlPath);
-  assert.ok(content.length <= 100_000, 'openai.yaml file size must be within safety bounds');
+  assert.ok(Buffer.byteLength(content, 'utf8') <= 100_000, 'openai.yaml file size must be within safety bounds');
   const shortDescMatch = content.match(/^[ \t]*short_description:[ \t]*"([^"\r\n]+)"/m);
   assert.ok(shortDescMatch, 'openai.yaml must define short_description');
   const len = shortDescMatch[1].length;
