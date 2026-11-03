@@ -126,20 +126,104 @@ test('all relative markdown links in SKILL.md, plugin SKILL.md, README.md, CONTR
     'AI_POLICY.md',
     'skills/indonesian-linguist/TEST.md',
     'docs/agent-portability.md',
+    'docs/sources.md',
+    'docs/testing.md',
+    'docs/releases.md',
     'references/README.md',
     'references/domains/README.md',
     'scripts/README.md',
   ];
-  const linkRegex = /\[[^\]]+\]\((?!https?:\/\/|mailto:|#)([^)#]+)(?:#[^)]*)?\)/g;
+
+  // Linear scanner to extract relative Markdown links without quadratic backtracking
+  function extractRelativeMarkdownLinks(content) {
+    const MAX_DOC_LENGTH = 1_000_000;
+    if (content.length > MAX_DOC_LENGTH) {
+      throw new Error(`Document length (${content.length}) exceeds safety limit of ${MAX_DOC_LENGTH}`);
+    }
+
+    const links = [];
+    let i = 0;
+    const n = content.length;
+
+    while (i < n) {
+      const ch = content[i];
+
+      // Skip fenced code blocks (``` or ~~~)
+      if ((ch === '`' || ch === '~') && content.slice(i, i + 3) === ch.repeat(3)) {
+        const fence = content.slice(i, i + 3);
+        i += 3;
+        while (i < n) {
+          if (content.slice(i, i + 3) === fence) {
+            i += 3;
+            break;
+          }
+          i++;
+        }
+        continue;
+      }
+
+      // Skip inline code spans
+      if (ch === '`') {
+        i++;
+        while (i < n && content[i] !== '`' && content[i] !== '\n') {
+          i++;
+        }
+        if (i < n && content[i] === '`') i++;
+        continue;
+      }
+
+      // Check candidate markdown link [label](url)
+      if (ch === '[') {
+        const labelStart = i + 1;
+        let depth = 1;
+        let j = labelStart;
+        while (j < n) {
+          if (content[j] === '\\') {
+            j += 2;
+            continue;
+          }
+          if (content[j] === '[') {
+            depth++;
+          } else if (content[j] === ']') {
+            depth--;
+            if (depth === 0) break;
+          } else if (content[j] === '\n' && j - labelStart > 200) {
+            break;
+          }
+          j++;
+        }
+
+        if (depth === 0 && j + 1 < n && content[j + 1] === '(') {
+          const urlStart = j + 2;
+          let k = urlStart;
+          while (k < n && content[k] !== ')' && content[k] !== '\n') {
+            if (content[k] === '\\') k++;
+            k++;
+          }
+          if (k < n && content[k] === ')') {
+            const rawTarget = content.slice(urlStart, k).trim();
+            if (rawTarget && !/^(?:https?:|mailto:|#)/i.test(rawTarget)) {
+              const cleanTarget = rawTarget.split('#')[0].trim();
+              if (cleanTarget) links.push(cleanTarget);
+            }
+            i = k + 1;
+            continue;
+          }
+        }
+      }
+
+      i++;
+    }
+
+    return links;
+  }
 
   for (const relFile of filesToCheck) {
     const absFile = path.join(root, relFile);
     if (!fs.existsSync(absFile)) continue;
     const content = fs.readFileSync(absFile, 'utf8');
     const baseDir = path.dirname(absFile);
-    let match;
-    while ((match = linkRegex.exec(content)) !== null) {
-      const targetRel = match[1];
+    for (const targetRel of extractRelativeMarkdownLinks(content)) {
       const resolved = path.resolve(baseDir, targetRel);
       assert.ok(
         fs.existsSync(resolved),
