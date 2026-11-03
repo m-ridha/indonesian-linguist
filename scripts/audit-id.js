@@ -353,7 +353,7 @@ function auditDictionary(dict, options = {}) {
  * @returns {string}
  */
 function sanitizeDiagnostic(str) {
-  return String(str || '').replace(/[\x00-\x1f\x7f-\x9f\u200e\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069]/g, (c) => {
+  return String(str || '').replace(/[\x00-\x1f\x7f-\x9f\u061c\u200e\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069]/g, (c) => {
     if (c === '\n') return '\\n';
     if (c === '\r') return '\\r';
     if (c === '\t') return '\\t';
