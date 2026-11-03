@@ -32,6 +32,9 @@ const NON_STANDARD_WORDS = [
   { regex: /\bkreatifitas\b/i, fix: 'kreativitas' },
   { regex: /\bproduktifitas\b/i, fix: 'produktivitas' },
   { regex: /\befektifitas\b/i, fix: 'efektivitas' },
+  { regex: /\b(disini|disana|disitu)\b/i, fix: 'di sini / di sana / di situ' },
+  { regex: /\b(diatas|dibawah|didalam|diluar)\b/i, fix: 'di atas / di bawah / di dalam / di luar' },
+  { regex: /\b(kesana|kesini)\b/i, fix: 'ke sana / ke sini' },
 ];
 
 const SLOP_AND_PLEONASM_PATTERNS = [
@@ -76,7 +79,7 @@ const KNOWN_CALQUE_TRAPS = [
 // and official product/OS proper nouns. Never matches arbitrary English sentences containing these words.
 const RETAINED_LOANWORD_PATTERNS = [
   /^(?:Drop-set\s*\/\s*rest-pause|Drop-set|Superset(?:\s+\{[0-9]+\}(?:\s*\/\s*\{[0-9]+\}|\s*:\s*\{[0-9]+\}\s*\(\{[0-9]+\}\))?)?|Rest-pause|Deload|Bodyweight|Thibaudeau\s*\(Powerlifting\))$/i,
-  /^(?:(?:(?:single|one|two)-(?:leg|arm)|(?:reverse|close|wide|neutral|narrow|overhand|underhand|hammer|snatch)-grip|incline|decline|flat|barbell|dumbbell|ez-bar|cable|smith machine|seated|standing|close-grip|wide-grip|romanian|sumo|conventional|deficit|pause|paused|single-arm|one-arm)\s+){0,3}(?:bench press|barbell curl|back squat|front squat|deadlift|overhead press|leverage machine)(?:\s*\([A-Za-z0-9 -]+\))?$/i,
+  /^(?:(?:(?:single|one|two)-(?:leg|arm)|(?:reverse|close|wide|neutral|narrow|overhand|underhand|hammer|snatch)-grip|incline|decline|flat|barbell|dumbbell|ez-bar|cable|smith machine|seated|standing|close-grip|wide-grip|romanian|sumo|conventional|deficit|pause|paused|single-arm|one-arm|high-bar|low-bar|safety-bar|zercher|hack|belt|box|bulgarian)\s+){0,3}(?:bench press|barbell curl|back squat|front squat|split squat|squat|deadlift|overhead press|leverage machine)(?:\s*\([A-Za-z0-9 -]+\))?$/i,
   /^(?:serratus anterior|latissimus dorsi|sternocleidomastoid|pectoralis(?:\s+major|\s+minor)?|gluteus(?:\s+maximus|\s+medius)?|gastrocnemius)$/i,
   /^(?:Face ID(?:\s*\/\s*Touch ID)?|Touch ID|iCloud Keychain|Google Password Manager|Health Connect|Apple Health|Apple Watch|Cloudflare Access)$/i,
   /^(?:API key|endpoint|reverse proxy|source code|webhook)$/i,
@@ -350,6 +353,60 @@ function auditDictionary(dict, options = {}) {
       });
     }
 
+    // 2b. Inverted quantitative placeholder check
+    // Catches when English source has a count/quantity placeholder followed by a noun
+    // (e.g., "{0} sets unchecked", "{0} photos", "%d passkeys"),
+    // but Indonesian translation flips it to ordinal format after the noun (e.g., "Set {0} belum dicentang", "Foto {0}").
+    const quantMatch = key.match(/^(\{(?:\d+|n|count|total)\}|\{\{(?:\d+|n|count|total)\}\}|%(?:\d+\$)?d)\s+([A-Za-z-]+)/i);
+    const isCopulaFollowing = quantMatch && /^(?:is|are|was|were|has|have)$/i.test(quantMatch[2]);
+    if (quantMatch && !isCopulaFollowing) {
+      const ph = quantMatch[1];
+      const escapedPh = ph.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const followingWordMatch = value.match(new RegExp(`${escapedPh}\\s+([A-Za-z\\u00C0-\\u024F-]+)`, 'i'));
+      const followingWord = followingWordMatch !== null ? followingWordMatch[1].toLowerCase() : null;
+
+      const invertedMatch = value.match(
+        new RegExp(`^([A-Za-z\\u00C0-\\u024F-]+(?:\\s+[A-Za-z\\u00C0-\\u024F-]+)*)\\s+${escapedPh}`, 'i'),
+      );
+      if (invertedMatch) {
+        const leadingPhrase = invertedMatch[1].toLowerCase();
+        const leadingWords = leadingPhrase.split(/\s+/);
+        const firstLeading = leadingWords[0];
+
+        const permittedQuantifierWord = /^(sebanyak|total|sekitar|hanya|ada|masih|tersisa)$/i;
+        const isPermittedQuantifier =
+          /^(kurang dari|lebih dari|masih ada)$/i.test(leadingPhrase) ||
+          leadingWords.every((word) => permittedQuantifierWord.test(word));
+
+        // Exclude common non-verb nouns (e.g. menit, latihan) from matching verb heuristic
+        const pseudoVerbNoun = /^(?:menit|detik|jam|hari|minggu|bulan|tahun|set|foto|item|video|kunci|latihan|pesan)$/i;
+        const leadingAdverb = /^(?:sudah|telah|akan|sedang|belum|pernah|baru|sempat|kembali)$/i;
+        const verbCandidate =
+          leadingAdverb.test(firstLeading) && leadingWords.length > 1
+            ? leadingWords[1]
+            : firstLeading;
+
+        const isPredicate =
+          !pseudoVerbNoun.test(verbCandidate) &&
+          /^(?:di|ter|ber|me)[a-z\u00C0-\u024F]+/i.test(verbCandidate);
+
+        const isTrailingAdverb = followingWord === 'lagi';
+        const isPostState = /^(?:tersisa|belum|sudah|telah|akan|sedang|tidak)$/i.test(followingWord || '');
+        const hasObjectOrImplicit =
+          (followingWord !== null && !isPostState) || isTrailingAdverb;
+
+        const isLeadingVerbWithObject = isPredicate && hasObjectOrImplicit;
+
+        if (!isPermittedQuantifier && !isLeadingVerbWithObject) {
+          findings.push({
+            key: fullKey,
+            rule: 'inverted-quantitative-placeholder',
+            message: `Quantitative placeholder inverted: "${key}" (${ph} count) translated with placeholder placed after noun ("${value}"); in Indonesian, quantity must precede the noun (${ph} ${invertedMatch[1]}).`,
+          });
+        }
+      }
+    }
+
     // 3. Known UI/domain polysemy & calque traps
     for (const trap of KNOWN_CALQUE_TRAPS) {
       if (trap.keyMatch.test(key) && trap.badVal.test(value)) {
@@ -444,7 +501,7 @@ function parseSimpleJsLocale(content) {
   const n = src.length;
   while (i < n) {
     const ch = src[i];
-    if (ch === '"' || ch === '\'') {
+    if (ch === '"' || ch === '\'' || ch === '`') {
       const quote = ch;
       stripped += quote;
       i++;
@@ -494,104 +551,110 @@ function parseSimpleJsLocale(content) {
     throw new Error('Unsupported JS locale format: missing object literal braces "{ ... }".');
   }
 
-  const body = stripped.slice(openBrace + 1, closeBrace);
-  const dict = {};
-
-  let pos = 0;
-  const len = body.length;
-  let count = 0;
+  let pos = openBrace + 1;
+  const len = closeBrace;
 
   function skipWhitespaceAndCommas() {
-    while (pos < len && (/\s/.test(body[pos]) || body[pos] === ',')) {
+    while (pos < len && (/\s/.test(stripped[pos]) || stripped[pos] === ',')) {
       pos++;
     }
   }
 
-  while (pos < len) {
-    skipWhitespaceAndCommas();
-    if (pos >= len) break;
-
-    // Parse key: quoted string or identifier
-    let key = null;
-    const startChar = body[pos];
-    if (startChar === '"' || startChar === '\'') {
-      const quote = startChar;
-      pos++;
-      let rawKey = '';
-      let closed = false;
-      while (pos < len) {
-        const c = body[pos];
-        if (c === '\\') {
-          pos++;
-          if (pos < len) {
-            const esc = body[pos];
-            rawKey += (esc === quote || esc === '\\') ? esc : ('\\' + esc);
-          }
-        } else if (c === quote) {
-          closed = true;
-          pos++;
-          break;
-        } else {
-          rawKey += c;
-        }
-        pos++;
-      }
-      if (!closed) throw new Error('Unterminated key string in JS locale object.');
-      key = rawKey;
-    } else if (/[A-Za-z_$]/.test(startChar)) {
-      const idStart = pos;
-      while (pos < len && /[A-Za-z0-9_$]/.test(body[pos])) {
-        pos++;
-      }
-      key = body.slice(idStart, pos);
-    } else {
-      throw new Error(`Unsupported JS locale syntax near: ${body.slice(pos, pos + 80).replace(/\s+/g, ' ')}`);
-    }
-
-    skipWhitespaceAndCommas();
-    if (pos >= len || body[pos] !== ':') {
-      throw new Error(`Unsupported JS locale syntax near: ${body.slice(pos, pos + 80).replace(/\s+/g, ' ')}`);
-    }
-    pos++; // skip ':'
-
-    skipWhitespaceAndCommas();
-    if (pos >= len) {
-      throw new Error(`Unexpected end of input after key "${key}".`);
-    }
-
-    // Parse value: must be quoted string
-    const valQuote = body[pos];
-    if (valQuote !== '"' && valQuote !== '\'') {
-      throw new Error(`Unsupported JS locale syntax near: ${body.slice(pos, pos + 80).replace(/\s+/g, ' ')}`);
-    }
+  function parseStringLiteral() {
+    const quote = stripped[pos];
     pos++;
     let val = '';
-    let valClosed = false;
+    let closed = false;
     while (pos < len) {
-      const c = body[pos];
+      const c = stripped[pos];
       if (c === '\\') {
         pos++;
         if (pos < len) {
-          const esc = body[pos];
-          val += (esc === valQuote || esc === '\\') ? esc : ('\\' + esc);
+          const esc = stripped[pos];
+          val += (esc === quote || esc === '\\') ? esc : ('\\' + esc);
         }
-      } else if (c === valQuote) {
-        valClosed = true;
+      } else if (c === quote) {
+        closed = true;
         pos++;
         break;
+      } else if (quote === '`' && c === '$' && stripped[pos + 1] === '{') {
+        throw new Error(
+          `Unsupported JS locale syntax near: ${stripped.slice(pos, pos + 80).replace(/\s+/g, ' ')}`,
+        );
       } else {
         val += c;
       }
       pos++;
     }
-    if (!valClosed) throw new Error(`Unterminated value string for key "${key}".`);
-
-    dict[key] = val;
-    count++;
-    skipWhitespaceAndCommas();
+    if (!closed) throw new Error('Unterminated string literal in JS locale.');
+    return val;
   }
 
-  if (count === 0) {
+  function parseObjectLiteral() {
+    const dict = {};
+    let entryCount = 0;
+
+    while (pos < len) {
+      skipWhitespaceAndCommas();
+      if (pos >= len) break;
+      if (stripped[pos] === '}') {
+        pos++; // consume '}'
+        break;
+      }
+
+      // Parse key: quoted string or identifier
+      let key = null;
+      const startChar = stripped[pos];
+      if (startChar === '"' || startChar === '\'' || startChar === '`') {
+        key = parseStringLiteral();
+      } else if (/[A-Za-z_$]/.test(startChar)) {
+        const idStart = pos;
+        while (pos < len && /[A-Za-z0-9_$]/.test(stripped[pos])) {
+          pos++;
+        }
+        key = stripped.slice(idStart, pos);
+      } else {
+        throw new Error(`Unsupported JS locale syntax near: ${stripped.slice(pos, pos + 80).replace(/\s+/g, ' ')}`);
+      }
+
+      skipWhitespaceAndCommas();
+      if (pos >= len || stripped[pos] !== ':') {
+        throw new Error(`Unsupported JS locale syntax near: ${stripped.slice(pos, pos + 80).replace(/\s+/g, ' ')}`);
+      }
+      pos++; // skip ':'
+
+      skipWhitespaceAndCommas();
+      if (pos >= len) {
+        throw new Error(`Unexpected end of input after key "${key}".`);
+      }
+
+      // Parse value: nested object '{', string literal, or reject dynamic expressions
+      const valChar = stripped[pos];
+      if (valChar === '{') {
+        pos++; // consume '{'
+        const subResult = parseObjectLiteral();
+        dict[key] = subResult.dict;
+        entryCount++;
+      } else if (valChar === '"' || valChar === '\'' || valChar === '`') {
+        const val = parseStringLiteral();
+        dict[key] = val;
+        entryCount++;
+      } else {
+        throw new Error(`Unsupported JS locale syntax near: ${stripped.slice(pos, pos + 80).replace(/\s+/g, ' ')}`);
+      }
+
+      skipWhitespaceAndCommas();
+      if (pos < len && stripped[pos] === '}') {
+        pos++; // consume '}'
+        break;
+      }
+    }
+
+    return { dict, entryCount };
+  }
+
+  const { dict, entryCount } = parseObjectLiteral();
+  if (entryCount === 0) {
     throw new Error('No key-value string entries found in JS locale object.');
   }
 
@@ -599,13 +662,67 @@ function parseSimpleJsLocale(content) {
 }
 
 if (require.main === module) {
-  const targets = process.argv.slice(2);
-  if (targets.length === 0) {
-    console.log('Usage: node scripts/audit-id.js <path-to-locale.json|locale.js|text.md> [...]');
+  const argv = process.argv.slice(2);
+  let showHelp = false;
+  let jsonOutput = false;
+  let minFallbackLength = 16;
+  const targets = [];
+
+  const parseMinFallback = (raw) => {
+    const n = Number(raw);
+    if (raw === undefined || raw === '' || !Number.isInteger(n) || n < 0) {
+      console.error(
+        `❌ Invalid value for --min-fallback: ${sanitizeDiagnostic(raw ?? '(missing)')} (expected a non-negative integer)`,
+      );
+      process.exit(1);
+    }
+    return n;
+  };
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === '--help' || arg === '-h') {
+      showHelp = true;
+    } else if (arg === '--json') {
+      jsonOutput = true;
+    } else if (arg === '--min-fallback') {
+      if (i + 1 >= argv.length) {
+        console.error('❌ Missing value for --min-fallback (expected a non-negative integer)');
+        process.exit(1);
+      }
+      minFallbackLength = parseMinFallback(argv[++i]);
+    } else if (arg.startsWith('--min-fallback=')) {
+      minFallbackLength = parseMinFallback(arg.slice(15));
+    } else if (arg.startsWith('-')) {
+      console.error(`❌ Unknown option: ${sanitizeDiagnostic(arg)}`);
+      process.exit(1);
+    } else {
+      targets.push(arg);
+    }
+  }
+
+  if (showHelp || targets.length === 0) {
+    console.log(`Indonesian Linguist — Deterministic i18n & Prose Auditor
+
+Usage:
+  node scripts/audit-id.js [options] <files...>
+
+Options:
+  -h, --help            Show this help message and exit
+  --json                Output findings in structured JSON format
+  --min-fallback <n>    Minimum character length for identity fallback check (default: 16)
+`);
     process.exit(0);
   }
 
   let hasFailures = false;
+  const jsonReport = {
+    totalFiles: targets.length,
+    cleanFiles: 0,
+    failedFiles: 0,
+    totalFindings: 0,
+    files: [],
+  };
 
   for (const target of targets) {
     const absPath = path.resolve(process.cwd(), target);
@@ -613,7 +730,17 @@ if (require.main === module) {
     try {
       raw = fs.readFileSync(absPath, 'utf8');
     } catch (err) {
-      console.error(`❌ Error reading ${sanitizeDiagnostic(target)}: ${sanitizeDiagnostic(err.message)}`);
+      if (jsonOutput) {
+        jsonReport.failedFiles++;
+        jsonReport.files.push({
+          file: target,
+          error: `Error reading file: ${err.message}`,
+          clean: false,
+          findings: [],
+        });
+      } else {
+        console.error(`❌ Error reading ${sanitizeDiagnostic(target)}: ${sanitizeDiagnostic(err.message)}`);
+      }
       hasFailures = true;
       continue;
     }
@@ -621,47 +748,81 @@ if (require.main === module) {
     let findings = [];
     try {
       if (absPath.endsWith('.json')) {
-        findings = auditDictionary(JSON.parse(raw));
+        findings = auditDictionary(JSON.parse(raw), { minFallbackLength });
       } else if (absPath.endsWith('.js') || absPath.endsWith('.mjs')) {
-        findings = auditDictionary(parseSimpleJsLocale(raw));
+        findings = auditDictionary(parseSimpleJsLocale(raw), { minFallbackLength });
       } else {
         findings = auditText(raw).map((f) => ({ key: path.basename(absPath), ...f }));
       }
     } catch (err) {
-      console.error(`❌ Error parsing ${sanitizeDiagnostic(target)}: ${sanitizeDiagnostic(err.message)}`);
+      if (jsonOutput) {
+        jsonReport.failedFiles++;
+        jsonReport.files.push({
+          file: target,
+          error: `Error parsing file: ${err.message}`,
+          clean: false,
+          findings: [],
+        });
+      } else {
+        console.error(`❌ Error parsing ${sanitizeDiagnostic(target)}: ${sanitizeDiagnostic(err.message)}`);
+      }
       hasFailures = true;
       continue;
     }
 
-    if (findings.length === 0) {
-      console.log(`✅ Clean: 0 findings in ${sanitizeDiagnostic(target)}`);
-    } else {
-      hasFailures = true;
-      console.error(`❌ Found ${findings.length} issue(s) in ${sanitizeDiagnostic(target)}:`);
-      let printedBytes = 0;
-      let truncated = false;
-      for (const f of findings) {
-        const line = `  - [${sanitizeDiagnostic(f.rule)}] (${sanitizeDiagnostic(f.key)}): ${sanitizeDiagnostic(f.message)}\n`;
-        const lineBytes = Buffer.byteLength(line, 'utf8');
-        if (printedBytes + lineBytes > MAX_CLI_DIAGNOSTIC_BYTES) {
-          truncated = true;
-          const remainingBudget = Math.max(0, MAX_CLI_DIAGNOSTIC_BYTES - printedBytes);
-          if (remainingBudget > 0) {
-            const truncatedLine = truncateToUtf8ByteLimit(line, remainingBudget);
-            process.stderr.write(truncatedLine);
-            process.stderr.write('\n');
-          }
-          break;
-        }
-        printedBytes += lineBytes;
-        process.stderr.write(line);
+    if (jsonOutput) {
+      jsonReport.totalFindings += findings.length;
+      if (findings.length === 0) {
+        jsonReport.cleanFiles++;
+        jsonReport.files.push({
+          file: target,
+          clean: true,
+          findings: [],
+        });
+      } else {
+        jsonReport.failedFiles++;
+        hasFailures = true;
+        jsonReport.files.push({
+          file: target,
+          clean: false,
+          findings,
+        });
       }
-      if (truncated) {
-        console.error(
-          `  ... remaining findings truncated (cumulative output exceeded ${MAX_CLI_DIAGNOSTIC_BYTES} bytes limit)`,
-        );
+    } else {
+      if (findings.length === 0) {
+        console.log(`✅ Clean: 0 findings in ${sanitizeDiagnostic(target)}`);
+      } else {
+        hasFailures = true;
+        console.error(`❌ Found ${findings.length} issue(s) in ${sanitizeDiagnostic(target)}:`);
+        let printedBytes = 0;
+        let truncated = false;
+        for (const f of findings) {
+          const line = `  - [${sanitizeDiagnostic(f.rule)}] (${sanitizeDiagnostic(f.key)}): ${sanitizeDiagnostic(f.message)}\n`;
+          const lineBytes = Buffer.byteLength(line, 'utf8');
+          if (printedBytes + lineBytes > MAX_CLI_DIAGNOSTIC_BYTES) {
+            truncated = true;
+            const remainingBudget = Math.max(0, MAX_CLI_DIAGNOSTIC_BYTES - printedBytes);
+            if (remainingBudget > 0) {
+              const truncatedLine = truncateToUtf8ByteLimit(line, remainingBudget);
+              process.stderr.write(truncatedLine);
+              process.stderr.write('\n');
+            }
+            break;
+          }
+          printedBytes += lineBytes;
+          process.stderr.write(line);
+        }
+        if (truncated) {
+          console.error(
+            `  ... remaining findings truncated (cumulative output exceeded ${MAX_CLI_DIAGNOSTIC_BYTES} bytes limit)`,
+          );
+        }
       }
     }
+  }
+
+  if (jsonOutput) {
+    process.stdout.write(JSON.stringify(jsonReport, null, 2) + '\n');
   }
 
   process.exitCode = hasFailures ? 1 : 0;

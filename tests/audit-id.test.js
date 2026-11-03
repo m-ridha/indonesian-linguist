@@ -579,3 +579,200 @@ test('CLI: preserves valid UTF-8 when multibyte character crosses the diagnostic
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });
+
+test('auditDictionary: flags inverted quantitative placeholders ({0} sets unchecked -> Set {0} belum dicentang)', () => {
+  // Inverted: quantity placeholder moved after noun (making it read as ordinal #0)
+  const inverted1 = auditDictionary({ '{0} sets unchecked': 'Set {0} belum dicentang' });
+  assert.ok(inverted1.some((f) => f.rule === 'inverted-quantitative-placeholder'));
+
+  const inverted2 = auditDictionary({ '{0} photos': 'Foto {0}' });
+  assert.ok(inverted2.some((f) => f.rule === 'inverted-quantitative-placeholder'));
+
+  const inverted3 = auditDictionary({ '%d passkeys': 'Kunci sandi %d' });
+  assert.ok(inverted3.some((f) => f.rule === 'inverted-quantitative-placeholder'));
+
+  const inverted4 = auditDictionary({ '%1$d photos': 'Foto %1$d' });
+  assert.ok(inverted4.some((f) => f.rule === 'inverted-quantitative-placeholder'));
+
+  const inverted5 = auditDictionary({ '{count} items left': 'Item {count} tersisa' });
+  assert.ok(inverted5.some((f) => f.rule === 'inverted-quantitative-placeholder'));
+
+  const inverted6 = auditDictionary({ '{{0}} photos left': 'Foto {{0}} tersisa' });
+  assert.ok(inverted6.some((f) => f.rule === 'inverted-quantitative-placeholder'));
+
+  const inverted7 = auditDictionary({ '{{count}} items left': 'Item {{count}} tersisa' });
+  assert.ok(inverted7.some((f) => f.rule === 'inverted-quantitative-placeholder'));
+
+  // Longer multi-word noun phrase inverted before placeholder
+  const inverted8 = auditDictionary({ '{{0}} selected photos': 'Foto yang dipilih {{0}}' });
+  assert.ok(inverted8.some((f) => f.rule === 'inverted-quantitative-placeholder'));
+
+  // Inverted with word like "Menit {0} tersisa" where "Menit" is a noun
+  const inverted9 = auditDictionary({ '{0} minutes left': 'Menit {0} tersisa' });
+  assert.ok(inverted9.some((f) => f.rule === 'inverted-quantitative-placeholder'));
+
+  // Correct: quantity placeholder precedes noun
+  const correct1 = auditDictionary({ '{0} sets unchecked': '{0} set belum dicentang' });
+  assert.equal(correct1.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 0);
+
+  const correct2 = auditDictionary({ '{0} sets unchecked': 'Sebanyak {0} set belum dicentang' });
+  assert.equal(correct2.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 0);
+
+  // Multiword permitted quantifiers like "Tersisa sekitar" and "Masih ada"
+  const correct3 = auditDictionary({ '{0} sets left': 'Tersisa sekitar {0} set' });
+  assert.equal(correct3.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 0);
+
+  const correct3b = auditDictionary({ '{0} photos left': 'Masih ada {0} foto' });
+  assert.equal(correct3b.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 0);
+
+  const correct3c = auditDictionary({ '{0} exercises left': 'Masih ada {0} gerakan' });
+  assert.equal(correct3c.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 0);
+
+  // Count placeholder precedes its noun after a verb / predicate: valid
+  const correct4 = auditDictionary({ '{{0}} files deleted': 'Dihapus {{0}} file' });
+  assert.equal(correct4.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 0);
+
+  const correct5 = auditDictionary({ '{0} photos deleted': 'Dihapus {0} foto' });
+  assert.equal(correct5.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 0);
+
+  // Adverb preceding predicate (Sudah diunggah {0} file)
+  const correct6 = auditDictionary({ '{0} files uploaded': 'Sudah diunggah {0} file' });
+  assert.equal(correct6.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 0);
+
+  // Implicit object followed by adverb (Dihapus {0} lagi / Sudah dihapus {0} lagi)
+  const correct7 = auditDictionary({ '{0} more deleted': 'Dihapus {0} lagi' });
+  assert.equal(correct7.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 0);
+
+  const correct8 = auditDictionary({ '{0} more deleted': 'Sudah dihapus {0} lagi' });
+  assert.equal(correct8.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 0);
+
+  // Non-count named placeholders (e.g., {name}) should not be flagged when translated as noun phrase
+  const nonCount = auditDictionary({ '{name} commented': 'Komentar dari {name}' });
+  assert.equal(nonCount.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 0);
+
+  // Ordinal English source should not trigger false positives
+  const ordinalSource = auditDictionary({ 'Set {0}': 'Set {0}' });
+  assert.equal(ordinalSource.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 0);
+
+  // Copula-led phrases ({0} is invalid / {{0}} is invalid) are not count phrases
+  const copula1 = auditDictionary({ '{{0}} is invalid': 'Nilai {{0}} tidak valid' });
+  assert.equal(copula1.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 0);
+
+  const copula2 = auditDictionary({ '{0} is invalid': 'Nilai {0} tidak valid' });
+  assert.equal(copula2.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 0);
+});
+
+test('parseSimpleJsLocale: parses nested objects, export const, and backtick literals', () => {
+  const src = `
+    export const COPY = {
+      nudge: {
+        title: "Pengingat latihan",
+        body: \`Sesi latihanmu menunggumu\`,
+      },
+      cta: 'Buka Sekarang',
+    };
+  `;
+  const parsed = parseSimpleJsLocale(src);
+  assert.deepEqual(parsed, {
+    nudge: {
+      title: 'Pengingat latihan',
+      body: 'Sesi latihanmu menunggumu',
+    },
+    cta: 'Buka Sekarang',
+  });
+
+  const findings = auditDictionary(parsed);
+  assert.equal(findings.length, 0);
+
+  // Rejects unescaped template literal interpolation ${...}
+  assert.throws(
+    () => parseSimpleJsLocale('export default { greeting: `Halo ${user}` };'),
+    /Unsupported JS locale syntax/,
+  );
+});
+
+test('CLI: supports --help, -h, --json, and validates --min-fallback operands', () => {
+  const scriptPath = path.join(__dirname, '..', 'scripts', 'audit-id.js');
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'audit-cli-flags-'));
+
+  try {
+    // Test --help and -h exit 0 with usage
+    const helpResult = spawnSync(process.execPath, [scriptPath, '--help'], { encoding: 'utf8' });
+    assert.equal(helpResult.status, 0);
+    assert.match(helpResult.stdout, /Usage:/);
+    assert.match(helpResult.stdout, /--json/);
+
+    const shortHelpResult = spawnSync(process.execPath, [scriptPath, '-h'], { encoding: 'utf8' });
+    assert.equal(shortHelpResult.status, 0);
+    assert.match(shortHelpResult.stdout, /Usage:/);
+
+    // Test --min-fallback operand validation
+    const missingOperand = spawnSync(process.execPath, [scriptPath, '--min-fallback'], { encoding: 'utf8' });
+    assert.equal(missingOperand.status, 1);
+    assert.match(missingOperand.stderr, /Missing value for --min-fallback/);
+
+    const negativeOperand = spawnSync(process.execPath, [scriptPath, '--min-fallback', '-5', 'dummy.json'], {
+      encoding: 'utf8',
+    });
+    assert.equal(negativeOperand.status, 1);
+    assert.match(negativeOperand.stderr, /Invalid value for --min-fallback/);
+
+    const malformedOperand = spawnSync(process.execPath, [scriptPath, '--min-fallback=abc', 'dummy.json'], {
+      encoding: 'utf8',
+    });
+    assert.equal(malformedOperand.status, 1);
+    assert.match(malformedOperand.stderr, /Invalid value for --min-fallback/);
+
+    // Test --json output format with --min-fallback=0
+    const testFile = path.join(tmpDir, 'test.json');
+    fs.writeFileSync(testFile, JSON.stringify({ Back: 'Punggung' }), 'utf8');
+
+    const jsonResult = spawnSync(
+      process.execPath,
+      [scriptPath, '--json', '--min-fallback=0', testFile],
+      { encoding: 'utf8' },
+    );
+    assert.equal(jsonResult.status, 1);
+    const parsedJson = JSON.parse(jsonResult.stdout);
+    assert.equal(parsedJson.totalFiles, 1);
+    assert.equal(parsedJson.failedFiles, 1);
+    assert.equal(parsedJson.cleanFiles, 0);
+    assert.ok(parsedJson.totalFindings >= 1);
+    assert.equal(parsedJson.files[0].clean, false);
+    assert.ok(parsedJson.files[0].findings.some((f) => f.rule === 'polysemy-calque'));
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('auditDictionary: retains barbell loanword variations (high-bar, low-bar, zercher, bulgarian split squat)', () => {
+  const exercises = {
+    'High-bar back squat (anchor)': 'High-bar back squat (anchor)',
+    'Low-bar back squat': 'Low-bar back squat',
+    'Safety-bar squat': 'Safety-bar squat',
+    'Bulgarian split squat': 'Bulgarian split squat',
+    'Zercher squat': 'Zercher squat',
+    'Belt squat': 'Belt squat',
+    'Box squat': 'Box squat',
+    'Hack squat': 'Hack squat',
+  };
+
+  const findings = auditDictionary(exercises);
+  assert.equal(findings.filter((f) => f.rule === 'silent-fallback').length, 0);
+});
+
+test('auditText: flags non-standard merged prepositions (disini, diatas, kesana) while permitting standard kemari', () => {
+  // Flag non-standard merged prepositions
+  const badTexts = ['Tersimpan disini', 'Lihat diatas meja', 'Pergi kesana segera'];
+  for (const text of badTexts) {
+    const issues = auditText(text);
+    assert.ok(
+      issues.some((i) => i.rule === 'kata-tidak-baku'),
+      `Expected "${text}" to be flagged as kata-tidak-baku`,
+    );
+  }
+
+  // Permit standard KBBI VI / EYD V single-word form "kemari"
+  const cleanKemari = auditText('Silakan datang kemari untuk memulai latihan.');
+  assert.equal(cleanKemari.length, 0);
+});

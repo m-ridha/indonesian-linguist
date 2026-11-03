@@ -54,6 +54,8 @@ When an app instructs a user to open their phone's system settings (e.g., enabli
 | **All the time** *(location permission)* | Sepanjang waktu / Setiap saat | **Izinkan sepanjang waktu** (per-app *Izin lokasi* option) / **Selalu izinkan** (permission-manager section heading & OEM variants) | Android Location Permission settings |
 | **While using the app** | Saat menggunakan aplikasi | **Saat aplikasi digunakan** | Android / iOS Location Permission dialog |
 | **Unrestricted** *(battery usage)* | Tanpa pembatasan / Bebas | **Tak terbatas** | Android App Battery Management screen |
+| **Precise location** *(permission)* | Lokasi tepatnya / Lokasi presisi | **Lokasi akurat** | Official Android AOSP `id-ID` string for precise vs approximate location |
+| **Uses where your phone is** *(explainer)* | Menggunakan di mana ponselmu berada | **Menggunakan lokasi ponselmu** | Clean idiomatic phrasing avoiding the banned relative *di mana* |
 | **Keep screen awake** | Jaga layar tetap bangun | **Layar tetap menyala** | Display wake-lock toggle |
 | **Swipe actions / swipe gesture** | Tindakan geser / gerakan geser | **Fungsi Geser / gestur geser** | Apple Support ID & Android gesture guides |
 | **One tap away** | Satu ketukan jauhnya | **Hanya berjarak satu ketukan** | Idiomatic mobile UX phrasing |
@@ -73,3 +75,9 @@ When an app instructs a user to open their phone's system settings (e.g., enabli
    - `Not allowed` $\rightarrow$ **`Tidak diizinkan`**
    - `Withdraw` *(privacy consent)* $\rightarrow$ **`Tarik izin`** (always include the object *izin* so it does not read like withdrawing cash at an ATM).
    - `Your call` *(privacy autonomy)* $\rightarrow$ **`Keputusanmu`** or **`Kendalimu`** (never *Panggilan kamu*).
+3. **Backup, Restore & Overwrite Confirmation Semantics**:
+   - `Replacing deletes it / them` *(restore modal warning)* $\rightarrow$ **`Mengganti data akan menghapus data saat ini`** or **`Tindakan penggantian ini akan menghapus data di perangkat`**.
+   - *CRITICAL UX INVARIANT*: Never translate `Replacing deletes it` as *"Menimpa cadangan"*. In local restore workflows, the action overwrites *local on-device data* with the contents of the backup file. Translating it as *"Menimpa cadangan"* dangerously reverses the semantic logic, terrifying users into believing their external backup file will be wiped.
+4. **App-Level Geofence & Location Event Microcopy**:
+   - `Gym spotted / Venue spotted` *(geofence arrival event)* $\rightarrow$ **`Lokasi gym terdeteksi`** (app-level event notification, not an OS setting; avoids literal *Gym terlihat*).
+   - `Uses where your phone is` *(explainer)* $\rightarrow$ **`Menggunakan lokasi ponselmu`** (clear conversational microcopy avoiding the banned relative *di mana*).
