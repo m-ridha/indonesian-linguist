@@ -411,23 +411,26 @@ function extractRelativeMarkdownLinks(content) {
   return links;
 }
 
-test('all relative markdown links in SKILL.md, plugin SKILL.md, README.md, CONTRIBUTING.md, and docs resolve to existing files', () => {
-  const filesToCheck = [
-    'SKILL.md',
-    'skills/indonesian-linguist/SKILL.md',
-    'README.md',
-    'CONTRIBUTING.md',
-    'AI_POLICY.md',
-    'SECURITY.md',
-    'skills/indonesian-linguist/TEST.md',
-    'docs/agent-portability.md',
-    'docs/sources.md',
-    'docs/testing.md',
-    'docs/releases.md',
-    'references/README.md',
-    'references/domains/README.md',
-    'scripts/README.md',
-  ];
+function getAllMarkdownFilesRecursively(dir) {
+  const results = [];
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (entry.name === 'node_modules' || entry.name === '.git') continue;
+    const full = path.join(dir, entry.name);
+    const rel = path.relative(root, full);
+    if (isGitIgnored(rel)) continue;
+
+    if (entry.isDirectory()) {
+      results.push(...getAllMarkdownFilesRecursively(full));
+    } else if (entry.isFile() && entry.name.endsWith('.md')) {
+      results.push(rel);
+    }
+  }
+  return results;
+}
+
+test('all relative markdown links across all documentation, skill files, and references resolve to existing files', () => {
+  const filesToCheck = getAllMarkdownFilesRecursively(root);
 
   for (const relFile of filesToCheck) {
     const absFile = path.join(root, relFile);
