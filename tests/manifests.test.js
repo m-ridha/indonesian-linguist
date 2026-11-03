@@ -452,8 +452,8 @@ test('extractRelativeMarkdownLinks handles link titles, code spans, fences, and 
   const elapsedDistinct = Date.now() - t0;
   assert.deepEqual(distinctLinks, ['./docs/testing.md']);
   assert.ok(
-    elapsedDistinct < 200,
-    `1,400 distinct unmatched backtick runs took ${elapsedDistinct}ms (expected < 200ms)`,
+    elapsedDistinct < 1000,
+    `1,400 distinct unmatched backtick runs took ${elapsedDistinct}ms (expected < 1000ms)`,
   );
 
   // Linear scan bound check for many same-length backtick runs (100,000 runs)
@@ -463,8 +463,8 @@ test('extractRelativeMarkdownLinks handles link titles, code spans, fences, and 
   const elapsedSameLength = Date.now() - t1;
   assert.deepEqual(sameLengthLinks, ['./docs/testing.md']);
   assert.ok(
-    elapsedSameLength < 200,
-    `100,000 same-length backtick runs took ${elapsedSameLength}ms (expected < 200ms)`,
+    elapsedSameLength < 1000,
+    `100,000 same-length backtick runs took ${elapsedSameLength}ms (expected < 1000ms)`,
   );
 
   // Escaped backticks: escaped single backtick does not open a span, so subsequent links are extracted

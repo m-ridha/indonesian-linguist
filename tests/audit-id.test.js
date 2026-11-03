@@ -467,8 +467,8 @@ test('CLI: bounds cumulative diagnostic output bytes on files with many findings
 
     assert.equal(result.status, 1);
     assert.match(result.stderr, /remaining findings truncated/);
-    // Cumulative stderr output should not balloon to multi-megabytes
-    assert.ok(Buffer.byteLength(result.stderr, 'utf8') < 600_000);
+    // Cumulative stderr output should not balloon beyond bounded budget
+    assert.ok(Buffer.byteLength(result.stderr, 'utf8') < 100_000);
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }

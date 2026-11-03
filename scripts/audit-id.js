@@ -216,9 +216,9 @@ const MAX_DICTIONARY_ENTRIES = 50_000;
 const MAX_PATH_LENGTH = 1024;
 
 /**
- * Maximum cumulative diagnostic bytes printed by the CLI for findings per file.
+ * Maximum cumulative diagnostic bytes printed by the CLI for findings per file (64 KB).
  */
-const MAX_CLI_DIAGNOSTIC_BYTES = 500_000;
+const MAX_CLI_DIAGNOSTIC_BYTES = 64_000;
 
 /**
  * Audit a key-value i18n dictionary object (including nested namespace objects).
