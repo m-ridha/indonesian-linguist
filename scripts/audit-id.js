@@ -215,7 +215,7 @@ const MAX_DICTIONARY_ENTRIES = 50_000;
  * Collects findings in a single accumulator with explicit depth, size, and traversal bounds.
  * Tracks visited object references to prevent exponential work on compact shared-reference graphs.
  * @param {Record<string, unknown>} dict
- * @param {{ minFallbackLength?: number, allowlistKeys?: Set<string>, prefix?: string, depth?: number, accumulator?: Array<{key: string, rule: string, message: string}>, visited?: Set<object>, counter?: { entries: number } }} [options]
+ * @param {{ minFallbackLength?: number, allowlistKeys?: Set<string>, prefix?: string, depth?: number, accumulator?: Array<{key: string, rule: string, message: string}>, visited?: Map<object, number>, counter?: { entries: number } }} [options]
  * @returns {Array<{key: string, rule: string, message: string}>}
  */
 function auditDictionary(dict, options = {}) {
@@ -224,7 +224,7 @@ function auditDictionary(dict, options = {}) {
   const currentPrefix = options.prefix ?? '';
   const currentDepth = options.depth ?? 0;
   const findings = options.accumulator ?? [];
-  const visited = options.visited ?? new Set();
+  const visited = options.visited ?? new Map();
   const counter = options.counter ?? { entries: 0 };
 
   if (currentDepth > MAX_DICTIONARY_DEPTH) {
@@ -237,10 +237,11 @@ function auditDictionary(dict, options = {}) {
   }
 
   if (dict && typeof dict === 'object') {
-    if (visited.has(dict)) {
+    const deepestVisited = visited.get(dict);
+    if (deepestVisited !== undefined && currentDepth <= deepestVisited) {
       return findings;
     }
-    visited.add(dict);
+    visited.set(dict, currentDepth);
   }
 
   for (const key in dict || {}) {

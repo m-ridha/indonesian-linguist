@@ -363,7 +363,7 @@ test('auditDictionary: passes accurate OpenGym Indonesian localizations with 0 f
 test('auditDictionary: reports nesting-limit-exceeded on deep path even if object visited via shallow path', () => {
   const sharedLeaf = { Back: 'Punggung' };
   let deepNode = sharedLeaf;
-  for (let i = 0; i < 35; i++) {
+  for (let i = 0; i < 32; i++) {
     deepNode = { next: deepNode };
   }
   const graph = {
@@ -379,7 +379,7 @@ test('auditDictionary: does not read property values beyond traversal entry limi
   let getterCalledPastLimit = false;
   for (let i = 0; i <= 50005; i++) {
     const key = `k${i}`;
-    if (i > 50000) {
+    if (i >= 50000) {
       Object.defineProperty(obj, key, {
         enumerable: true,
         get() {
