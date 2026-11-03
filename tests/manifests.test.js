@@ -107,8 +107,33 @@ test('AGENTS.md and SKILL.md contain all load-bearing linguistic invariants', ()
   }
 });
 
+function getAllFilesRecursively(dir, ignoreNames = []) {
+  const results = [];
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (ignoreNames.includes(entry.name)) continue;
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      results.push(...getAllFilesRecursively(full, ignoreNames));
+    } else if (entry.isFile()) {
+      results.push(full);
+    }
+  }
+  return results;
+}
+
 test('all required reference modules and scripts exist and are reachable from both root and plugin skill path without symlinks', () => {
-  for (const rel of [...REQUIRED_REFERENCES, 'scripts/audit-id.js']) {
+  // Collect all files from root references/ and scripts/ (excluding sync-skill.js)
+  const rootReferencesFiles = getAllFilesRecursively(path.join(root, 'references')).map((p) =>
+    path.relative(root, p),
+  );
+  const rootScriptsFiles = getAllFilesRecursively(path.join(root, 'scripts'), ['sync-skill.js']).map((p) =>
+    path.relative(root, p),
+  );
+
+  const allTrackedAssets = [...rootReferencesFiles, ...rootScriptsFiles];
+
+  for (const rel of allTrackedAssets) {
     const rootPath = path.join(root, rel);
     const pluginPath = path.join(root, 'skills', SKILL_NAME, rel);
 
