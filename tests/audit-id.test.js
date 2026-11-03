@@ -9,7 +9,12 @@ const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { auditText, auditDictionary, parseSimpleJsLocale } = require('../scripts/audit-id');
+const {
+  auditText,
+  auditDictionary,
+  parseSimpleJsLocale,
+  truncateToUtf8ByteLimit,
+} = require('../scripts/audit-id');
 
 test('auditText: clean natural Indonesian passes with zero findings', () => {
   const clean =
@@ -507,6 +512,69 @@ test('CLI: prints key and rule for an oversized single finding before truncating
     assert.match(result.stderr, /\(Back\)/);
     assert.match(result.stderr, /remaining findings truncated/);
     assert.ok(Buffer.byteLength(result.stderr, 'utf8') <= 70_000);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('truncateToUtf8ByteLimit: cleanly stops at multibyte UTF-8 code point boundaries', () => {
+  // Test 1-byte, 2-byte, 3-byte, and 4-byte UTF-8 sequences
+  const s = 'a' + '\u00E9' + '\u4E16' + '🔥' + '😀' + 'z';
+  // 'a' = 1 byte
+  // '\u00E9' (é) = 2 bytes
+  // '\u4E16' (世) = 3 bytes
+  // '🔥' = 4 bytes (2 UTF-16 code units: \uD83D\uDD25)
+  // '😀' = 4 bytes (2 UTF-16 code units: \uD83D\uDE00)
+  // 'z' = 1 byte
+  // Total = 15 bytes
+  assert.strictEqual(truncateToUtf8ByteLimit(s, 0), '');
+  assert.strictEqual(truncateToUtf8ByteLimit(s, 1), 'a');
+  assert.strictEqual(truncateToUtf8ByteLimit(s, 2), 'a'); // Cannot fit 'é' (2 bytes)
+  assert.strictEqual(truncateToUtf8ByteLimit(s, 3), 'a\u00E9'); // Fits 'é'
+  assert.strictEqual(truncateToUtf8ByteLimit(s, 5), 'a\u00E9'); // Cannot fit '世' (3 bytes)
+  assert.strictEqual(truncateToUtf8ByteLimit(s, 6), 'a\u00E9\u4E16'); // Fits '世'
+  assert.strictEqual(truncateToUtf8ByteLimit(s, 9), 'a\u00E9\u4E16'); // Cannot fit '🔥' (4 bytes)
+  assert.strictEqual(truncateToUtf8ByteLimit(s, 10), 'a\u00E9\u4E16🔥'); // Fits '🔥'
+  assert.strictEqual(truncateToUtf8ByteLimit(s, 13), 'a\u00E9\u4E16🔥'); // Cannot fit '😀' (4 bytes)
+  assert.strictEqual(truncateToUtf8ByteLimit(s, 14), 'a\u00E9\u4E16🔥😀'); // Fits '😀'
+  assert.strictEqual(truncateToUtf8ByteLimit(s, 15), 'a\u00E9\u4E16🔥😀z');
+  assert.strictEqual(truncateToUtf8ByteLimit(s, 50), s);
+
+  for (let b = 0; b <= 20; b++) {
+    const res = truncateToUtf8ByteLimit(s, b);
+    const buf = Buffer.from(res, 'utf8');
+    assert.ok(buf.length <= b);
+    // Verify valid UTF-8 round-trip without replacement characters
+    assert.ok(Buffer.from(buf.toString('utf8'), 'utf8').equals(buf));
+    assert.strictEqual(buf.toString('utf8').includes('\uFFFD'), false);
+  }
+});
+
+test('CLI: preserves valid UTF-8 when multibyte character crosses the diagnostic truncation boundary', () => {
+  const scriptPath = path.join(__dirname, '..', 'scripts', 'audit-id.js');
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'audit-cli-utf8-'));
+
+  try {
+    // Fill the message with 4-byte multibyte emoji characters crossing the 64,000-byte boundary
+    const multibyteOversized = 'Punggung ' + '🔥'.repeat(25000);
+    const testFile = path.join(tmpDir, 'utf8_boundary.json');
+    fs.writeFileSync(testFile, JSON.stringify({ Back: multibyteOversized }), 'utf8');
+
+    // Run without encoding so we inspect the raw stdout/stderr buffer
+    const result = spawnSync(process.execPath, [scriptPath, testFile]);
+
+    assert.equal(result.status, 1);
+    const stderrBuf = result.stderr;
+    const stderrStr = stderrBuf.toString('utf8');
+
+    // Must be valid UTF-8 without unicode replacement characters
+    assert.strictEqual(stderrStr.includes('\uFFFD'), false);
+    assert.ok(Buffer.from(stderrStr, 'utf8').equals(stderrBuf));
+
+    // Confirm rule, key, and truncation notice are present
+    assert.match(stderrStr, /\[polysemy-calque\]/);
+    assert.match(stderrStr, /\(Back\)/);
+    assert.match(stderrStr, /remaining findings truncated/);
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }

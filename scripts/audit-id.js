@@ -397,6 +397,29 @@ function sanitizeDiagnostic(str) {
 }
 
 /**
+ * Truncates a string to fit within a given UTF-8 byte budget without breaking UTF-8 code point boundaries.
+ * @param {string} str
+ * @param {number} maxBytes
+ * @returns {string}
+ */
+function truncateToUtf8ByteLimit(str, maxBytes) {
+  if (maxBytes <= 0) return '';
+  let sliceLen = Math.min(str.length, maxBytes);
+  let candidate = str.slice(0, sliceLen);
+  while (true) {
+    const bytes = Buffer.byteLength(candidate, 'utf8');
+    if (bytes <= maxBytes) break;
+    const excess = bytes - maxBytes;
+    const charsToTrim = Math.max(1, Math.ceil(excess / 4));
+    candidate = candidate.slice(0, -charsToTrim);
+  }
+  if (/[\uD800-\uDBFF]$/.test(candidate)) {
+    candidate = candidate.slice(0, -1);
+  }
+  return candidate;
+}
+
+/**
  * Maximum allowed source length for simple JavaScript locale files (1 MB).
  */
 const MAX_JS_LOCALE_LENGTH = 1_000_000;
@@ -624,8 +647,8 @@ if (require.main === module) {
           truncated = true;
           const remainingBudget = Math.max(0, MAX_CLI_DIAGNOSTIC_BYTES - printedBytes);
           if (remainingBudget > 0) {
-            const buf = Buffer.from(line, 'utf8');
-            process.stderr.write(buf.subarray(0, remainingBudget));
+            const truncatedLine = truncateToUtf8ByteLimit(line, remainingBudget);
+            process.stderr.write(truncatedLine);
             process.stderr.write('\n');
           }
           break;
@@ -650,4 +673,5 @@ module.exports = {
   extractPlaceholders,
   parseSimpleJsLocale,
   sanitizeDiagnostic,
+  truncateToUtf8ByteLimit,
 };
