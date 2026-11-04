@@ -24,6 +24,18 @@ test('auditText: clean natural Indonesian passes with zero findings', () => {
   assert.deepEqual(auditText(clean), []);
 });
 
+test('auditText returns structured finding coordinates and captures all occurrences', () => {
+  const input = 'Mohon silahkan cek aktifitas di era digital ini, silahkan coba lagi.';
+  const issues = auditText(input);
+  assert.ok(issues.length >= 3);
+  const silahkanIssues = issues.filter((i) => i.original && i.original.toLowerCase() === 'silahkan');
+  assert.strictEqual(silahkanIssues.length, 2);
+  assert.strictEqual(silahkanIssues[0].startIndex, 6);
+  assert.strictEqual(silahkanIssues[0].endIndex, 14);
+  assert.strictEqual(silahkanIssues[0].replacement, 'silakan');
+  assert.strictEqual(silahkanIssues[0].confidence, 'high');
+});
+
 test('auditText: ignores protected Markdown inline code spans, backtick/tilde fences, and indented code blocks', () => {
   const docWithCodeExamples = [
     'Gunakan bentuk baku di luar blok kode, bukan `silahkan`, `yg`, atau `hiruk pikuk`.',

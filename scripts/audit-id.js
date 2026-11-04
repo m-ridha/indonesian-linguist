@@ -8,6 +8,7 @@
 const fs = require('fs');
 const path = require('path');
 
+/* ENGINE_EXPORT_START */
 const SMS_SLANG_REGEX = /\b(yg|dgn|utk|krn|tdk|bgt|dlm|spt)\b/i;
 
 const NON_STANDARD_WORDS = [
@@ -233,37 +234,80 @@ const NON_PRONOUN_MU_EXCEPTIONS =
   /^(?:kamu|ilmu|berilmu|tamu|bertamu|temu|bertemu|ketemu|ditemu|menemu|jamu|ramu|meramu|diramu|semu|bersemu|jemu)$/i;
 
 /**
+ * Helper to preserve original casing (TitleCase, UPPERCASE, lowercase) on replacements.
+ * @param {string} original
+ * @param {string} replacement
+ * @returns {string}
+ */
+function preserveCase(original, replacement) {
+  if (!replacement || !original) return replacement;
+  if (original === original.toUpperCase() && original !== original.toLowerCase()) {
+    return replacement.toUpperCase();
+  }
+  if (original[0] === original[0].toUpperCase() && original[0] !== original[0].toLowerCase()) {
+    return replacement[0].toUpperCase() + replacement.slice(1);
+  }
+  return replacement;
+}
+
+/**
  * Check a string against an explicit pronoun policy ('Anda' or 'kamu').
  * Automatically excludes URLs and supported placeholders before evaluating pronoun occurrences.
  * @param {string} text
  * @param {string} pronoun
- * @returns {Array<{rule: string, message: string}>}
+ * @returns {Array<{rule: string, category: string, message: string, startIndex?: number, endIndex?: number, original?: string, replacement?: string, confidence?: string}>}
  */
 function checkPronounPolicy(text, pronoun) {
   if (!pronoun || (pronoun !== 'Anda' && pronoun !== 'kamu')) {
     return [];
   }
 
+  const maskSpan = (match) => match.replace(/[^\n]/g, ' ');
   const textWithoutTokens = String(text || '')
-    .replace(/https?:\/\/[^\s<>"'`()]+/g, ' ')
-    .replace(/\{\{[0-9a-zA-Z_.-]+\}\}|\{[0-9a-zA-Z_.-]+\}|%(?:\d+\$)?[sdif]/g, ' ');
+    .replace(/https?:\/\/[^\s<>"'`()]+/g, maskSpan)
+    .replace(/\{\{[0-9a-zA-Z_.-]+\}\}|\{[0-9a-zA-Z_.-]+\}|%(?:\d+\$)?[sdif]/g, maskSpan);
 
   const findings = [];
   if (pronoun === 'Anda') {
-    const hasEncliticMu = (textWithoutTokens.match(/\b[a-zA-Z\u00C0-\u024F]{2,}-?mu\b/gi) || []).some(
-      (w) => !NON_PRONOUN_MU_EXCEPTIONS.test(w),
-    );
-    if (/\b(?:kamu|kau)\b/i.test(textWithoutTokens) || hasEncliticMu) {
+    const informalRx = /\b(?:kamu|kau)\b/gi;
+    for (const m of textWithoutTokens.matchAll(informalRx)) {
       findings.push({
         rule: 'pronoun-mismatch',
+        category: getRuleCategory('pronoun-mismatch'),
         message: `Informal pronoun found in "${text}"; formal "Anda" is enforced by project policy.`,
+        startIndex: m.index,
+        endIndex: m.index + m[0].length,
+        original: m[0],
+        replacement: 'Anda',
+        confidence: 'contextual',
       });
     }
+    const encliticRx = /\b[a-zA-Z\u00C0-\u024F]{2,}-?mu\b/gi;
+    for (const m of textWithoutTokens.matchAll(encliticRx)) {
+      if (!NON_PRONOUN_MU_EXCEPTIONS.test(m[0])) {
+        findings.push({
+          rule: 'pronoun-mismatch',
+          category: getRuleCategory('pronoun-mismatch'),
+          message: `Informal pronoun found in "${text}"; formal "Anda" is enforced by project policy.`,
+          startIndex: m.index,
+          endIndex: m.index + m[0].length,
+          original: m[0],
+          confidence: 'contextual',
+        });
+      }
+    }
   } else if (pronoun === 'kamu') {
-    if (/\bAnda\b/i.test(textWithoutTokens)) {
+    const formalRx = /\bAnda\b/gi;
+    for (const m of textWithoutTokens.matchAll(formalRx)) {
       findings.push({
         rule: 'pronoun-mismatch',
+        category: getRuleCategory('pronoun-mismatch'),
         message: `Formal pronoun "Anda" found in "${text}"; informal "kamu" is enforced by project policy.`,
+        startIndex: m.index,
+        endIndex: m.index + m[0].length,
+        original: m[0],
+        replacement: 'kamu',
+        confidence: 'contextual',
       });
     }
   }
@@ -274,6 +318,7 @@ function checkPronounPolicy(text, pronoun) {
 /**
  * Strip Markdown 4-space or tab-indented code blocks while preserving indented list continuations
  * and nested list items (e.g., `- Petunjuk\n\n    - Silahkan...`).
+ * Uses length-preserving whitespace masking so line lengths and character coordinates remain 1:1.
  * @param {string} text
  * @returns {string}
  */
@@ -294,7 +339,7 @@ function stripIndentedCodeBlocks(text) {
 
   for (const line of lines) {
     if (line.trim() === '') {
-      out.push('');
+      out.push(line);
       afterBlankLine = true;
       continue;
     }
@@ -307,7 +352,7 @@ function stripIndentedCodeBlocks(text) {
     if (indent >= codeThreshold && (inIndentedCodeBlock || afterBlankLine)) {
       inIndentedCodeBlock = true;
       afterBlankLine = false;
-      out.push('');
+      out.push(line.replace(/[^\n]/g, ' '));
       continue;
     }
 
@@ -328,47 +373,113 @@ function stripIndentedCodeBlocks(text) {
 
 /**
  * Audit a prose string for Indonesian AI slop, SMS slang, non-standard spelling, and pronoun policy.
- * Automatically strips protected Markdown fenced code blocks (backticks and tildes),
- * 4-space/tab-indented code blocks, and inline code spans.
+ * Automatically masks protected Markdown fenced code blocks (backticks and tildes),
+ * 4-space/tab-indented code blocks, inline code spans, and URLs with length-preserving whitespace.
  * @param {string} text
  * @param {{ stripIndentedCode?: boolean, pronoun?: string }} [options] Set `stripIndentedCode: false` for plain-text input (e.g., dictionary values) where indentation does not mark code.
- * @returns {Array<{rule: string, message: string}>}
+ * @returns {Array<{rule: string, category: string, message: string, startIndex?: number, endIndex?: number, original?: string, replacement?: string, confidence?: string}>}
  */
 function auditText(text, options = {}) {
   const stripIndentedCode = options.stripIndentedCode ?? true;
   const pronoun = options.pronoun ?? null;
   const issues = [];
-  const withoutFences = String(text || '')
-    .replace(/```[\s\S]*?```/g, ' ')
-    .replace(/~~~[\s\S]*?~~~/g, ' ');
-  const str = (stripIndentedCode ? stripIndentedCodeBlocks(withoutFences) : withoutFences).replace(/`[^`\n]+`/g, ' ');
+  const maskSpan = (match) => match.replace(/[^\n]/g, ' ');
 
-  const smsMatch = str.match(SMS_SLANG_REGEX);
-  if (smsMatch) {
+  const withoutFences = String(text || '')
+    .replace(/```[\s\S]*?```/g, maskSpan)
+    .replace(/~~~[\s\S]*?~~~/g, maskSpan);
+  const withoutIndented = stripIndentedCode ? stripIndentedCodeBlocks(withoutFences) : withoutFences;
+  const str = withoutIndented
+    .replace(/`[^`\n]+`/g, maskSpan)
+    .replace(/https?:\/\/[^\s<>"'`()]+/g, maskSpan);
+
+  const smsRx = new RegExp(SMS_SLANG_REGEX.source, (SMS_SLANG_REGEX.flags || 'i').replace(/g/g, '') + 'g');
+  for (const m of str.matchAll(smsRx)) {
+    const original = m[0];
+    const startIndex = m.index;
+    const endIndex = startIndex + original.length;
     issues.push({
       rule: 'sms-abbreviation',
       category: getRuleCategory('sms-abbreviation'),
-      message: `Banned chat/SMS abbreviation "${smsMatch[0]}" found; use full word or lexical compaction.`,
+      message: `Banned chat/SMS abbreviation "${original}" found; use full word or lexical compaction.`,
+      startIndex,
+      endIndex,
+      original,
+      confidence: 'contextual',
     });
   }
 
   for (const item of NON_STANDARD_WORDS) {
-    const m = str.match(item.regex);
-    if (m) {
+    const rx = new RegExp(item.regex.source, (item.regex.flags || 'i').replace(/g/g, '') + 'g');
+    for (const m of str.matchAll(rx)) {
+      const original = m[0];
+      const startIndex = m.index;
+      const endIndex = startIndex + original.length;
+
+      let replacement = undefined;
+      let confidence = 'high';
+
+      if (!item.fix.includes('/') && !item.fix.includes('(')) {
+        replacement = preserveCase(original, item.fix);
+      } else if (item.regex.source.includes('(disini|disana|disitu)')) {
+        const lower = original.toLowerCase();
+        const rep = lower === 'disini' ? 'di sini' : lower === 'disana' ? 'di sana' : 'di situ';
+        replacement = preserveCase(original, rep);
+      } else if (item.regex.source.includes('(diatas|dibawah|didalam|diluar)')) {
+        const lower = original.toLowerCase();
+        const rep = lower === 'diatas' ? 'di atas' : lower === 'dibawah' ? 'di bawah' : lower === 'didalam' ? 'di dalam' : 'di luar';
+        replacement = preserveCase(original, rep);
+      } else if (item.regex.source.includes('(kesana|kesini)')) {
+        const lower = original.toLowerCase();
+        const rep = lower === 'kesana' ? 'ke sana' : 'ke sini';
+        replacement = preserveCase(original, rep);
+      } else if (item.regex.source.includes('himbau(an)?')) {
+        const lower = original.toLowerCase();
+        const rep = lower.endsWith('an') ? 'imbauan' : 'imbau';
+        replacement = preserveCase(original, rep);
+      } else {
+        confidence = 'contextual';
+      }
+
       issues.push({
         rule: 'kata-tidak-baku',
         category: getRuleCategory('kata-tidak-baku'),
-        message: `Non-standard word "${m[0]}" found; use KBBI standard "${item.fix}".`,
+        message: `Non-standard word "${original}" found; use KBBI standard "${item.fix}".`,
+        startIndex,
+        endIndex,
+        original,
+        replacement,
+        confidence,
       });
     }
   }
 
   for (const pat of SLOP_AND_PLEONASM_PATTERNS) {
-    if (pat.regex.test(str)) {
+    const rx = new RegExp(pat.regex.source, (pat.regex.flags || 'i').replace(/g/g, '') + 'g');
+    for (const m of str.matchAll(rx)) {
+      const original = m[0];
+      const startIndex = m.index;
+      const endIndex = startIndex + original.length;
+      let replacement = undefined;
+      let confidence = 'contextual';
+
+      if (pat.reason.includes('dalam rangka untuk')) {
+        replacement = preserveCase(original, 'untuk');
+        confidence = 'high';
+      } else if (pat.reason.includes('para hadirin')) {
+        replacement = preserveCase(original, 'hadirin');
+        confidence = 'high';
+      }
+
       issues.push({
         rule: 'slop-or-pleonasm',
         category: getRuleCategory('slop-or-pleonasm'),
         message: pat.reason,
+        startIndex,
+        endIndex,
+        original,
+        replacement,
+        confidence,
       });
     }
   }
@@ -379,10 +490,16 @@ function auditText(text, options = {}) {
         rule: pIssue.rule,
         category: getRuleCategory(pIssue.rule),
         message: pIssue.message,
+        startIndex: pIssue.startIndex,
+        endIndex: pIssue.endIndex,
+        original: pIssue.original,
+        replacement: pIssue.replacement,
+        confidence: pIssue.confidence,
       });
     }
   }
 
+  issues.sort((a, b) => (a.startIndex ?? 0) - (b.startIndex ?? 0));
   return issues;
 }
 
@@ -700,6 +817,7 @@ function auditDictionary(dict, options = {}) {
 
   return findings;
 }
+/* ENGINE_EXPORT_END */
 
 /**
  * Sanitize diagnostic strings to prevent log injection and terminal control sequence tampering.
