@@ -113,6 +113,18 @@ test('engine.analyze: auto-detects JSON key-value snippets without outer braces'
   const forcedJson = engine.analyze('{"Back": "punggung"}', { mode: 'json' });
   assert.strictEqual(forcedJson.mode, 'json');
 
+  // Verify cleanText preserves trailing comma on snippets that ended with a comma
+  const snippetWithComma = '"welcome": "Silahkan masuk",\n"status": "aktif",';
+  const commaRes = engine.analyze(snippetWithComma);
+  assert.strictEqual(commaRes.isSnippet, true);
+  assert.ok(commaRes.cleanText.trimEnd().endsWith(','));
+  assert.match(commaRes.cleanText, /"welcome": "Silakan masuk",/);
+
+  // Snippets without trailing comma do not gain an unwanted trailing comma
+  const snippetWithoutComma = '"welcome": "Silahkan masuk"';
+  const noCommaRes = engine.analyze(snippetWithoutComma);
+  assert.strictEqual(noCommaRes.cleanText.trimEnd().endsWith(','), false);
+
   // Verify snippet regex whitespace tolerance and prose colon discrimination
   assert.strictEqual(engine.isKeyValueSnippet('  "Back"   : "punggung"'), true);
   assert.strictEqual(engine.isKeyValueSnippet('Catatan: silahkan periksa jadwal latihan.'), false);

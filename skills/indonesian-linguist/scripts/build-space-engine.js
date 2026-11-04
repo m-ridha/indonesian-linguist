@@ -168,6 +168,7 @@ export function analyzeJson(jsonString, options = {}) {
   const indent = detectJsonIndent(raw);
 
   let isSnippet = false;
+  let hasTrailingComma = false;
   let parsed = null;
   let parseError = null;
 
@@ -179,6 +180,7 @@ export function analyzeJson(jsonString, options = {}) {
     }
   } else {
     isSnippet = true;
+    hasTrailingComma = /,(\\s*)$/.test(trimmed);
     const withoutTrailing = trimmed.replace(/,(\\s*)$/, '$1');
     const wrapped = '{\\n' + withoutTrailing + '\\n}';
     try {
@@ -230,6 +232,9 @@ export function analyzeJson(jsonString, options = {}) {
         cleanText = innerLines
           .map((l) => (l.startsWith(indentStr) ? l.slice(indentStr.length) : l))
           .join('\\n');
+        if (hasTrailingComma && !cleanText.trimEnd().endsWith(',')) {
+          cleanText = cleanText.trimEnd() + ',';
+        }
       } else {
         cleanText = fullJson;
       }
