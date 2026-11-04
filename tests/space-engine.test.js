@@ -121,4 +121,19 @@ test('engine.analyze: auto-detects JSON key-value snippets without outer braces'
   assert.strictEqual(proseWithColon.mode, 'prose');
   assert.strictEqual(proseWithColon.valid, true);
   assert.ok(proseWithColon.findings.some((f) => f.rule === 'kata-tidak-baku' && f.original === 'silahkan'));
+
+  // Verify markdown prose containing a fenced code block with key-value syntax is not misrouted
+  const proseWithFencedJson = [
+    '# Panduan Penggunaan',
+    '',
+    'Berikut contoh konfigurasi:',
+    '```json',
+    '"Back": "punggung"',
+    '```',
+    'Mohon periksa kembali jadwal Anda.',
+  ].join('\n');
+  assert.strictEqual(engine.isKeyValueSnippet(proseWithFencedJson), false);
+  const fencedProseRes = engine.analyze(proseWithFencedJson);
+  assert.strictEqual(fencedProseRes.mode, 'prose');
+  assert.strictEqual(fencedProseRes.valid, true);
 });

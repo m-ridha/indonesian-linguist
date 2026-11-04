@@ -921,7 +921,7 @@ function fixJsonValues(obj, pronoun) {
  */
 export function isKeyValueSnippet(str) {
   const trimmed = String(str || '').trim();
-  return /^"(?:[^"\\]|\\.)*"\s*:/m.test(trimmed);
+  return /^"(?:[^"\\]|\\.)*"\s*:/.test(trimmed);
 }
 
 /**
