@@ -138,7 +138,12 @@ function fixJsonValues(obj, pronoun) {
   if (obj && typeof obj === 'object') {
     const out = {};
     for (const [key, value] of Object.entries(obj)) {
-      out[key] = fixJsonValues(value, pronoun);
+      Object.defineProperty(out, key, {
+        value: fixJsonValues(value, pronoun),
+        writable: true,
+        enumerable: true,
+        configurable: true,
+      });
     }
     return out;
   }

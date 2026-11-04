@@ -125,6 +125,13 @@ test('engine.analyze: auto-detects JSON key-value snippets without outer braces'
   const noCommaRes = engine.analyze(snippetWithoutComma);
   assert.strictEqual(noCommaRes.cleanText.trimEnd().endsWith(','), false);
 
+  // Verify fixJsonValues preserves own __proto__ keys without prototype pollution
+  const protoJson = '{\n  "__proto__": "silahkan masuk",\n  "key": "aktifitas"\n}';
+  const protoRes = engine.analyze(protoJson);
+  assert.strictEqual(protoRes.valid, true);
+  assert.match(protoRes.cleanText, /"__proto__":\s*"silakan masuk"/);
+  assert.match(protoRes.cleanText, /"key":\s*"aktivitas"/);
+
   // Verify snippet regex whitespace tolerance and prose colon discrimination
   assert.strictEqual(engine.isKeyValueSnippet('  "Back"   : "punggung"'), true);
   assert.strictEqual(engine.isKeyValueSnippet('Catatan: silahkan periksa jadwal latihan.'), false);

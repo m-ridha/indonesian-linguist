@@ -245,7 +245,7 @@ function renderFindingCards(findings, mode) {
  * @param {'prose' | 'json'} mode
  */
 function applySingleFix(finding, mode) {
-  if (!rawInput) return;
+  if (!rawInput || !currentAnalysis) return;
   const currentVal = rawInput.value;
 
   if (mode === 'prose' && typeof finding.startIndex === 'number' && typeof finding.endIndex === 'number') {
@@ -328,18 +328,24 @@ function runAnalysis() {
 
   renderFindingCards(currentAnalysis.findings, currentAnalysis.mode);
 
-  // Enable/disable batch fix button
+  // Enable/disable action buttons
   if (btnApplyBatch) {
     const hasBatchFixable =
       (currentAnalysis.mode === 'prose' && stats.highConfidence > 0) ||
       (currentAnalysis.mode === 'json' && currentAnalysis.cleanText !== text);
     btnApplyBatch.disabled = !hasBatchFixable;
   }
+  if (btnCopy) btnCopy.disabled = !text || text.trim().length === 0;
+  if (btnDownload) btnDownload.disabled = !text || text.trim().length === 0;
 }
 
 // Event Listeners
 if (rawInput) {
   rawInput.addEventListener('input', () => {
+    currentAnalysis = null;
+    if (btnApplyBatch) btnApplyBatch.disabled = true;
+    if (btnCopy) btnCopy.disabled = true;
+    if (btnDownload) btnDownload.disabled = true;
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(runAnalysis, 150);
   });
