@@ -1,6 +1,6 @@
 // @ts-check
 /**
- * BersihBahasa Client Engine Bundle
+ * Indonesian Linguist Client Engine Bundle
  * AUTOMATICALLY GENERATED from scripts/audit-id.js — DO NOT EDIT DIRECTLY.
  * Run "npm run build:space" to regenerate.
  */

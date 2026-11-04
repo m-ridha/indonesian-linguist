@@ -1,5 +1,5 @@
 ---
-title: BersihBahasa
+title: Indonesian Linguist
 emoji: 🇮🇩
 colorFrom: emerald
 colorTo: teal
@@ -7,9 +7,9 @@ sdk: static
 pinned: false
 ---
 
-# BersihBahasa: Indonesian Text and UI Localization Linter
+# Indonesian Linguist: Indonesian Text and UI Localization Linter
 
-BersihBahasa adalah linter teks dan pemeriksa lokalisasi antarmuka (UI microcopy) Bahasa Indonesia yang 100% deterministik, berjalan sepenuhnya di peramban (client-side), dan berlandaskan kaidah resmi **EYD V** (*Ejaan Yang Disempurnakan Edisi V*) serta **KBBI VI** (*Kamus Besar Bahasa Indonesia Edisi VI*).
+Indonesian Linguist adalah linter teks dan pemeriksa lokalisasi antarmuka (UI microcopy) Bahasa Indonesia yang 100% deterministik, berjalan sepenuhnya di peramban (client-side), dan berlandaskan kaidah resmi **EYD V** (*Ejaan Yang Disempurnakan Edisi V*) serta **KBBI VI** (*Kamus Besar Bahasa Indonesia Edisi VI*).
 
 Mesin analisis ditenagai langsung oleh aturan linguistik dari repositori [m-ridha/indonesian-linguist](https://github.com/m-ridha/indonesian-linguist).
 

@@ -367,7 +367,7 @@ if (btnDownload) {
     if (!rawInput) return;
     const textToDownload = currentAnalysis?.cleanText || rawInput.value;
     const isJson = currentAnalysis?.mode === 'json';
-    const filename = isJson ? 'bersih-bahasa-clean.json' : 'bersih-bahasa-clean.md';
+    const filename = isJson ? 'indonesian-linguist-clean.json' : 'indonesian-linguist-clean.md';
     const mime = isJson ? 'application/json' : 'text/markdown';
 
     const blob = new Blob([textToDownload], { type: `${mime};charset=utf-8` });

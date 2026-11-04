@@ -47,14 +47,14 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           TMP_DIR=$(mktemp -d)
-          git clone --depth 1 "https://m-ridha:${HF_TOKEN}@huggingface.co/spaces/m-ridha/bersih-bahasa" "$TMP_DIR"
+          git clone --depth 1 "https://m-ridha:${HF_TOKEN}@huggingface.co/spaces/m-ridha/indonesian-linguist" "$TMP_DIR"
           cp -r space/* "$TMP_DIR/"
           cd "$TMP_DIR"
           git add .
           if git diff --staged --quiet; then
             echo "No changes to deploy to Hugging Face Space."
           else
-            git commit -m "deploy: sync BersihBahasa static space from ${GITHUB_SHA::7}"
+            git commit -m "deploy: sync Indonesian Linguist static space from ${GITHUB_SHA::7}"
             git push origin main
-            echo "Successfully deployed to Hugging Face Spaces: m-ridha/bersih-bahasa"
+            echo "Successfully deployed to Hugging Face Spaces: m-ridha/indonesian-linguist"
           fi
