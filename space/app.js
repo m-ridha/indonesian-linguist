@@ -110,7 +110,7 @@ function renderProseReview(text, findings) {
   }
 
   if (findings.length === 0) {
-    reviewDisplay.innerHTML = `<span class="text-emerald-700 font-medium">✓ Luar biasa! Tidak ditemukan kesalahan ejaan, kalke, atau AI slop pada teks ini.</span>\n\n${escapeHtml(text)}`;
+    reviewDisplay.innerHTML = `<span class="text-emerald-700 font-medium">✓ All clear! No spelling errors, calques, or AI slop detected in this text.</span>\n\n${escapeHtml(text)}`;
     return;
   }
 
@@ -317,7 +317,7 @@ function runAnalysis() {
   if (currentAnalysis.mode === 'json') {
     if (reviewDisplay) {
       if (currentAnalysis.findings.length === 0) {
-        reviewDisplay.innerHTML = `<span class="text-emerald-700 font-medium">✓ Valid! Format katalog JSON benar dan tidak ditemukan kesalahan ejaan, kalke, atau paritas placeholder.</span>\n\n<pre class="mt-2 text-xs leading-relaxed text-slate-700 font-mono">${escapeHtml(currentAnalysis.cleanText || text)}</pre>`;
+        reviewDisplay.innerHTML = `<span class="text-emerald-700 font-medium">✓ Valid! JSON catalog syntax is correct, with no spelling errors, calques, or placeholder parity issues found.</span>\n\n<pre class="mt-2 text-xs leading-relaxed text-slate-700 font-mono">${escapeHtml(currentAnalysis.cleanText || text)}</pre>`;
       } else {
         reviewDisplay.innerHTML = `<pre class="text-xs leading-relaxed text-slate-700 font-mono">${escapeHtml(currentAnalysis.cleanText || text)}</pre>`;
       }
