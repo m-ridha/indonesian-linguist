@@ -1433,3 +1433,30 @@ test('CLI: supports .xml and .strings catalogs, --ignore-keys, and --warn-only',
 
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
+
+test('auditDictionary: flags v1.2.1 assistance machines, prepositional unit headers, and hold cues traps', () => {
+  const badDict = {
+    'On an assistance machine': 'Pada mesin bantuan',
+    'Lengths in': 'Panjang dalam',
+    'Weights in': 'Beban dalam',
+    'Distance in': 'Jarak dalam',
+    'End of a hold': 'Akhir tahanan',
+  };
+  const findings = auditDictionary(badDict);
+  const polysemyFindings = findings.filter((f) => f.rule === 'polysemy-calque');
+  assert.equal(polysemyFindings.length, 5);
+
+  const goodDict = {
+    'On an assistance machine': 'Pada mesin assisted',
+    'Assisted machine': 'Mesin berbeban bantuan',
+    'Lengths in': 'Satuan panjang',
+    'Lengths in (alt)': 'Satuan ukuran',
+    'Weights in': 'Satuan beban',
+    'Distance in': 'Satuan jarak',
+    'End of a hold': 'Akhir durasi tahan',
+    'End of a hold (alt)': 'Waktu tahan selesai',
+  };
+  const goodFindings = auditDictionary(goodDict);
+  assert.deepEqual(goodFindings, []);
+});
+

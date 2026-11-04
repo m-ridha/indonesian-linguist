@@ -84,6 +84,7 @@ Automated translators notoriously mangle exercise names, gym equipment, and musc
 | **Dumbbell / Dumbbells** | Halter *(archaic)* | **Dumbbell** | Modern gym standard |
 | **Weight plate / Plate loading** | Piringan / Pemuatan pelat | **Plat beban / Beban plat (plate loading)** | Plate-loaded machines & barbell plates |
 | **Weight stack / Single stack** | Tumpukan berat / Tumpukan tunggal | **Tumpukan beban / Beban tunggal** | Selectorized cable machine weight stack |
+| **Assistance machine / Assisted machine** | Mesin bantuan | **Mesin assisted** / **Mesin berbeban bantuan** | Equipment with counterweight assistance (e.g., assisted chin-up/dip). Never use bare "mesin bantuan" (which sounds like emergency or social relief aid) |
 | **Landmine** | Ranjau darat *(military explosive!)* | **Landmine** | Pivoting barbell floor sleeve |
 | **Sled** | Kereta luncur *(snow sled)* | **Sled** | Weighted push/pull turf sled |
 | **Sandbag** | Memaksakan *(wrong verb sense)* | **Sandbag / Kantong pasir** | Functional training sandbag |

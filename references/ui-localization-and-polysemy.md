@@ -68,6 +68,8 @@ Always translate isolated UI keys according to their **interactive role on scree
 | **Life happens** *(empathy copy)* | Kehidupan terjadi | **Ada urusan mendadak?** | Empathetic microcopy when a user misses a schedule |
 | **Your call** *(privacy/choice)* | Panggilan kamu *(phone call)* | **Keputusanmu / Kendalimu** | User autonomy over settings |
 | **Feel free to leave, it keeps going** | Jangan ragu untuk pergi, ini terus berlanjut | **Kamu boleh tinggalkan halaman ini, proses tetap berjalan** | Background job reassurance copy |
+| **Hold** *(isometric timer / audio cue)* | Tahanan *(prisoner)* / Penahanan | **Durasi tahan** / **Waktu tahan** | Isometric movement duration (e.g., plank, dead hang); qualify with *durasi* or *waktu* |
+| **End of a hold** *(timer / audio cue)* | Akhir tahanan *(prison release / electrical ohm!)* | **Akhir durasi tahan** / **Waktu tahan selesai** | Audio chime or timer milestone signaling completion of an isometric hold. Never use bare *tahanan* (which predominantly means prison detainee/custody in KBBI VI) |
 
 ---
 
@@ -147,3 +149,20 @@ When localizing demographic selectors, body diagrams, or profile fields:
 2. **No Plural Reduplication with Quantifiers or Metric Headers**:
    - When a number or quantifier is present, the noun stays singular: **`3 latihan`** (never *3 latihan-latihan*).
    - In dashboard metric headers, use the unmarked collective noun: **`Hari aktif`** (*Active days*), **`Kartu`** (*Cards*), **`Catatan`** (*Notes*), never *Hari-hari aktif* or *Kartu-kartu*.
+
+---
+
+## 7. Prepositional Dimension Unit Headers (`Lengths in`, `Weights in`, `Distance in`)
+
+In software configuration screens, settings tables, and segmented controls, English commonly uses prepositional fragments to denote measurement unit selectors: `Lengths in` (`cm` / `in`), `Weights in` (`kg` / `lb`), `Distance in` (`km` / `mi`).
+
+- **The Trap**: Literal calques produce truncated, dangling prepositional phrases in Indonesian:
+  - ❌ *Panjang dalam*
+  - ❌ *Beban dalam* / *Berat dalam*
+  - ❌ *Jarak dalam*
+- **Linguistic Principle**: In Indonesian grammar, prepositional phrases (`dalam [satuan]`) without an active governing clause feel incomplete when standing as standalone headers or column titles. Furthermore, in anthropometric or body measurement contexts (waist, hips, chest, biceps), dimensions represent circumferences (*lingkar badan*), not merely linear length.
+- **UI Standard**: Convert English prepositional headers into explicit noun phrases using **`Satuan [parameter]`**:
+  - `Weights in` $\rightarrow$ **`Satuan beban`** (or **`Satuan berat badan`**)
+  - `Lengths in` $\rightarrow$ **`Satuan panjang`** / **`Satuan ukuran`**
+  - `Distance in` $\rightarrow$ **`Satuan jarak`**
+  - `Temperatures in` $\rightarrow$ **`Satuan suhu`**

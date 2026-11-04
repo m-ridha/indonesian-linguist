@@ -73,6 +73,11 @@ const KNOWN_CALQUE_TRAPS = [
   { keyMatch: /^traps$/i, badVal: /\bperangkap\b/i, fix: 'Traps' },
   { keyMatch: /form[- ]check/i, badVal: /\bpemeriksaan formulir\b/i, fix: 'Cek form' },
   { keyMatch: /add exercise/i, badVal: /\btambahkan olahraga\b/i, fix: 'Tambahkan latihan' },
+  { keyMatch: /assist(ance|ed) machine/i, badVal: /\bmesin bantuan\b/i, fix: 'mesin assisted / mesin berbeban bantuan' },
+  { keyMatch: /^lengths in\b/i, badVal: /\bpanjang dalam\b/i, fix: 'Satuan panjang / Satuan ukuran' },
+  { keyMatch: /^weights in\b/i, badVal: /\b(beban|berat) dalam\b/i, fix: 'Satuan beban / Satuan berat badan' },
+  { keyMatch: /^distance in\b/i, badVal: /\bjarak dalam\b/i, fix: 'Satuan jarak' },
+  { keyMatch: /end of a hold/i, badVal: /\b(akhir|ujung)\s+tahanan\b/i, fix: 'Akhir durasi tahan / Waktu tahan selesai' },
 ];
 
 // Full-string anchored patterns for complete retained loanwords, exercise names, Latin muscle names,
