@@ -42,6 +42,7 @@ Per **PUPI §6.4**, official product names, biometric features, and password man
 | **Health Connect** | Koneksi Kesehatan | **Health Connect** |
 | **Apple Health** | Kesehatan Apple | **Apple Health** |
 | **Apple Watch** | Jam Tangan Apple / Aplikasi Tonton | **Apple Watch** (*Aplikasi Apple Watch*) |
+| **Google Play / Google Play Store** | Toko Google Play | **Google Play / Google Play Store** |
 | **App Store** *(Apple trademark)* | Toko Aplikasi Apple / Toko Aplikasi | **App Store** (Apple's marketplace proper noun; distinct from generic *toko aplikasi*) |
 
 ---

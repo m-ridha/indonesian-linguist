@@ -108,7 +108,7 @@ const RETAINED_LOANWORD_PATTERNS = [
   /^(?:Drop-set\s*\/\s*rest-pause|Drop-set|Superset(?:\s+\{[0-9]+\}(?:\s*\/\s*\{[0-9]+\}|\s*:\s*\{[0-9]+\}\s*\(\{[0-9]+\}\))?)?|Rest-pause|Deload|Bodyweight|Thibaudeau\s*\(Powerlifting\))$/i,
   /^(?:(?:(?:single|one|two)-(?:leg|arm)|(?:reverse|close|wide|neutral|narrow|overhand|underhand|hammer|snatch)-grip|incline|decline|flat|barbell|dumbbell|ez-bar|cable|smith machine|seated|standing|close-grip|wide-grip|romanian|sumo|conventional|deficit|pause|paused|single-arm|one-arm|high-bar|low-bar|safety-bar|zercher|hack|belt|box|bulgarian)\s+){0,3}(?:bench press|barbell curl|back squat|front squat|split squat|squat|deadlift|overhead press|leverage machine)(?:\s*\([A-Za-z0-9 -]+\))?$/i,
   /^(?:serratus anterior|latissimus dorsi|sternocleidomastoid|pectoralis(?:\s+major|\s+minor)?|gluteus(?:\s+maximus|\s+medius)?|gastrocnemius)$/i,
-  /^(?:Face ID(?:\s*\/\s*Touch ID)?|Touch ID|iCloud Keychain|Google Password Manager|Health Connect|Apple Health|Apple Watch|Cloudflare Access)$/i,
+  /^(?:Face ID(?:\s*\/\s*Touch ID)?|Touch ID|iCloud Keychain|Google Password Manager|Health Connect|Apple Health|Apple Watch|Google Play(?:\s+Store)?|App Store|Cloudflare Access)$/i,
   /^(?:API key|endpoint|reverse proxy|source code|webhook)$/i,
   /^(?:Bahasa Indonesia(?:\s*\([A-Za-z0-9_-]+\))?|Bahasa Melayu(?:\s*\([A-Za-z0-9_-]+\))?|English(?:\s*\([A-Za-z0-9_-]+\))?|[a-z]{2}(?:[-_][A-Z]{2,4})?)$/i,
 ];
@@ -528,14 +528,15 @@ function auditDictionary(dict, options = {}) {
     const sourceValue = (source && typeof source === 'object') ? source[key] : undefined;
 
     // 1. Silent English identity fallback check
-    const isUntranslated = typeof sourceValue === 'string' ? (value.trim() === sourceValue.trim()) : (key === value);
+    const trimmedVal = value.trim();
+    const isUntranslated = typeof sourceValue === 'string' ? (trimmedVal === sourceValue.trim()) : (key === value);
     const textOutsidePlaceholders = value.replace(/\{\{[0-9a-zA-Z_.-]+\}\}|\{[0-9a-zA-Z_.-]+\}|%(?:\d+\$)?[sdif]/g, '');
     if (
       isUntranslated &&
       value.length >= minFallbackLength &&
       !allowlistKeys.has(key) &&
       !allowlistKeys.has(fullKey) &&
-      !RETAINED_LOANWORD_PATTERNS.some((rx) => rx.test(value)) &&
+      !RETAINED_LOANWORD_PATTERNS.some((rx) => rx.test(trimmedVal) || rx.test(value)) &&
       /[a-zA-Z]{3,}/.test(textOutsidePlaceholders) &&
       !/^https?:\/\//.test(value)
     ) {

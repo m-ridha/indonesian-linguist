@@ -1462,6 +1462,9 @@ test('auditDictionary: flags v1.2.1 assistance machines, prepositional unit head
     'App stores': 'Toko aplikasi',
     'app store': 'toko aplikasi',
     'App Store': 'App Store', // Apple proper noun preserved
+    'App Store (padded)': '  App Store  ', // Retained brand with whitespace preserved
+    'Google Play Store': 'Google Play Store', // Retained brand preserved
+    'Google Play Store (padded)': '  Google Play Store  ', // Retained brand with whitespace preserved
     'Lengths in {0}': 'Panjang dalam {0}', // Complete phrase with object preserved
     'Weights in {0}': 'Beban dalam {0}', // Complete phrase with object preserved
   };
