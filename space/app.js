@@ -308,6 +308,8 @@ function runAnalysis() {
       issuesList.innerHTML = '<p class="text-xs text-rose-500 italic">Please resolve JSON syntax errors before proceeding with linguistic audit.</p>';
     }
     if (btnApplyBatch) btnApplyBatch.disabled = true;
+    if (btnCopy) btnCopy.disabled = !text || text.trim().length === 0;
+    if (btnDownload) btnDownload.disabled = !text || text.trim().length === 0;
     return;
   }
 

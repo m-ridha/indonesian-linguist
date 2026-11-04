@@ -389,7 +389,8 @@ function auditText(text, options = {}) {
   const withoutIndented = stripIndentedCode ? stripIndentedCodeBlocks(withoutFences) : withoutFences;
   const str = withoutIndented
     .replace(/`[^`\n]+`/g, maskSpan)
-    .replace(/https?:\/\/[^\s<>"'`()]+/g, maskSpan);
+    .replace(/https?:\/\/[^\s<>"'`()]+/g, maskSpan)
+    .replace(/\{\{[0-9a-zA-Z_.-]+\}\}|\{[0-9a-zA-Z_.-]+\}|%(?:\d+\$)?[sdif]/g, maskSpan);
 
   const smsRx = new RegExp(SMS_SLANG_REGEX.source, (SMS_SLANG_REGEX.flags || 'i').replace(/g/g, '') + 'g');
   for (const m of str.matchAll(smsRx)) {

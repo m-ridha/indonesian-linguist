@@ -64,6 +64,17 @@ test('auditText: ignores protected Markdown inline code spans, backtick/tilde fe
   assert.ok(listIssues.some((i) => i.rule === 'sms-abbreviation'));
 });
 
+test('auditText: ignores tokens inside template placeholders ({name}, {{name}}, printf)', () => {
+  const text = 'Silakan periksa {resiko} dan {{aktifitas}} untuk pengguna %s disini.';
+  const issues = auditText(text);
+  assert.strictEqual(issues.some((i) => i.original === 'resiko'), false);
+  assert.strictEqual(issues.some((i) => i.original === 'aktifitas'), false);
+  const disiniIssue = issues.find((i) => i.original === 'disini');
+  assert.ok(disiniIssue);
+  assert.strictEqual(disiniIssue.startIndex, text.indexOf('disini'));
+  assert.strictEqual(disiniIssue.replacement, 'di sini');
+});
+
 test('auditText: flags banned SMS abbreviations (yg, dgn, utk, krn, tdk, bgt)', () => {
   const issues = auditText('Latihan yg sudah selesai akan disimpan dgn pengaturan baru.');
   assert.ok(issues.some((i) => i.rule === 'sms-abbreviation'));
