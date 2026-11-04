@@ -15,7 +15,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: deploy-space-${{ github.ref }}
+  group: deploy-space
   cancel-in-progress: true
 
 jobs:
@@ -62,6 +62,7 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           TMP_DIR=$(mktemp -d)
           git clone --depth 1 "https://m-ridha:${HF_TOKEN}@huggingface.co/spaces/m-ridha/indonesian-linguist" "$TMP_DIR"
+          find "$TMP_DIR" -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
           cp -r space/* "$TMP_DIR/"
           cd "$TMP_DIR"
           git add .

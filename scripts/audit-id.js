@@ -264,7 +264,7 @@ function checkPronounPolicy(text, pronoun) {
 
   const maskSpan = (match) => match.replace(/[^\n]/g, ' ');
   const textWithoutTokens = String(text || '')
-    .replace(/https?:\/\/[^\s<>"'`()]+/g, maskSpan)
+    .replace(/https?:\/\/[^\s<>"'`]+/gi, maskSpan)
     .replace(/\{\{[0-9a-zA-Z_.-]+\}\}|\{[0-9a-zA-Z_.-]+\}|%(?:\d+\$)?[sdif]/g, maskSpan);
 
   const findings = [];
@@ -274,7 +274,7 @@ function checkPronounPolicy(text, pronoun) {
       findings.push({
         rule: 'pronoun-mismatch',
         category: getRuleCategory('pronoun-mismatch'),
-        message: `Informal pronoun found in "${text}"; formal "Anda" is enforced by project policy.`,
+        message: `Informal pronoun "${m[0]}" found; formal "Anda" is enforced by project policy.`,
         startIndex: m.index,
         endIndex: m.index + m[0].length,
         original: m[0],
@@ -288,7 +288,7 @@ function checkPronounPolicy(text, pronoun) {
         findings.push({
           rule: 'pronoun-mismatch',
           category: getRuleCategory('pronoun-mismatch'),
-          message: `Informal pronoun found in "${text}"; formal "Anda" is enforced by project policy.`,
+          message: `Informal pronoun "${m[0]}" found; formal "Anda" is enforced by project policy.`,
           startIndex: m.index,
           endIndex: m.index + m[0].length,
           original: m[0],
@@ -302,7 +302,7 @@ function checkPronounPolicy(text, pronoun) {
       findings.push({
         rule: 'pronoun-mismatch',
         category: getRuleCategory('pronoun-mismatch'),
-        message: `Formal pronoun "Anda" found in "${text}"; informal "kamu" is enforced by project policy.`,
+        message: `Formal pronoun "${m[0]}" found; informal "kamu" is enforced by project policy.`,
         startIndex: m.index,
         endIndex: m.index + m[0].length,
         original: m[0],
@@ -391,7 +391,7 @@ function auditText(text, options = {}) {
   const withoutIndented = stripIndentedCode ? stripIndentedCodeBlocks(withoutFences) : withoutFences;
   const str = withoutIndented
     .replace(/`[^`\n]+`/g, maskSpan)
-    .replace(/https?:\/\/[^\s<>"'`()]+/g, maskSpan)
+    .replace(/https?:\/\/[^\s<>"'`]+/gi, maskSpan)
     .replace(/\{\{[0-9a-zA-Z_.-]+\}\}|\{[0-9a-zA-Z_.-]+\}|%(?:\d+\$)?[sdif]/g, maskSpan);
 
   const smsRx = new RegExp(SMS_SLANG_REGEX.source, (SMS_SLANG_REGEX.flags || 'i').replace(/g/g, '') + 'g');

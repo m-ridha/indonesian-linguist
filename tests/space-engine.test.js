@@ -155,4 +155,40 @@ test('engine.analyze: auto-detects JSON key-value snippets without outer braces'
   const fencedProseRes = engine.analyze(proseWithFencedJson);
   assert.strictEqual(fencedProseRes.mode, 'prose');
   assert.strictEqual(fencedProseRes.valid, true);
+
+  // Markdown links and placeholder-headed text route to prose in auto-detect mode
+  const mdLinkInput = '[Panduan](https://example.com)\nSilahkan masuk.';
+  const mdLinkRes = engine.analyze(mdLinkInput);
+  assert.strictEqual(mdLinkRes.mode, 'prose');
+  assert.strictEqual(mdLinkRes.valid, true);
+  assert.ok(mdLinkRes.findings.some((f) => f.original.toLowerCase() === 'silahkan'));
+
+  const placeholderInput = '{0} minggu beruntun\nSilahkan coba lagi.';
+  const placeholderRes = engine.analyze(placeholderInput);
+  assert.strictEqual(placeholderRes.mode, 'prose');
+  assert.strictEqual(placeholderRes.valid, true);
+  assert.ok(placeholderRes.findings.some((f) => f.original.toLowerCase() === 'silahkan'));
+
+  // Large numbers (> MAX_SAFE_INTEGER) in JSON are preserved without precision loss in cleanText
+  const bigNumJson = '{\n  "id": 9007199254740993,\n  "note": "silahkan catat"\n}';
+  const bigNumRes = engine.analyze(bigNumJson);
+  assert.strictEqual(bigNumRes.mode, 'json');
+  assert.strictEqual(bigNumRes.valid, true);
+  assert.match(bigNumRes.cleanText, /"id":\s*9007199254740993/);
+  assert.match(bigNumRes.cleanText, /"note":\s*"silakan catat"/);
+
+  // Uppercase HTTPS and parentheses in URLs are masked without modifying URL
+  const urlProse = 'Kunjungi HTTPS://example.com/(resiko) dan https://example.com/resiko disini.';
+  const urlRes = engine.analyze(urlProse);
+  assert.strictEqual(urlRes.mode, 'prose');
+  assert.strictEqual(urlRes.findings.some((f) => f.original === 'resiko'), false);
+  assert.ok(urlRes.findings.some((f) => f.original === 'disini'));
+
+  // Pronoun policy finding messages do not repeat full text
+  const longText = 'Silakan periksa akun kamu. '.repeat(10);
+  const pronounRes = engine.analyze(longText, { pronoun: 'Anda' });
+  for (const f of pronounRes.findings) {
+    assert.strictEqual(f.message.includes(longText), false);
+    assert.match(f.message, /Informal pronoun "kamu" found/);
+  }
 });

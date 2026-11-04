@@ -262,7 +262,7 @@ function checkPronounPolicy(text, pronoun) {
 
   const maskSpan = (match) => match.replace(/[^\n]/g, ' ');
   const textWithoutTokens = String(text || '')
-    .replace(/https?:\/\/[^\s<>"'`()]+/g, maskSpan)
+    .replace(/https?:\/\/[^\s<>"'`]+/gi, maskSpan)
     .replace(/\{\{[0-9a-zA-Z_.-]+\}\}|\{[0-9a-zA-Z_.-]+\}|%(?:\d+\$)?[sdif]/g, maskSpan);
 
   const findings = [];
@@ -272,7 +272,7 @@ function checkPronounPolicy(text, pronoun) {
       findings.push({
         rule: 'pronoun-mismatch',
         category: getRuleCategory('pronoun-mismatch'),
-        message: `Informal pronoun found in "${text}"; formal "Anda" is enforced by project policy.`,
+        message: `Informal pronoun "${m[0]}" found; formal "Anda" is enforced by project policy.`,
         startIndex: m.index,
         endIndex: m.index + m[0].length,
         original: m[0],
@@ -286,7 +286,7 @@ function checkPronounPolicy(text, pronoun) {
         findings.push({
           rule: 'pronoun-mismatch',
           category: getRuleCategory('pronoun-mismatch'),
-          message: `Informal pronoun found in "${text}"; formal "Anda" is enforced by project policy.`,
+          message: `Informal pronoun "${m[0]}" found; formal "Anda" is enforced by project policy.`,
           startIndex: m.index,
           endIndex: m.index + m[0].length,
           original: m[0],
@@ -300,7 +300,7 @@ function checkPronounPolicy(text, pronoun) {
       findings.push({
         rule: 'pronoun-mismatch',
         category: getRuleCategory('pronoun-mismatch'),
-        message: `Formal pronoun "Anda" found in "${text}"; informal "kamu" is enforced by project policy.`,
+        message: `Formal pronoun "${m[0]}" found; informal "kamu" is enforced by project policy.`,
         startIndex: m.index,
         endIndex: m.index + m[0].length,
         original: m[0],
@@ -389,7 +389,7 @@ function auditText(text, options = {}) {
   const withoutIndented = stripIndentedCode ? stripIndentedCodeBlocks(withoutFences) : withoutFences;
   const str = withoutIndented
     .replace(/`[^`\n]+`/g, maskSpan)
-    .replace(/https?:\/\/[^\s<>"'`()]+/g, maskSpan)
+    .replace(/https?:\/\/[^\s<>"'`]+/gi, maskSpan)
     .replace(/\{\{[0-9a-zA-Z_.-]+\}\}|\{[0-9a-zA-Z_.-]+\}|%(?:\d+\$)?[sdif]/g, maskSpan);
 
   const smsRx = new RegExp(SMS_SLANG_REGEX.source, (SMS_SLANG_REGEX.flags || 'i').replace(/g/g, '') + 'g');
@@ -891,32 +891,97 @@ export function analyzeText(text, options = {}) {
 }
 
 /**
- * Deeply fixes high-confidence non-standard spelling in parsed JSON values.
- * @param {any} obj
- * @param {string | null} pronoun
- * @returns {any}
+ * Scans a JSON string and extracts all string value positions (excluding object keys).
+ * Preserves numbers, booleans, null, keys, comments, and formatting exactly as written.
+ * @param {string} jsonStr
+ * @returns {Array<{ start: number, end: number, raw: string }>}
  */
-function fixJsonValues(obj, pronoun) {
-  if (typeof obj === 'string') {
-    const issues = auditText(obj, { stripIndentedCode: false, pronoun });
-    return applyBatchFixes(obj, issues, { highOnly: true });
-  }
-  if (Array.isArray(obj)) {
-    return obj.map((item) => fixJsonValues(item, pronoun));
-  }
-  if (obj && typeof obj === 'object') {
-    const out = {};
-    for (const [key, value] of Object.entries(obj)) {
-      Object.defineProperty(out, key, {
-        value: fixJsonValues(value, pronoun),
-        writable: true,
-        enumerable: true,
-        configurable: true,
-      });
+function findJsonStringValues(jsonStr) {
+  const spans = [];
+  const stack = [];
+  let inValue = false;
+  let i = 0;
+  const n = jsonStr.length;
+
+  while (i < n) {
+    const ch = jsonStr[i];
+    if (/\s/.test(ch)) {
+      i++;
+      continue;
     }
-    return out;
+    if (ch === '{' || ch === '[') {
+      stack.push(ch === '{' ? 'object' : 'array');
+      inValue = stack[stack.length - 1] === 'array';
+      i++;
+      continue;
+    }
+    if (ch === '}' || ch === ']') {
+      stack.pop();
+      inValue = stack.length > 0 && stack[stack.length - 1] === 'array';
+      i++;
+      continue;
+    }
+    if (ch === ':') {
+      inValue = true;
+      i++;
+      continue;
+    }
+    if (ch === ',') {
+      inValue = stack.length > 0 && stack[stack.length - 1] === 'array';
+      i++;
+      continue;
+    }
+    if (ch === '"') {
+      i++;
+      const startContent = i;
+      while (i < n) {
+        if (jsonStr[i] === '\\') {
+          i += 2;
+        } else if (jsonStr[i] === '"') {
+          break;
+        } else {
+          i++;
+        }
+      }
+      const endContent = i;
+      i++;
+      const isKey = (stack.length === 0 || stack[stack.length - 1] === 'object') && !inValue;
+      if (!isKey) {
+        spans.push({ start: startContent, end: endContent, raw: jsonStr.slice(startContent, endContent) });
+        inValue = false;
+      }
+      continue;
+    }
+    i++;
   }
-  return obj;
+  return spans;
+}
+
+/**
+ * Directly cleans string values in raw JSON text without rewriting numbers or formatting.
+ * @param {string} raw
+ * @param {string | null} pronoun
+ * @returns {string}
+ */
+function cleanJsonRaw(raw, pronoun) {
+  const spans = findJsonStringValues(raw);
+  let result = raw;
+  for (let idx = spans.length - 1; idx >= 0; idx--) {
+    const span = spans[idx];
+    let decoded;
+    try {
+      decoded = JSON.parse('"' + span.raw + '"');
+    } catch {
+      continue;
+    }
+    const issues = auditText(decoded, { stripIndentedCode: false, pronoun });
+    const fixed = applyBatchFixes(decoded, issues, { highOnly: true });
+    if (fixed !== decoded) {
+      const encodedFixed = JSON.stringify(fixed).slice(1, -1);
+      result = result.slice(0, span.start) + encodedFixed + result.slice(span.end);
+    }
+  }
+  return result;
 }
 
 /**
@@ -996,25 +1061,7 @@ export function analyzeJson(jsonString, options = {}) {
 
   let cleanText = raw;
   try {
-    const fixedObj = fixJsonValues(parsed, options.pronoun || null);
-    const fullJson = JSON.stringify(fixedObj, null, indent);
-    if (isSnippet) {
-      const lines = fullJson.split('\n');
-      if (lines.length >= 2 && lines[0].trim() === '{' && lines[lines.length - 1].trim() === '}') {
-        const innerLines = lines.slice(1, -1);
-        const indentStr = typeof indent === 'number' ? ' '.repeat(indent) : '\t';
-        cleanText = innerLines
-          .map((l) => (l.startsWith(indentStr) ? l.slice(indentStr.length) : l))
-          .join('\n');
-        if (hasTrailingComma && !cleanText.trimEnd().endsWith(',')) {
-          cleanText = cleanText.trimEnd() + ',';
-        }
-      } else {
-        cleanText = fullJson;
-      }
-    } else {
-      cleanText = fullJson;
-    }
+    cleanText = cleanJsonRaw(raw, options.pronoun || null);
   } catch (_) {
     cleanText = raw;
   }
@@ -1028,6 +1075,26 @@ export function analyzeJson(jsonString, options = {}) {
     stats,
     cleanText,
   };
+}
+
+/**
+ * Detects if a bracketed string is Markdown prose (links, references, task lists) rather than JSON.
+ * @param {string} str
+ * @returns {boolean}
+ */
+export function isMarkdownProse(str) {
+  if (!str.startsWith('[')) return false;
+  return /^\[[^\]\n]+\](?:\([^\s)]+\)|:\s*\S+)/.test(str) || /^\[[ xX]\]\s/.test(str);
+}
+
+/**
+ * Detects if a brace-headed string is a template placeholder rather than a JSON object.
+ * @param {string} str
+ * @returns {boolean}
+ */
+export function isProsePlaceholder(str) {
+  if (!str.startsWith('{')) return false;
+  return /^\{[0-9a-zA-Z_.-]+\}(?!\s*:)/.test(str);
 }
 
 /**
@@ -1048,7 +1115,7 @@ export function analyze(input, options = {}) {
     return analyzeText(str, options);
   }
 
-  if (trimmed.startsWith('{') || trimmed.startsWith('[') || isKeyValueSnippet(trimmed)) {
+  if (!isMarkdownProse(trimmed) && !isProsePlaceholder(trimmed) && (trimmed.startsWith('{') || trimmed.startsWith('[') || isKeyValueSnippet(trimmed))) {
     return analyzeJson(str, options);
   }
   return analyzeText(str, options);
