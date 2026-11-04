@@ -1496,5 +1496,12 @@ test('auditDictionary: flags v1.2.1 assistance machines, prepositional unit head
     { source: { 'App Store': '  app store  ' } }
   );
   assert.deepEqual(reverseDisambigClean, []);
+
+  // URL fallback exemption: padded URL value matching unpadded source string exercises the regex test on trimmedVal
+  const urlExemptionClean = auditDictionary(
+    { docs_url: '  https://example.com/docs/long-untranslated-slug  ' },
+    { source: { docs_url: 'https://example.com/docs/long-untranslated-slug' } }
+  );
+  assert.deepEqual(urlExemptionClean, []);
 });
 
