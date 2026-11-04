@@ -1,0 +1,82 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('fs');
+const path = require('path');
+const { pathToFileURL } = require('url');
+const { generateSpaceEngine } = require('../scripts/build-space-engine.js');
+
+test('space/engine.bundle.js is synchronized with scripts/audit-id.js', () => {
+  const expected = generateSpaceEngine();
+  const bundlePath = path.join(__dirname, '..', 'space', 'engine.bundle.js');
+  assert.ok(fs.existsSync(bundlePath), 'space/engine.bundle.js must exist');
+  const actual = fs.readFileSync(bundlePath, 'utf8');
+  assert.strictEqual(actual, expected, 'space/engine.bundle.js must match generator output');
+});
+
+test('engine.analyze: routes JSON vs prose and respects malformed JSON error boundary', async () => {
+  const bundleUrl = pathToFileURL(path.join(__dirname, '..', 'space', 'engine.bundle.js')).href;
+  const engine = await import(bundleUrl);
+
+  // 1. Prose input
+  const proseRes = engine.analyze('Mohon silahkan dicatat aktifitas hari ini.');
+  assert.strictEqual(proseRes.mode, 'prose');
+  assert.strictEqual(proseRes.valid, true);
+  assert.ok(proseRes.findings.length >= 2);
+  assert.match(proseRes.cleanText, /silakan/);
+  assert.match(proseRes.cleanText, /aktivitas/);
+
+  // 2. Valid JSON input
+  const validJson = JSON.stringify({ Back: 'punggung', note: 'silahkan masuk' }, null, 2);
+  const jsonRes = engine.analyze(validJson);
+  assert.strictEqual(jsonRes.mode, 'json');
+  assert.strictEqual(jsonRes.valid, true);
+  assert.strictEqual(jsonRes.error, null);
+  assert.ok(jsonRes.findings.some((f) => f.rule === 'polysemy-calque'));
+  assert.ok(jsonRes.findings.some((f) => f.rule === 'kata-tidak-baku'));
+  assert.match(jsonRes.cleanText, /"note": "silakan masuk"/);
+
+  // 3. Malformed JSON starting with { or [ must not silently fall back to prose
+  const malformedJson = '{\n  "title": "Unfinished JSON\n';
+  const badRes = engine.analyze(malformedJson);
+  assert.strictEqual(badRes.mode, 'json');
+  assert.strictEqual(badRes.valid, false);
+  assert.ok(typeof badRes.error === 'string' && badRes.error.length > 0);
+  assert.strictEqual(badRes.findings.length, 0);
+});
+
+test('engine.applyBatchFixes: applies multiple replacements in reverse order without offset drift', async () => {
+  const bundleUrl = pathToFileURL(path.join(__dirname, '..', 'space', 'engine.bundle.js')).href;
+  const engine = await import(bundleUrl);
+
+  const input = 'Mohon silahkan cek aktifitas di era digital ini, silahkan coba lagi.';
+  const analysis = engine.analyzeText(input);
+
+  assert.ok(analysis.findings.length >= 3);
+  const highConfidenceFindings = analysis.findings.filter((f) => f.confidence === 'high');
+  // At least 2x "silahkan" + 1x "aktifitas"
+  assert.strictEqual(highConfidenceFindings.length, 3);
+
+  const fixed = engine.applyBatchFixes(input, highConfidenceFindings);
+  assert.strictEqual(
+    fixed,
+    'Mohon silakan cek aktivitas di era digital ini, silakan coba lagi.'
+  );
+});
+
+test('engine.analyzeText: masks markdown code and links preserving 1:1 character coordinates', async () => {
+  const bundleUrl = pathToFileURL(path.join(__dirname, '..', 'space', 'engine.bundle.js')).href;
+  const engine = await import(bundleUrl);
+
+  const textWithCode = 'Buka `silahkan` lalu https://example.com/silahkan dan silahkan atur.';
+  const res = engine.analyzeText(textWithCode);
+
+  // Only the third 'silahkan' outside inline code and url should be flagged
+  assert.strictEqual(res.findings.length, 1);
+  const issue = res.findings[0];
+  assert.strictEqual(issue.original, 'silahkan');
+  assert.strictEqual(issue.startIndex, textWithCode.lastIndexOf('silahkan'));
+  assert.strictEqual(
+    textWithCode.slice(issue.startIndex, issue.endIndex),
+    'silahkan'
+  );
+});

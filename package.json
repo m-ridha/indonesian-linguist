@@ -47,6 +47,7 @@
   "scripts": {
     "sync": "node scripts/sync-skill.js",
     "test": "node --test tests/*.test.js",
-    "audit": "node scripts/audit-id.js"
+    "audit": "node scripts/audit-id.js",
+    "build:space": "node scripts/build-space-engine.js"
   }
 }
