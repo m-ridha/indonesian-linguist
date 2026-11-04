@@ -538,7 +538,7 @@ function auditDictionary(dict, options = {}) {
       !allowlistKeys.has(fullKey) &&
       !RETAINED_LOANWORD_PATTERNS.some((rx) => rx.test(trimmedVal) || rx.test(value)) &&
       /[a-zA-Z]{3,}/.test(textOutsidePlaceholders) &&
-      !/^https?:\/\//.test(value)
+      !/^https?:\/\//i.test(trimmedVal)
     ) {
       findings.push({
         key: fullKey,

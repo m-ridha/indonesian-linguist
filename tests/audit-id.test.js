@@ -1465,6 +1465,7 @@ test('auditDictionary: flags v1.2.1 assistance machines, prepositional unit head
     'App Store (padded)': '  App Store  ', // Retained brand with whitespace preserved
     'Google Play Store': 'Google Play Store', // Retained brand preserved
     'Google Play Store (padded)': '  Google Play Store  ', // Retained brand with whitespace preserved
+    'docs_url': '  https://example.com/docs/long-untranslated-slug  ', // Whitespace-padded URL preserved
     'Lengths in {0}': 'Panjang dalam {0}', // Complete phrase with object preserved
     'Weights in {0}': 'Beban dalam {0}', // Complete phrase with object preserved
   };
