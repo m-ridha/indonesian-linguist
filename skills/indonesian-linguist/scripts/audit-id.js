@@ -73,6 +73,33 @@ const KNOWN_CALQUE_TRAPS = [
   { keyMatch: /^traps$/i, badVal: /\bperangkap\b/i, fix: 'Traps' },
   { keyMatch: /form[- ]check/i, badVal: /\bpemeriksaan formulir\b/i, fix: 'Cek form' },
   { keyMatch: /add exercise/i, badVal: /\btambahkan olahraga\b/i, fix: 'Tambahkan latihan' },
+  { keyMatch: /assist(ance|ed) machine/i, badVal: /\bmesin bantuan\b/i, fix: 'mesin assisted / mesin berbeban bantuan' },
+  {
+    keyMatch: {
+      test(key, sourceVal) {
+        const raw = typeof sourceVal === 'string' ? sourceVal : key;
+        const text = typeof raw === 'string' ? raw.trim() : raw;
+        return text !== 'App Store' && /^app stores?$/i.test(text);
+      },
+    },
+    badVal: /^(?:app stores?|toko app)$/i,
+    fix: 'Toko aplikasi',
+  },
+  {
+    keyMatch: {
+      test(key, sourceVal) {
+        const raw = typeof sourceVal === 'string' ? sourceVal : key;
+        const text = typeof raw === 'string' ? raw.trim() : raw;
+        return text === 'App Store';
+      },
+    },
+    badVal: /^(?:toko app|toko aplikasi)$/i,
+    fix: 'App Store',
+  },
+  { keyMatch: /^lengths in\s*:?$/i, badVal: /^panjang dalam\s*:?$/i, fix: 'Satuan panjang / Satuan ukuran' },
+  { keyMatch: /^weights in\s*:?$/i, badVal: /^(?:beban|berat) dalam\s*:?$/i, fix: 'Satuan beban / Satuan berat badan' },
+  { keyMatch: /^distance in\s*:?$/i, badVal: /^jarak dalam\s*:?$/i, fix: 'Satuan jarak' },
+  { keyMatch: /end of a hold/i, badVal: /\b(akhir|ujung)\s+tahanan\b/i, fix: 'Akhir durasi tahan / Waktu tahan selesai' },
 ];
 
 // Full-string anchored patterns for complete retained loanwords, exercise names, Latin muscle names,
@@ -81,7 +108,7 @@ const RETAINED_LOANWORD_PATTERNS = [
   /^(?:Drop-set\s*\/\s*rest-pause|Drop-set|Superset(?:\s+\{[0-9]+\}(?:\s*\/\s*\{[0-9]+\}|\s*:\s*\{[0-9]+\}\s*\(\{[0-9]+\}\))?)?|Rest-pause|Deload|Bodyweight|Thibaudeau\s*\(Powerlifting\))$/i,
   /^(?:(?:(?:single|one|two)-(?:leg|arm)|(?:reverse|close|wide|neutral|narrow|overhand|underhand|hammer|snatch)-grip|incline|decline|flat|barbell|dumbbell|ez-bar|cable|smith machine|seated|standing|close-grip|wide-grip|romanian|sumo|conventional|deficit|pause|paused|single-arm|one-arm|high-bar|low-bar|safety-bar|zercher|hack|belt|box|bulgarian)\s+){0,3}(?:bench press|barbell curl|back squat|front squat|split squat|squat|deadlift|overhead press|leverage machine)(?:\s*\([A-Za-z0-9 -]+\))?$/i,
   /^(?:serratus anterior|latissimus dorsi|sternocleidomastoid|pectoralis(?:\s+major|\s+minor)?|gluteus(?:\s+maximus|\s+medius)?|gastrocnemius)$/i,
-  /^(?:Face ID(?:\s*\/\s*Touch ID)?|Touch ID|iCloud Keychain|Google Password Manager|Health Connect|Apple Health|Apple Watch|Cloudflare Access)$/i,
+  /^(?:Face ID(?:\s*\/\s*Touch ID)?|Touch ID|iCloud Keychain|Google Password Manager|Health Connect|Apple Health|Apple Watch|Google Play(?:\s+Store)?|App Store|Cloudflare Access)$/i,
   /^(?:API key|endpoint|reverse proxy|source code|webhook)$/i,
   /^(?:Bahasa Indonesia(?:\s*\([A-Za-z0-9_-]+\))?|Bahasa Melayu(?:\s*\([A-Za-z0-9_-]+\))?|English(?:\s*\([A-Za-z0-9_-]+\))?|[a-z]{2}(?:[-_][A-Z]{2,4})?)$/i,
 ];
@@ -501,16 +528,17 @@ function auditDictionary(dict, options = {}) {
     const sourceValue = (source && typeof source === 'object') ? source[key] : undefined;
 
     // 1. Silent English identity fallback check
-    const isUntranslated = typeof sourceValue === 'string' ? (value.trim() === sourceValue.trim()) : (key === value);
+    const trimmedVal = value.trim();
+    const isUntranslated = typeof sourceValue === 'string' ? (trimmedVal === sourceValue.trim()) : (key === value);
     const textOutsidePlaceholders = value.replace(/\{\{[0-9a-zA-Z_.-]+\}\}|\{[0-9a-zA-Z_.-]+\}|%(?:\d+\$)?[sdif]/g, '');
     if (
       isUntranslated &&
       value.length >= minFallbackLength &&
       !allowlistKeys.has(key) &&
       !allowlistKeys.has(fullKey) &&
-      !RETAINED_LOANWORD_PATTERNS.some((rx) => rx.test(value)) &&
+      !RETAINED_LOANWORD_PATTERNS.some((rx) => rx.test(trimmedVal) || rx.test(value)) &&
       /[a-zA-Z]{3,}/.test(textOutsidePlaceholders) &&
-      !/^https?:\/\//.test(value)
+      !/^https?:\/\//i.test(trimmedVal)
     ) {
       findings.push({
         key: fullKey,
@@ -628,11 +656,12 @@ function auditDictionary(dict, options = {}) {
     }
 
     // 3. Known UI/domain polysemy & calque traps
+    const trimmedValue = value.trim();
     for (const trap of KNOWN_CALQUE_TRAPS) {
       const isKeyMatch =
-        trap.keyMatch.test(key) ||
+        trap.keyMatch.test(key, sourceValue) ||
         (typeof sourceValue === 'string' && trap.keyMatch.test(sourceValue));
-      if (isKeyMatch && trap.badVal.test(value)) {
+      if (isKeyMatch && (trap.badVal.test(trimmedValue) || trap.badVal.test(value))) {
         findings.push({
           key: fullKey,
           rule: 'polysemy-calque',

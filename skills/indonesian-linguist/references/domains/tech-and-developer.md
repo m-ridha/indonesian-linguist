@@ -26,6 +26,7 @@ When a setting or documentation targets developers, self-hosters, or API integra
 | **Sync / Catch up** | Mengejar ketinggalan | **Sinkronisasi / Tersinkronkan** | Background state synchronization |
 | **Run** *(background job/AI task)* | Lari *(physical running!)* | **Jalankan / Eksekusi** | Triggering a background job or prompt |
 | **Ceiling** *(token/quota limit)* | Langit-langit *(room ceiling!)* | **Batas maksimal / Batas atas** | Upper cap on usage or tokens |
+| **App store / App stores** *(generic category)* | Toko app | **Toko aplikasi** | Platform-agnostic umbrella term for application marketplaces (Google Play, Apple App Store, Galaxy Store). Never leave as bare untranslated loanword when referring to the ecosystem generically |
 
 ---
 
@@ -41,6 +42,8 @@ Per **PUPI §6.4**, official product names, biometric features, and password man
 | **Health Connect** | Koneksi Kesehatan | **Health Connect** |
 | **Apple Health** | Kesehatan Apple | **Apple Health** |
 | **Apple Watch** | Jam Tangan Apple / Aplikasi Tonton | **Apple Watch** (*Aplikasi Apple Watch*) |
+| **Google Play / Google Play Store** | Toko Google Play | **Google Play / Google Play Store** |
+| **App Store** *(Apple trademark)* | Toko Aplikasi Apple / Toko Aplikasi | **App Store** (Apple's marketplace proper noun; distinct from generic *toko aplikasi*) |
 
 ---
 

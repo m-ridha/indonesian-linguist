@@ -1,6 +1,6 @@
 {
   "name": "indonesian-linguist",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Expert Bahasa Indonesia language, writing, translation, and software localization (i18n/UX) skill. Enforces natural Indonesian phrasing, EYD V grammar, UI polysemy resolution, lexical compaction, domain loanwords, and zero AI slop.",
   "author": {
     "name": "Muhammad Ridha",

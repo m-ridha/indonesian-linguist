@@ -1433,3 +1433,75 @@ test('CLI: supports .xml and .strings catalogs, --ignore-keys, and --warn-only',
 
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
+
+test('auditDictionary: flags v1.2.1 assistance machines, prepositional unit headers, and hold cues traps', () => {
+  const badDict = {
+    'On an assistance machine': 'Pada mesin bantuan',
+    'Lengths in': '  Panjang dalam  ',
+    'Weights in': ' Beban dalam ',
+    'Distance in': '  Jarak dalam',
+    'End of a hold': 'Akhir tahanan',
+    'App stores': '  App stores  ',
+    'app store': 'app store',
+    'App store': '  Toko App  ',
+    'App Store': '  Toko aplikasi  ',
+  };
+  const findings = auditDictionary(badDict);
+  const polysemyFindings = findings.filter((f) => f.rule === 'polysemy-calque');
+  assert.equal(polysemyFindings.length, 9);
+
+  const goodDict = {
+    'On an assistance machine': 'Pada mesin assisted',
+    'Assisted machine': 'Mesin berbeban bantuan',
+    'Lengths in': 'Satuan panjang',
+    'Lengths in (alt)': 'Satuan ukuran',
+    'Weights in': 'Satuan beban',
+    'Distance in': 'Satuan jarak',
+    'End of a hold': 'Akhir durasi tahan',
+    'End of a hold (alt)': 'Waktu tahan selesai',
+    'App stores': 'Toko aplikasi',
+    'app store': 'toko aplikasi',
+    'App Store': 'App Store', // Apple proper noun preserved
+    'App Store (padded)': '  App Store  ', // Retained brand with whitespace preserved
+    'Google Play Store': 'Google Play Store', // Retained brand preserved
+    'Google Play Store (padded)': '  Google Play Store  ', // Retained brand with whitespace preserved
+    'docs_url': '  https://example.com/docs/long-untranslated-slug  ', // Whitespace-padded URL preserved
+    'Lengths in {0}': 'Panjang dalam {0}', // Complete phrase with object preserved
+    'Weights in {0}': 'Beban dalam {0}', // Complete phrase with object preserved
+  };
+  const goodFindings = auditDictionary(goodDict);
+  assert.deepEqual(goodFindings, []);
+
+  // Disambiguation via source text:
+  // When source is 'App Store' (even with surrounding whitespace), value 'App Store' is valid Apple brand and must not be flagged
+  const sourceDisambigClean = auditDictionary(
+    { 'app store': 'App Store' },
+    { source: { 'app store': ' App Store ' } }
+  );
+  assert.deepEqual(sourceDisambigClean, []);
+
+  // When key or source is Apple 'App Store' (even with surrounding whitespace), translating brand to 'Toko aplikasi' or 'toko app' is flagged
+  const sourceDisambigBanned = auditDictionary(
+    { 'apple_store_key': 'Toko aplikasi' },
+    { source: { 'apple_store_key': '  App Store  ' } }
+  );
+  assert.equal(
+    sourceDisambigBanned.filter((f) => f.rule === 'polysemy-calque').length,
+    1
+  );
+
+  // Reverse disambiguation: when source is generic 'app store' (even with surrounding whitespace), translated value 'Toko aplikasi' is permitted even if key is 'App Store'
+  const reverseDisambigClean = auditDictionary(
+    { 'App Store': 'Toko aplikasi' },
+    { source: { 'App Store': '  app store  ' } }
+  );
+  assert.deepEqual(reverseDisambigClean, []);
+
+  // URL fallback exemption: padded URL value matching unpadded source string exercises the regex test on trimmedVal
+  const urlExemptionClean = auditDictionary(
+    { docs_url: '  https://example.com/docs/long-untranslated-slug  ' },
+    { source: { docs_url: 'https://example.com/docs/long-untranslated-slug' } }
+  );
+  assert.deepEqual(urlExemptionClean, []);
+});
+
