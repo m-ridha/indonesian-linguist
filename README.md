@@ -10,11 +10,16 @@
 
 <p align="center">
   <a href="#quickstart">Quickstart</a> &ensp;·&ensp;
+  <a href="https://huggingface.co/spaces/m-ridha/bersih-bahasa">Live Playground</a> &ensp;·&ensp;
   <a href="#why-indonesian-linguist-exists">Why It Exists</a> &ensp;·&ensp;
   <a href="#how-it-works-single-skill--progressive-disclosure">How It Works</a> &ensp;·&ensp;
   <a href="#installation">Installation</a> &ensp;·&ensp;
   <a href="SKILL.md">Skill Guide</a> &ensp;·&ensp;
   <a href="https://github.com/m-ridha/indonesian-linguist">GitHub</a>
+</p>
+
+<p align="center">
+  <a href="https://huggingface.co/spaces/m-ridha/bersih-bahasa"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-BersihBahasa%20Playground-emerald" alt="BersihBahasa Hugging Face Space"></a>
 </p>
 
 <br>
@@ -24,6 +29,12 @@
 ---
 
 ## Quickstart
+
+### Web Playground & Live Demo (BersihBahasa)
+
+Try the 100% deterministic web demo **[BersihBahasa](https://huggingface.co/spaces/m-ridha/bersih-bahasa)** on Hugging Face Spaces:
+- **Zero-Setup & Client-Side Privacy**: Runs completely in browser memory with zero remote data egress.
+- **Prose & JSON Catalog Support**: Automatically detects input format, masks markdown code blocks, flags translation calques, and provides safe reverse-order batch fixes.
 
 ### In Chat & Pair Programming
 

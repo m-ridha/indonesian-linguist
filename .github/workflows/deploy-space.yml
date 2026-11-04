@@ -1,0 +1,60 @@
+name: Deploy Space
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'space/**'
+      - 'scripts/audit-id.js'
+      - 'scripts/build-space-engine.js'
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-space-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verify build and tests
+        run: |
+          npm test
+          npm run build:space
+
+      - name: Push to Hugging Face Spaces
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          if [ -z "$HF_TOKEN" ]; then
+            echo "HF_TOKEN secret is not set; skipping deployment to Hugging Face Space."
+            exit 0
+          fi
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          TMP_DIR=$(mktemp -d)
+          git clone --depth 1 "https://m-ridha:${HF_TOKEN}@huggingface.co/spaces/m-ridha/bersih-bahasa" "$TMP_DIR"
+          cp -r space/* "$TMP_DIR/"
+          cd "$TMP_DIR"
+          git add .
+          if git diff --staged --quiet; then
+            echo "No changes to deploy to Hugging Face Space."
+          else
+            git commit -m "deploy: sync BersihBahasa static space from ${GITHUB_SHA::7}"
+            git push origin main
+            echo "Successfully deployed to Hugging Face Spaces: m-ridha/bersih-bahasa"
+          fi
