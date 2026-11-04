@@ -78,6 +78,15 @@
       <!-- Controls & Links -->
       <div class="flex items-center space-x-3">
         <div class="flex items-center space-x-1.5 text-xs">
+          <label for="mode-select" class="text-slate-600 font-medium">Format:</label>
+          <select id="mode-select" class="bg-slate-100 border border-slate-300 text-slate-700 text-xs rounded-lg px-2.5 py-1.5 focus:ring-emerald-500 focus:border-emerald-500">
+            <option value="auto">Otomatis</option>
+            <option value="json">Katalog JSON</option>
+            <option value="prose">Prosa Bebas</option>
+          </select>
+        </div>
+
+        <div class="flex items-center space-x-1.5 text-xs">
           <label for="register-select" class="text-slate-600 font-medium">Kebijakan:</label>
           <select id="register-select" class="bg-slate-100 border border-slate-300 text-slate-700 text-xs rounded-lg px-2.5 py-1.5 focus:ring-emerald-500 focus:border-emerald-500">
             <option value="">Netral (Baku)</option>

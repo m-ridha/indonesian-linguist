@@ -133,24 +133,56 @@ function fixJsonValues(obj, pronoun) {
 }
 
 /**
- * Analyze a JSON localization catalog string.
+ * Checks if the text appears to be formatted as key-value pairs (JSON / JS object snippet).
+ * @param {string} str
+ * @returns {boolean}
+ */
+export function isKeyValueSnippet(str) {
+  const trimmed = String(str || '').trim();
+  return /^(?:"(?:[^"\\\\]|\\\\.)*"|[a-zA-Z_$][0-9a-zA-Z_$]*)\s*:/m.test(trimmed);
+}
+
+/**
+ * Analyze a JSON localization catalog string or snippet.
  * @param {string} jsonString
  * @param {{ pronoun?: string }} [options]
- * @returns {{ mode: 'json', valid: boolean, error: string | null, findings: Array<any>, stats: any, cleanText: string }}
+ * @returns {{ mode: 'json', isSnippet?: boolean, valid: boolean, error: string | null, findings: Array<any>, stats: any, cleanText: string }}
  */
 export function analyzeJson(jsonString, options = {}) {
-  const indent = detectJsonIndent(jsonString);
-  let parsed;
-  try {
-    parsed = JSON.parse(jsonString);
-  } catch (err) {
+  const raw = String(jsonString || '');
+  const trimmed = raw.trim();
+  const indent = detectJsonIndent(raw);
+
+  let isSnippet = false;
+  let parsed = null;
+  let parseError = null;
+
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    try {
+      parsed = JSON.parse(trimmed);
+    } catch (err) {
+      parseError = err instanceof Error ? err.message : String(err);
+    }
+  } else {
+    isSnippet = true;
+    const withoutTrailing = trimmed.replace(/,(\s*)$/, '$1');
+    const wrapped = '{\\n' + withoutTrailing + '\\n}';
+    try {
+      parsed = JSON.parse(wrapped);
+    } catch (err) {
+      parseError = err instanceof Error ? err.message : String(err);
+    }
+  }
+
+  if (!parsed || typeof parsed !== 'object') {
     return {
       mode: 'json',
+      isSnippet,
       valid: false,
-      error: err instanceof Error ? err.message : String(err),
+      error: parseError || 'Sintaks JSON tidak valid.',
       findings: [],
       stats: { totalFindings: 0, highConfidence: 0, byCategory: {} },
-      cleanText: jsonString,
+      cleanText: raw,
     };
   }
 
@@ -172,16 +204,31 @@ export function analyzeJson(jsonString, options = {}) {
     stats.byCategory[cat] = (stats.byCategory[cat] || 0) + 1;
   }
 
-  let cleanText = jsonString;
+  let cleanText = raw;
   try {
     const fixedObj = fixJsonValues(parsed, options.pronoun || null);
-    cleanText = JSON.stringify(fixedObj, null, indent);
+    const fullJson = JSON.stringify(fixedObj, null, indent);
+    if (isSnippet) {
+      const lines = fullJson.split('\\n');
+      if (lines.length >= 2 && lines[0].trim() === '{' && lines[lines.length - 1].trim() === '}') {
+        const innerLines = lines.slice(1, -1);
+        const indentStr = typeof indent === 'number' ? ' '.repeat(indent) : '\\t';
+        cleanText = innerLines
+          .map((l) => (l.startsWith(indentStr) ? l.slice(indentStr.length) : l))
+          .join('\\n');
+      } else {
+        cleanText = fullJson;
+      }
+    } else {
+      cleanText = fullJson;
+    }
   } catch (_) {
-    cleanText = jsonString;
+    cleanText = raw;
   }
 
   return {
     mode: 'json',
+    isSnippet,
     valid: true,
     error: null,
     findings,
@@ -193,13 +240,22 @@ export function analyzeJson(jsonString, options = {}) {
 /**
  * Unified entry point: auto-detects JSON vs. Prose and routes analysis.
  * @param {string} input
- * @param {{ pronoun?: string, stripIndentedCode?: boolean }} [options]
+ * @param {{ pronoun?: string, stripIndentedCode?: boolean, mode?: 'auto' | 'json' | 'prose' }} [options]
  * @returns {any}
  */
 export function analyze(input, options = {}) {
   const str = String(input || '');
   const trimmed = str.trim();
-  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+  const forcedMode = options.mode;
+
+  if (forcedMode === 'json') {
+    return analyzeJson(str, options);
+  }
+  if (forcedMode === 'prose') {
+    return analyzeText(str, options);
+  }
+
+  if (trimmed.startsWith('{') || trimmed.startsWith('[') || isKeyValueSnippet(trimmed)) {
     return analyzeJson(str, options);
   }
   return analyzeText(str, options);

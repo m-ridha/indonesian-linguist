@@ -80,3 +80,36 @@ test('engine.analyzeText: masks markdown code and links preserving 1:1 character
     'silahkan'
   );
 });
+
+test('engine.analyze: auto-detects JSON key-value snippets without outer braces', async () => {
+  const bundleUrl = pathToFileURL(path.join(__dirname, '..', 'space', 'engine.bundle.js')).href;
+  const engine = await import(bundleUrl);
+
+  const snippet = [
+    '"Not in \\"{0}\\": {1} more": "Tidak ada di \\"{0}\\": {1} lagi",',
+    '"On an assistance machine": "Di mesin bantuan tiap set mendapat bantuan",',
+    '"Back": "punggung"',
+  ].join('\n');
+
+  const res = engine.analyze(snippet);
+  assert.strictEqual(res.mode, 'json');
+  assert.strictEqual(res.valid, true);
+  assert.strictEqual(res.isSnippet, true);
+  assert.ok(res.findings.some((f) => f.rule === 'polysemy-calque' && f.message.includes('mesin assisted')));
+  assert.ok(res.findings.some((f) => f.rule === 'polysemy-calque' && f.message.includes('Kembali')));
+
+  // Malformed snippet starting with key-value syntax must flag JSON syntax error, never fall back to clean prose
+  const malformedSnippet = '"Back": "punggung",\n"Missing quote: value';
+  const badSnippetRes = engine.analyze(malformedSnippet);
+  assert.strictEqual(badSnippetRes.mode, 'json');
+  assert.strictEqual(badSnippetRes.valid, false);
+  assert.ok(typeof badSnippetRes.error === 'string' && badSnippetRes.error.length > 0);
+  assert.strictEqual(badSnippetRes.findings.length, 0);
+
+  // Manual mode override forces prose or json
+  const forcedProse = engine.analyze(snippet, { mode: 'prose' });
+  assert.strictEqual(forcedProse.mode, 'prose');
+
+  const forcedJson = engine.analyze('{"Back": "punggung"}', { mode: 'json' });
+  assert.strictEqual(forcedJson.mode, 'json');
+});

@@ -2,6 +2,7 @@ import { analyze, applyBatchFixes } from './engine.bundle.js';
 
 // DOM References
 const rawInput = document.getElementById('raw-input');
+const modeSelect = document.getElementById('mode-select');
 const registerSelect = document.getElementById('register-select');
 const formatBadge = document.getElementById('format-badge');
 const inputStats = document.getElementById('input-stats');
@@ -264,15 +265,16 @@ function runAnalysis() {
   if (!rawInput) return;
   const text = rawInput.value;
   const pronoun = registerSelect ? registerSelect.value : '';
+  const mode = modeSelect ? modeSelect.value : 'auto';
 
   updateInputStats(text);
 
-  currentAnalysis = analyze(text, { pronoun: pronoun || undefined });
+  currentAnalysis = analyze(text, { pronoun: pronoun || undefined, mode });
 
   // Update format badge
   if (formatBadge) {
     if (currentAnalysis.mode === 'json') {
-      formatBadge.textContent = 'Katalog JSON';
+      formatBadge.textContent = currentAnalysis.isSnippet ? 'Katalog JSON (Snippet)' : 'Katalog JSON';
       formatBadge.className = 'px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-purple-100 text-purple-800';
     } else {
       formatBadge.textContent = 'Prosa Bebas';
@@ -309,7 +311,11 @@ function runAnalysis() {
   // Render review display
   if (currentAnalysis.mode === 'json') {
     if (reviewDisplay) {
-      reviewDisplay.innerHTML = `<pre class="text-xs leading-relaxed text-slate-700">${escapeHtml(currentAnalysis.cleanText || text)}</pre>`;
+      if (currentAnalysis.findings.length === 0) {
+        reviewDisplay.innerHTML = `<span class="text-emerald-700 font-medium">✓ Valid! Format katalog JSON benar dan tidak ditemukan kesalahan ejaan, kalke, atau paritas placeholder.</span>\n\n<pre class="mt-2 text-xs leading-relaxed text-slate-700 font-mono">${escapeHtml(currentAnalysis.cleanText || text)}</pre>`;
+      } else {
+        reviewDisplay.innerHTML = `<pre class="text-xs leading-relaxed text-slate-700 font-mono">${escapeHtml(currentAnalysis.cleanText || text)}</pre>`;
+      }
     }
   } else {
     renderProseReview(text, currentAnalysis.findings);
@@ -336,6 +342,10 @@ if (rawInput) {
 
 if (registerSelect) {
   registerSelect.addEventListener('change', runAnalysis);
+}
+
+if (modeSelect) {
+  modeSelect.addEventListener('change', runAnalysis);
 }
 
 if (btnApplyBatch) {
