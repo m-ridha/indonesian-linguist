@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Indonesian Linguist — Deterministic Demo</title>
+  <title>Indonesian Linguist: Deterministic Demo — UI and Text Linter for Bahasa Indonesia</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -55,16 +55,16 @@
   <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
       <div class="flex items-center space-x-3">
-        <span class="text-2xl" role="img" aria-label="Bendera Indonesia">🇮🇩</span>
+        <span class="text-2xl" role="img" aria-label="Flag of Indonesia">🇮🇩</span>
         <div>
           <div class="flex items-center space-x-2">
             <h1 class="text-xl font-bold text-slate-900 tracking-tight flex items-center flex-wrap gap-1.5 sm:gap-2">
               <span>Indonesian Linguist</span>
               <span id="app-version" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">v1.2.1</span>
-              <span class="text-slate-500 font-medium text-base sm:text-lg">: Demo Deterministik</span>
+              <span class="text-slate-500 font-medium text-base sm:text-lg">: Deterministic Demo</span>
             </h1>
           </div>
-          <p class="text-xs text-slate-500">Linter Teks dan Lokalisasi Antarmuka Bahasa Indonesia</p>
+          <p class="text-xs text-slate-500">UI and Text Linter for Bahasa Indonesia</p>
         </div>
       </div>
 
@@ -73,7 +73,7 @@
         <svg class="w-3.5 h-3.5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
           <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/>
         </svg>
-        <span>100% Deterministik • Kaidah KBBI VI &amp; EYD V • 0 Token LLM</span>
+        <span>100% Deterministic • KBBI VI &amp; EYD V Rules • 0 LLM Tokens</span>
       </div>
 
       <!-- Controls & Links -->
@@ -81,18 +81,18 @@
         <div class="flex items-center space-x-1.5 text-xs">
           <label for="mode-select" class="text-slate-600 font-medium">Format:</label>
           <select id="mode-select" class="bg-slate-100 border border-slate-300 text-slate-700 text-xs rounded-lg px-2.5 py-1.5 focus:ring-emerald-500 focus:border-emerald-500">
-            <option value="auto">Otomatis</option>
-            <option value="json">Katalog JSON</option>
-            <option value="prose">Prosa Bebas</option>
+            <option value="auto">Auto-detect</option>
+            <option value="json">JSON Catalog</option>
+            <option value="prose">Freeform Prose</option>
           </select>
         </div>
 
         <div class="flex items-center space-x-1.5 text-xs">
-          <label for="register-select" class="text-slate-600 font-medium">Kebijakan:</label>
+          <label for="register-select" class="text-slate-600 font-medium">Policy:</label>
           <select id="register-select" class="bg-slate-100 border border-slate-300 text-slate-700 text-xs rounded-lg px-2.5 py-1.5 focus:ring-emerald-500 focus:border-emerald-500">
-            <option value="">Netral (Baku)</option>
+            <option value="">Neutral (Standard)</option>
             <option value="Anda">Formal (Anda)</option>
-            <option value="kamu">Santai (kamu/-mu)</option>
+            <option value="kamu">Casual (kamu/-mu)</option>
           </select>
         </div>
 
@@ -111,15 +111,15 @@
     <!-- Toolbar -->
     <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
       <div class="flex items-center space-x-2">
-        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Muat Contoh:</span>
+        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Load Samples:</span>
         <button id="btn-sample-prose" type="button" class="text-xs bg-white hover:bg-slate-100 text-slate-700 font-medium px-2.5 py-1.5 rounded border border-slate-300 transition">
-          📄 Contoh Prosa
+          📄 Prose Sample
         </button>
         <button id="btn-sample-json" type="button" class="text-xs bg-white hover:bg-slate-100 text-slate-700 font-medium px-2.5 py-1.5 rounded border border-slate-300 transition">
-          🔧 Contoh Katalog JSON
+          🔧 JSON Catalog Sample
         </button>
         <button id="btn-clear" type="button" class="text-xs text-rose-600 hover:text-rose-700 font-medium px-2 py-1.5 transition">
-          Bersihkan
+          Clear
         </button>
       </div>
 
@@ -129,19 +129,19 @@
           <svg class="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
           </svg>
-          Terapkan Semua Perbaikan Baku
+          Apply All Standard Fixes
         </button>
         <button id="btn-copy" type="button" class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 transition">
           <svg class="w-3.5 h-3.5 mr-1.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
           </svg>
-          Salin Teks Bersih
+          Copy Clean Text
         </button>
         <button id="btn-download" type="button" class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 transition">
           <svg class="w-3.5 h-3.5 mr-1.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
           </svg>
-          Unduh File Bersih
+          Download Clean File
         </button>
       </div>
     </div>
@@ -152,19 +152,19 @@
       <div class="flex flex-col bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden relative">
         <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs text-slate-600">
           <div class="flex items-center space-x-2">
-            <span class="font-semibold text-slate-700">Teks Masukan</span>
+            <span class="font-semibold text-slate-700">Input Text</span>
             <span id="format-badge" class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-200 text-slate-700">
-              Prosa
+              Prose
             </span>
           </div>
-          <div id="input-stats" class="text-slate-400">0 karakter • 0 baris</div>
+          <div id="input-stats" class="text-slate-400">0 characters • 0 lines</div>
         </div>
 
         <div class="flex-1 relative flex flex-col">
           <textarea
             id="raw-input"
             spellcheck="false"
-            placeholder="Ketik atau tempel teks Bahasa Indonesia atau katalog JSON di sini, atau seret berkas (.json, .md, .txt) ke area ini..."
+            placeholder="Type or paste Indonesian text or a JSON catalog here, or drop files (.json, .md, .txt)..."
             class="flex-1 w-full p-4 font-mono text-sm leading-relaxed text-slate-800 bg-transparent border-none resize-none focus:outline-none focus:ring-0"
           ></textarea>
 
@@ -174,8 +174,8 @@
               <svg class="w-10 h-10 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
               </svg>
-              <p class="text-sm font-semibold text-slate-800">Lepaskan berkas untuk dianalisis</p>
-              <p class="text-xs text-slate-500">Mendukung berkas .json, .md, dan .txt</p>
+              <p class="text-sm font-semibold text-slate-800">Drop file to analyze</p>
+              <p class="text-xs text-slate-500">Supports .json, .md, and .txt files</p>
             </div>
           </div>
         </div>
@@ -186,24 +186,24 @@
         <!-- Findings Metrics Bar -->
         <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
           <div class="flex items-center space-x-2">
-            <span class="font-semibold text-slate-700">Hasil Audit</span>
+            <span class="font-semibold text-slate-700">Audit Results</span>
             <span id="badge-total-count" class="px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-200 text-slate-700">
-              0 temuan
+              0 issues
             </span>
           </div>
 
           <div class="flex items-center space-x-1.5 text-[11px]">
             <span class="inline-flex items-center px-2 py-0.5 rounded bg-rose-100 text-rose-800 font-medium">
-              Tata Bahasa: <strong id="count-grammar" class="ml-1">0</strong>
+              Grammar: <strong id="count-grammar" class="ml-1">0</strong>
             </span>
             <span class="inline-flex items-center px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-medium">
-              Istilah: <strong id="count-terminology" class="ml-1">0</strong>
+              Terminology: <strong id="count-terminology" class="ml-1">0</strong>
             </span>
             <span class="inline-flex items-center px-2 py-0.5 rounded bg-sky-100 text-sky-800 font-medium">
-              Gaya: <strong id="count-style" class="ml-1">0</strong>
+              Style: <strong id="count-style" class="ml-1">0</strong>
             </span>
             <span class="inline-flex items-center px-2 py-0.5 rounded bg-purple-100 text-purple-800 font-medium">
-              Paritas: <strong id="count-parity" class="ml-1">0</strong>
+              Parity: <strong id="count-parity" class="ml-1">0</strong>
             </span>
           </div>
         </div>
@@ -215,9 +215,9 @@
               <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
             </svg>
             <div>
-              <p class="font-bold">Format JSON Tidak Valid</p>
+              <p class="font-bold">Invalid JSON Syntax</p>
               <p id="json-error-text" class="mt-0.5 font-mono text-[11px]"></p>
-              <p class="mt-1 text-slate-600">Pastikan kurung kurawal, tanda petik dua, dan koma tersusun sesuai spesifikasi JSON standar.</p>
+              <p class="mt-1 text-slate-600">Ensure braces, quotes, and commas match standard JSON specifications.</p>
             </div>
           </div>
         </div>
@@ -226,14 +226,14 @@
         <div class="flex-1 p-4 overflow-y-auto space-y-4">
           <!-- Text Highlight Overlay View -->
           <div id="review-display" class="font-mono text-sm leading-relaxed whitespace-pre-wrap break-words text-slate-800 min-h-[140px] p-3 bg-slate-50 rounded-lg border border-slate-200">
-            <span class="text-slate-400 italic">Teks dengan sorotan kesalahan akan muncul di sini...</span>
+            <span class="text-slate-400 italic">Text with highlighted issues will appear here...</span>
           </div>
 
           <!-- Finding Cards List -->
           <div class="border-t border-slate-200 pt-3">
-            <h3 class="text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Rincian Temuan &amp; Usulan Perbaikan</h3>
+            <h3 class="text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Findings &amp; Suggested Fixes</h3>
             <div id="issues-list" class="space-y-2.5">
-              <p class="text-xs text-slate-400 italic">Belum ada kesalahan yang terdeteksi.</p>
+              <p class="text-xs text-slate-400 italic">No issues detected.</p>
             </div>
           </div>
         </div>
@@ -246,12 +246,12 @@
     <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
     </svg>
-    <span id="toast-message">Pesan notifikasi</span>
+    <span id="toast-message">Notification message</span>
   </div>
 
   <!-- Footer -->
   <footer class="bg-white border-t border-slate-200 py-3 text-center text-xs text-slate-500">
-    Indonesian Linguist didukung oleh <a href="https://github.com/m-ridha/indonesian-linguist" class="text-emerald-700 font-semibold hover:underline" target="_blank" rel="noopener noreferrer">indonesian-linguist</a> • 100% Deterministik di Sisi Klien • Bebas Biaya &amp; Terbuka (MIT)
+    Indonesian Linguist powered by <a href="https://github.com/m-ridha/indonesian-linguist" class="text-emerald-700 font-semibold hover:underline" target="_blank" rel="noopener noreferrer">indonesian-linguist</a> • 100% Client-Side Deterministic • Free &amp; Open Source (MIT)
   </footer>
 
   <script type="module" src="./app.js"></script>

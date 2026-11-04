@@ -92,7 +92,7 @@ function updateInputStats(text) {
   const chars = text.length;
   const lines = text === '' ? 0 : text.split('\n').length;
   if (inputStats) {
-    inputStats.textContent = `${chars.toLocaleString()} karakter • ${lines.toLocaleString()} baris`;
+    inputStats.textContent = `${chars.toLocaleString()} characters • ${lines.toLocaleString()} lines`;
   }
 }
 
@@ -105,7 +105,7 @@ function renderProseReview(text, findings) {
   if (!reviewDisplay) return;
 
   if (!text) {
-    reviewDisplay.innerHTML = '<span class="text-slate-400 italic">Teks dengan sorotan kesalahan akan muncul di sini...</span>';
+    reviewDisplay.innerHTML = '<span class="text-slate-400 italic">Text with highlighted issues will appear here...</span>';
     return;
   }
 
@@ -165,17 +165,17 @@ function renderFindingCards(findings, mode) {
   if (!issuesList) return;
 
   if (findings.length === 0) {
-    issuesList.innerHTML = '<p class="text-xs text-slate-400 italic">Belum ada kesalahan yang terdeteksi.</p>';
+    issuesList.innerHTML = '<p class="text-xs text-slate-400 italic">No issues detected.</p>';
     return;
   }
 
   const categoryLabels = {
-    grammar: 'Tata Bahasa',
-    terminology: 'Istilah & Kalke',
-    style: 'Gaya & Pronomina',
-    parity: 'Format & Paritas',
-    structure: 'Struktur',
-    general: 'Umum',
+    grammar: 'Grammar',
+    terminology: 'Terminology & Calques',
+    style: 'Style & Pronouns',
+    parity: 'Format & Parity',
+    structure: 'Structure',
+    general: 'General',
   };
 
   const categoryBadgeColors = {
@@ -208,7 +208,7 @@ function renderFindingCards(findings, mode) {
           ${
             hasReplacement
               ? `<button type="button" data-fix-index="${idx}" class="btn-single-fix inline-flex items-center px-2 py-1 text-xs font-medium rounded text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 transition">
-                  ⚡ Terapkan: <span class="font-bold ml-1 font-mono">${escapeHtml(finding.replacement)}</span>
+                  ⚡ Apply: <span class="font-bold ml-1 font-mono">${escapeHtml(finding.replacement)}</span>
                 </button>`
               : ''
           }
@@ -216,7 +216,7 @@ function renderFindingCards(findings, mode) {
 
         ${
           finding.keyPath
-            ? `<div class="text-[11px] text-slate-500 font-mono">Kunci: <span class="text-slate-800 font-semibold">${escapeHtml(finding.keyPath)}</span></div>`
+            ? `<div class="text-[11px] text-slate-500 font-mono">Key: <span class="text-slate-800 font-semibold">${escapeHtml(finding.keyPath)}</span></div>`
             : ''
         }
 
@@ -251,13 +251,13 @@ function applySingleFix(finding, mode) {
   if (mode === 'prose' && typeof finding.startIndex === 'number' && typeof finding.endIndex === 'number') {
     const nextVal = currentVal.slice(0, finding.startIndex) + finding.replacement + currentVal.slice(finding.endIndex);
     rawInput.value = nextVal;
-    showToast(`Perbaikan "${finding.replacement}" berhasil diterapkan!`);
+    showToast(`Applied fix "${finding.replacement}" successfully!`);
     runAnalysis();
   } else if (mode === 'json') {
     // In JSON mode, apply batch fix or re-run analysis
     if (currentAnalysis && currentAnalysis.cleanText) {
       rawInput.value = currentAnalysis.cleanText;
-      showToast('Perbaikan katalog JSON berhasil diterapkan!');
+      showToast('JSON catalog fixes applied successfully!');
       runAnalysis();
     }
   }
@@ -279,10 +279,10 @@ function runAnalysis() {
   // Update format badge
   if (formatBadge) {
     if (currentAnalysis.mode === 'json') {
-      formatBadge.textContent = currentAnalysis.isSnippet ? 'Katalog JSON (Snippet)' : 'Katalog JSON';
+      formatBadge.textContent = currentAnalysis.isSnippet ? 'JSON Catalog (Snippet)' : 'JSON Catalog';
       formatBadge.className = 'px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-purple-100 text-purple-800';
     } else {
-      formatBadge.textContent = 'Prosa Bebas';
+      formatBadge.textContent = 'Freeform Prose';
       formatBadge.className = 'px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-200 text-slate-700';
     }
   }
@@ -290,7 +290,7 @@ function runAnalysis() {
   // Update counts
   const stats = currentAnalysis.stats || { totalFindings: 0, highConfidence: 0, byCategory: {} };
   if (badgeTotalCount) {
-    badgeTotalCount.textContent = `${stats.totalFindings} temuan`;
+    badgeTotalCount.textContent = `${stats.totalFindings} ${stats.totalFindings === 1 ? 'issue' : 'issues'}`;
   }
   if (countGrammar) countGrammar.textContent = stats.byCategory?.grammar || 0;
   if (countTerminology) countTerminology.textContent = stats.byCategory?.terminology || 0;
@@ -300,12 +300,12 @@ function runAnalysis() {
   // Handle JSON error boundary
   if (currentAnalysis.mode === 'json' && !currentAnalysis.valid) {
     if (jsonErrorBanner) jsonErrorBanner.classList.remove('hidden');
-    if (jsonErrorText) jsonErrorText.textContent = currentAnalysis.error || 'Sintaks JSON tidak valid.';
+    if (jsonErrorText) jsonErrorText.textContent = currentAnalysis.error || 'Invalid JSON syntax.';
     if (reviewDisplay) {
-      reviewDisplay.innerHTML = '<span class="text-rose-600 italic">Analisis terhenti karena struktur JSON tidak valid. Perbaiki kesalahan sintaks di atas.</span>';
+      reviewDisplay.innerHTML = '<span class="text-rose-600 italic">Analysis halted due to invalid JSON syntax. Please resolve the syntax error above.</span>';
     }
     if (issuesList) {
-      issuesList.innerHTML = '<p class="text-xs text-rose-500 italic">Harap perbaiki galat sintaks JSON sebelum melanjutkan audit linguistik.</p>';
+      issuesList.innerHTML = '<p class="text-xs text-rose-500 italic">Please resolve JSON syntax errors before proceeding with linguistic audit.</p>';
     }
     if (btnApplyBatch) btnApplyBatch.disabled = true;
     return;
@@ -358,7 +358,7 @@ if (btnApplyBatch) {
     if (!currentAnalysis || !rawInput) return;
     if (currentAnalysis.cleanText && currentAnalysis.cleanText !== rawInput.value) {
       rawInput.value = currentAnalysis.cleanText;
-      showToast('Semua perbaikan baku berhasil diterapkan!');
+      showToast('All standard fixes applied successfully!');
       runAnalysis();
     }
   });
@@ -370,9 +370,9 @@ if (btnCopy) {
     const textToCopy = currentAnalysis?.cleanText || rawInput.value;
     try {
       await navigator.clipboard.writeText(textToCopy);
-      showToast('Teks bersih berhasil disalin ke papan klip!');
+      showToast('Clean text copied to clipboard!');
     } catch (_) {
-      showToast('Gagal menyalin teks ke papan klip.');
+      showToast('Failed to copy text to clipboard.');
     }
   });
 }
@@ -394,7 +394,7 @@ if (btnDownload) {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    showToast(`Berkas ${filename} berhasil diunduh!`);
+    showToast(`File ${filename} downloaded successfully!`);
   });
 }
 
@@ -444,7 +444,7 @@ window.addEventListener('drop', (e) => {
     reader.onload = (event) => {
       if (rawInput && event.target && typeof event.target.result === 'string') {
         rawInput.value = event.target.result;
-        showToast(`Berkas "${file.name}" berhasil dimuat.`);
+        showToast(`File "${file.name}" loaded successfully.`);
         runAnalysis();
       }
     };
