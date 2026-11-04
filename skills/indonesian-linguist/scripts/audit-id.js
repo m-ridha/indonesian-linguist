@@ -77,7 +77,8 @@ const KNOWN_CALQUE_TRAPS = [
   {
     keyMatch: {
       test(key, sourceVal) {
-        const text = typeof sourceVal === 'string' ? sourceVal : key;
+        const raw = typeof sourceVal === 'string' ? sourceVal : key;
+        const text = typeof raw === 'string' ? raw.trim() : raw;
         return text !== 'App Store' && /^app stores?$/i.test(text);
       },
     },
@@ -87,7 +88,8 @@ const KNOWN_CALQUE_TRAPS = [
   {
     keyMatch: {
       test(key, sourceVal) {
-        const text = typeof sourceVal === 'string' ? sourceVal : key;
+        const raw = typeof sourceVal === 'string' ? sourceVal : key;
+        const text = typeof raw === 'string' ? raw.trim() : raw;
         return text === 'App Store';
       },
     },

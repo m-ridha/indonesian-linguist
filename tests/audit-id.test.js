@@ -1469,27 +1469,27 @@ test('auditDictionary: flags v1.2.1 assistance machines, prepositional unit head
   assert.deepEqual(goodFindings, []);
 
   // Disambiguation via source text:
-  // When source is 'App Store', value 'App Store' is valid Apple brand and must not be flagged
+  // When source is 'App Store' (even with surrounding whitespace), value 'App Store' is valid Apple brand and must not be flagged
   const sourceDisambigClean = auditDictionary(
     { 'app store': 'App Store' },
-    { source: { 'app store': 'App Store' } }
+    { source: { 'app store': ' App Store ' } }
   );
   assert.deepEqual(sourceDisambigClean, []);
 
-  // When key or source is Apple 'App Store', translating brand to 'Toko aplikasi' or 'toko app' is flagged
+  // When key or source is Apple 'App Store' (even with surrounding whitespace), translating brand to 'Toko aplikasi' or 'toko app' is flagged
   const sourceDisambigBanned = auditDictionary(
     { 'apple_store_key': 'Toko aplikasi' },
-    { source: { 'apple_store_key': 'App Store' } }
+    { source: { 'apple_store_key': '  App Store  ' } }
   );
   assert.equal(
     sourceDisambigBanned.filter((f) => f.rule === 'polysemy-calque').length,
     1
   );
 
-  // Reverse disambiguation: when source is generic 'app store', translated value 'Toko aplikasi' is permitted even if key is 'App Store'
+  // Reverse disambiguation: when source is generic 'app store' (even with surrounding whitespace), translated value 'Toko aplikasi' is permitted even if key is 'App Store'
   const reverseDisambigClean = auditDictionary(
     { 'App Store': 'Toko aplikasi' },
-    { source: { 'App Store': 'app store' } }
+    { source: { 'App Store': '  app store  ' } }
   );
   assert.deepEqual(reverseDisambigClean, []);
 });
