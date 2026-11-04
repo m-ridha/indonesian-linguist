@@ -76,16 +76,24 @@ const KNOWN_CALQUE_TRAPS = [
   { keyMatch: /assist(ance|ed) machine/i, badVal: /\bmesin bantuan\b/i, fix: 'mesin assisted / mesin berbeban bantuan' },
   {
     keyMatch: {
-      test(key) {
-        return /^app stores?$/i.test(key) && key !== 'App Store';
+      test(key, sourceVal) {
+        if (key === 'App Store' || sourceVal === 'App Store') return false;
+        return (
+          /^app stores?$/i.test(key) ||
+          (typeof sourceVal === 'string' && /^app stores?$/i.test(sourceVal))
+        );
       },
     },
     badVal: /^(?:app stores?|toko app)$/i,
     fix: 'Toko aplikasi',
   },
   {
-    keyMatch: /^App Store$/,
-    badVal: /^toko app$/i,
+    keyMatch: {
+      test(key, sourceVal) {
+        return key === 'App Store' || sourceVal === 'App Store';
+      },
+    },
+    badVal: /^(?:toko app|toko aplikasi)$/i,
     fix: 'App Store',
   },
   { keyMatch: /^lengths in\s*:?$/i, badVal: /^panjang dalam\s*:?$/i, fix: 'Satuan panjang / Satuan ukuran' },
@@ -649,8 +657,8 @@ function auditDictionary(dict, options = {}) {
     // 3. Known UI/domain polysemy & calque traps
     for (const trap of KNOWN_CALQUE_TRAPS) {
       const isKeyMatch =
-        trap.keyMatch.test(key) ||
-        (typeof sourceValue === 'string' && trap.keyMatch.test(sourceValue));
+        trap.keyMatch.test(key, sourceValue) ||
+        (typeof sourceValue === 'string' && trap.keyMatch.test(sourceValue, sourceValue));
       if (isKeyMatch && trap.badVal.test(value)) {
         findings.push({
           key: fullKey,

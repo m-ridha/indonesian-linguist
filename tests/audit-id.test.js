@@ -1444,7 +1444,7 @@ test('auditDictionary: flags v1.2.1 assistance machines, prepositional unit head
     'App stores': 'App stores',
     'app store': 'app store',
     'App store': 'Toko App',
-    'App Store': 'Toko App',
+    'App Store': 'Toko aplikasi',
   };
   const findings = auditDictionary(badDict);
   const polysemyFindings = findings.filter((f) => f.rule === 'polysemy-calque');
@@ -1467,5 +1467,23 @@ test('auditDictionary: flags v1.2.1 assistance machines, prepositional unit head
   };
   const goodFindings = auditDictionary(goodDict);
   assert.deepEqual(goodFindings, []);
+
+  // Disambiguation via source text:
+  // When source is 'App Store', value 'App Store' is valid Apple brand and must not be flagged
+  const sourceDisambigClean = auditDictionary(
+    { 'app store': 'App Store' },
+    { source: { 'app store': 'App Store' } }
+  );
+  assert.deepEqual(sourceDisambigClean, []);
+
+  // When key or source is Apple 'App Store', translating brand to 'Toko aplikasi' or 'toko app' is flagged
+  const sourceDisambigBanned = auditDictionary(
+    { 'apple_store_key': 'Toko aplikasi' },
+    { source: { 'apple_store_key': 'App Store' } }
+  );
+  assert.equal(
+    sourceDisambigBanned.filter((f) => f.rule === 'polysemy-calque').length,
+    1
+  );
 });
 
