@@ -1,6 +1,11 @@
-import { analyze, applyBatchFixes } from './engine.bundle.js';
+import { analyze, applyBatchFixes, VERSION } from './engine.bundle.js';
 
 // DOM References
+const appVersion = document.getElementById('app-version');
+if (appVersion && VERSION) {
+  appVersion.textContent = `v${VERSION}`;
+}
+
 const rawInput = document.getElementById('raw-input');
 const modeSelect = document.getElementById('mode-select');
 const registerSelect = document.getElementById('register-select');

@@ -11,7 +11,18 @@ const path = require('path');
 const START_MARKER = '/* ENGINE_EXPORT_START */';
 const END_MARKER = '/* ENGINE_EXPORT_END */';
 
+function getPackageVersion() {
+  try {
+    const pkgPath = path.join(__dirname, '..', 'package.json');
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+    return pkg.version || '1.0.0';
+  } catch {
+    return '1.0.0';
+  }
+}
+
 function generateSpaceEngine() {
+  const version = getPackageVersion();
   const auditPath = path.join(__dirname, 'audit-id.js');
   const source = fs.readFileSync(auditPath, 'utf8');
 
@@ -32,6 +43,8 @@ function generateSpaceEngine() {
  * AUTOMATICALLY GENERATED from scripts/audit-id.js — DO NOT EDIT DIRECTLY.
  * Run "npm run build:space" to regenerate.
  */
+
+export const VERSION = '${version}';
 
 ${engineCore}
 
@@ -277,6 +290,7 @@ export {
 }
 
 function build() {
+  const version = getPackageVersion();
   const targetDir = path.join(__dirname, '..', 'space');
   if (!fs.existsSync(targetDir)) {
     fs.mkdirSync(targetDir, { recursive: true });
@@ -286,6 +300,19 @@ function build() {
   const outputPath = path.join(targetDir, 'engine.bundle.js');
   fs.writeFileSync(outputPath, bundle, 'utf8');
   console.log(`Successfully built ${outputPath} (${Buffer.byteLength(bundle, 'utf8')} bytes)`);
+
+  const indexPath = path.join(targetDir, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    const originalHtml = fs.readFileSync(indexPath, 'utf8');
+    const updatedHtml = originalHtml.replace(
+      /(<span id="app-version"[^>]*>)\s*v[0-9.]+\s*(<\/span>)/,
+      `$1v${version}$2`
+    );
+    if (updatedHtml !== originalHtml) {
+      fs.writeFileSync(indexPath, updatedHtml, 'utf8');
+      console.log(`Synchronized version v${version} in ${indexPath}`);
+    }
+  }
 }
 
 if (require.main === module) {

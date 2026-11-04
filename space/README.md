@@ -1,5 +1,5 @@
 ---
-title: Indonesian Linguist
+title: "Indonesian Linguist: Deterministic Demo"
 emoji: ✨
 colorFrom: green
 colorTo: blue

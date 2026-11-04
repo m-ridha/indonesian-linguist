@@ -33,8 +33,20 @@ jobs:
 
       - name: Verify build and tests
         run: |
-          npm test
+          if [ -n "${{ github.event.release.tag_name }}" ]; then
+            TAG_VERSION="${{ github.event.release.tag_name }}"
+            SEMVER="${TAG_VERSION#v}"
+            node -e "
+              const fs = require('fs');
+              const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+              if (pkg.version !== '${SEMVER}') {
+                pkg.version = '${SEMVER}';
+                fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+              }
+            "
+          fi
           npm run build:space
+          npm test
 
       - name: Push to Hugging Face Spaces
         env:

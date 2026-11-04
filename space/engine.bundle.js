@@ -5,6 +5,8 @@
  * Run "npm run build:space" to regenerate.
  */
 
+export const VERSION = '1.2.1';
+
 const SMS_SLANG_REGEX = /\b(yg|dgn|utk|krn|tdk|bgt|dlm|spt)\b/i;
 
 const NON_STANDARD_WORDS = [
