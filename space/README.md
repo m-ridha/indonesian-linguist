@@ -1,8 +1,8 @@
 ---
 title: Indonesian Linguist
-emoji: 🇮🇩
-colorFrom: emerald
-colorTo: teal
+emoji: ✨
+colorFrom: green
+colorTo: blue
 sdk: static
 pinned: false
 ---
