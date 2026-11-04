@@ -77,11 +77,8 @@ const KNOWN_CALQUE_TRAPS = [
   {
     keyMatch: {
       test(key, sourceVal) {
-        if (key === 'App Store' || sourceVal === 'App Store') return false;
-        return (
-          /^app stores?$/i.test(key) ||
-          (typeof sourceVal === 'string' && /^app stores?$/i.test(sourceVal))
-        );
+        const text = typeof sourceVal === 'string' ? sourceVal : key;
+        return text !== 'App Store' && /^app stores?$/i.test(text);
       },
     },
     badVal: /^(?:app stores?|toko app)$/i,
@@ -90,7 +87,8 @@ const KNOWN_CALQUE_TRAPS = [
   {
     keyMatch: {
       test(key, sourceVal) {
-        return key === 'App Store' || sourceVal === 'App Store';
+        const text = typeof sourceVal === 'string' ? sourceVal : key;
+        return text === 'App Store';
       },
     },
     badVal: /^(?:toko app|toko aplikasi)$/i,
@@ -658,7 +656,7 @@ function auditDictionary(dict, options = {}) {
     for (const trap of KNOWN_CALQUE_TRAPS) {
       const isKeyMatch =
         trap.keyMatch.test(key, sourceValue) ||
-        (typeof sourceValue === 'string' && trap.keyMatch.test(sourceValue, sourceValue));
+        (typeof sourceValue === 'string' && trap.keyMatch.test(sourceValue));
       if (isKeyMatch && trap.badVal.test(value)) {
         findings.push({
           key: fullKey,

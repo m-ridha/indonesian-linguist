@@ -1485,5 +1485,12 @@ test('auditDictionary: flags v1.2.1 assistance machines, prepositional unit head
     sourceDisambigBanned.filter((f) => f.rule === 'polysemy-calque').length,
     1
   );
+
+  // Reverse disambiguation: when source is generic 'app store', translated value 'Toko aplikasi' is permitted even if key is 'App Store'
+  const reverseDisambigClean = auditDictionary(
+    { 'App Store': 'Toko aplikasi' },
+    { source: { 'App Store': 'app store' } }
+  );
+  assert.deepEqual(reverseDisambigClean, []);
 });
 
