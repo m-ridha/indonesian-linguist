@@ -74,9 +74,23 @@ const KNOWN_CALQUE_TRAPS = [
   { keyMatch: /form[- ]check/i, badVal: /\bpemeriksaan formulir\b/i, fix: 'Cek form' },
   { keyMatch: /add exercise/i, badVal: /\btambahkan olahraga\b/i, fix: 'Tambahkan latihan' },
   { keyMatch: /assist(ance|ed) machine/i, badVal: /\bmesin bantuan\b/i, fix: 'mesin assisted / mesin berbeban bantuan' },
-  { keyMatch: /^lengths in\b/i, badVal: /\bpanjang dalam\b/i, fix: 'Satuan panjang / Satuan ukuran' },
-  { keyMatch: /^weights in\b/i, badVal: /\b(beban|berat) dalam\b/i, fix: 'Satuan beban / Satuan berat badan' },
-  { keyMatch: /^distance in\b/i, badVal: /\bjarak dalam\b/i, fix: 'Satuan jarak' },
+  {
+    keyMatch: {
+      test(key) {
+        return /^app stores?$/i.test(key) && key !== 'App Store';
+      },
+    },
+    badVal: /^(?:app stores?|toko app)$/i,
+    fix: 'Toko aplikasi',
+  },
+  {
+    keyMatch: /^App Store$/,
+    badVal: /^toko app$/i,
+    fix: 'App Store',
+  },
+  { keyMatch: /^lengths in\s*:?$/i, badVal: /^panjang dalam\s*:?$/i, fix: 'Satuan panjang / Satuan ukuran' },
+  { keyMatch: /^weights in\s*:?$/i, badVal: /^(?:beban|berat) dalam\s*:?$/i, fix: 'Satuan beban / Satuan berat badan' },
+  { keyMatch: /^distance in\s*:?$/i, badVal: /^jarak dalam\s*:?$/i, fix: 'Satuan jarak' },
   { keyMatch: /end of a hold/i, badVal: /\b(akhir|ujung)\s+tahanan\b/i, fix: 'Akhir durasi tahan / Waktu tahan selesai' },
 ];
 

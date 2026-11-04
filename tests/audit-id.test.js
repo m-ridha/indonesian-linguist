@@ -1441,10 +1441,14 @@ test('auditDictionary: flags v1.2.1 assistance machines, prepositional unit head
     'Weights in': 'Beban dalam',
     'Distance in': 'Jarak dalam',
     'End of a hold': 'Akhir tahanan',
+    'App stores': 'App stores',
+    'app store': 'app store',
+    'App store': 'Toko App',
+    'App Store': 'Toko App',
   };
   const findings = auditDictionary(badDict);
   const polysemyFindings = findings.filter((f) => f.rule === 'polysemy-calque');
-  assert.equal(polysemyFindings.length, 5);
+  assert.equal(polysemyFindings.length, 9);
 
   const goodDict = {
     'On an assistance machine': 'Pada mesin assisted',
@@ -1455,6 +1459,11 @@ test('auditDictionary: flags v1.2.1 assistance machines, prepositional unit head
     'Distance in': 'Satuan jarak',
     'End of a hold': 'Akhir durasi tahan',
     'End of a hold (alt)': 'Waktu tahan selesai',
+    'App stores': 'Toko aplikasi',
+    'app store': 'toko aplikasi',
+    'App Store': 'App Store', // Apple proper noun preserved
+    'Lengths in {0}': 'Panjang dalam {0}', // Complete phrase with object preserved
+    'Weights in {0}': 'Beban dalam {0}', // Complete phrase with object preserved
   };
   const goodFindings = auditDictionary(goodDict);
   assert.deepEqual(goodFindings, []);
