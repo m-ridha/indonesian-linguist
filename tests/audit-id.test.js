@@ -1437,14 +1437,14 @@ test('CLI: supports .xml and .strings catalogs, --ignore-keys, and --warn-only',
 test('auditDictionary: flags v1.2.1 assistance machines, prepositional unit headers, and hold cues traps', () => {
   const badDict = {
     'On an assistance machine': 'Pada mesin bantuan',
-    'Lengths in': 'Panjang dalam',
-    'Weights in': 'Beban dalam',
-    'Distance in': 'Jarak dalam',
+    'Lengths in': '  Panjang dalam  ',
+    'Weights in': ' Beban dalam ',
+    'Distance in': '  Jarak dalam',
     'End of a hold': 'Akhir tahanan',
-    'App stores': 'App stores',
+    'App stores': '  App stores  ',
     'app store': 'app store',
-    'App store': 'Toko App',
-    'App Store': 'Toko aplikasi',
+    'App store': '  Toko App  ',
+    'App Store': '  Toko aplikasi  ',
   };
   const findings = auditDictionary(badDict);
   const polysemyFindings = findings.filter((f) => f.rule === 'polysemy-calque');

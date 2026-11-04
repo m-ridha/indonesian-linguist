@@ -655,11 +655,12 @@ function auditDictionary(dict, options = {}) {
     }
 
     // 3. Known UI/domain polysemy & calque traps
+    const trimmedValue = value.trim();
     for (const trap of KNOWN_CALQUE_TRAPS) {
       const isKeyMatch =
         trap.keyMatch.test(key, sourceValue) ||
         (typeof sourceValue === 'string' && trap.keyMatch.test(sourceValue));
-      if (isKeyMatch && trap.badVal.test(value)) {
+      if (isKeyMatch && (trap.badVal.test(trimmedValue) || trap.badVal.test(value))) {
         findings.push({
           key: fullKey,
           rule: 'polysemy-calque',
