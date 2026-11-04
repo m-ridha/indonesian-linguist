@@ -169,6 +169,26 @@ test('engine.analyze: auto-detects JSON key-value snippets without outer braces'
   assert.strictEqual(placeholderRes.valid, true);
   assert.ok(placeholderRes.findings.some((f) => f.original.toLowerCase() === 'silahkan'));
 
+  // Double-brace template placeholders route to prose and do not trigger JSON syntax errors
+  const doubleBraceInput = '{{name}} silahkan masuk.';
+  const doubleBraceRes = engine.analyze(doubleBraceInput);
+  assert.strictEqual(doubleBraceRes.mode, 'prose');
+  assert.strictEqual(doubleBraceRes.valid, true);
+  assert.ok(doubleBraceRes.findings.some((f) => f.original.toLowerCase() === 'silahkan'));
+
+  // Markdown links followed by em dashes or words are not over-masked
+  const linkWithEmDash = '[Panduan](https://example.com)—silahkan catat';
+  const linkRes = engine.analyze(linkWithEmDash);
+  assert.strictEqual(linkRes.mode, 'prose');
+  assert.ok(linkRes.findings.some((f) => f.original.toLowerCase() === 'silahkan'));
+  assert.ok(linkRes.findings.some((f) => f.rule === 'slop-or-pleonasm' && f.message.includes('em dash')));
+
+  // Balanced parentheses in URLs are masked without consuming closing Markdown delimiter
+  const linkWithParenUrl = '[Panduan](https://example.com/(resiko))—silahkan catat';
+  const linkParenRes = engine.analyze(linkWithParenUrl);
+  assert.strictEqual(linkParenRes.findings.some((f) => f.original === 'resiko'), false);
+  assert.ok(linkParenRes.findings.some((f) => f.original.toLowerCase() === 'silahkan'));
+
   // Large numbers (> MAX_SAFE_INTEGER) in JSON are preserved without precision loss in cleanText
   const bigNumJson = '{\n  "id": 9007199254740993,\n  "note": "silahkan catat"\n}';
   const bigNumRes = engine.analyze(bigNumJson);
