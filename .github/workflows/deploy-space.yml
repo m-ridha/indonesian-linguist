@@ -32,16 +32,18 @@ jobs:
           node-version: '22'
 
       - name: Verify build and tests
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
-          if [ -n "${{ github.event.release.tag_name }}" ]; then
-            TAG_VERSION="${{ github.event.release.tag_name }}"
-            SEMVER="${TAG_VERSION#v}"
-            node -e "
+          if [ -n "$RELEASE_TAG" ]; then
+            SEMVER="${RELEASE_TAG#v}"
+            SEMVER="$SEMVER" node -e "
               const fs = require('fs');
               const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-              if (pkg.version !== '${SEMVER}') {
-                pkg.version = '${SEMVER}';
-                fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+              const target = process.env.SEMVER;
+              if (pkg.version !== target) {
+                console.error(\`Release tag version '\${target}' does not match canonical package.json version '\${pkg.version}'.\`);
+                process.exit(1);
               }
             "
           fi

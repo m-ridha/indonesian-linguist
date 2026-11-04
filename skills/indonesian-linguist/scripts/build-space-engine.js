@@ -147,12 +147,13 @@ function fixJsonValues(obj, pronoun) {
 
 /**
  * Checks if the text appears to be formatted as key-value pairs (JSON / JS object snippet).
+ * Matches lines starting with a quoted string key followed by a colon.
  * @param {string} str
  * @returns {boolean}
  */
 export function isKeyValueSnippet(str) {
   const trimmed = String(str || '').trim();
-  return /^(?:"(?:[^"\\\\]|\\\\.)*"|[a-zA-Z_$][0-9a-zA-Z_$]*)\s*:/m.test(trimmed);
+  return /^"(?:[^"\\\\]|\\\\.)*"\\s*:/m.test(trimmed);
 }
 
 /**
@@ -178,7 +179,7 @@ export function analyzeJson(jsonString, options = {}) {
     }
   } else {
     isSnippet = true;
-    const withoutTrailing = trimmed.replace(/,(\s*)$/, '$1');
+    const withoutTrailing = trimmed.replace(/,(\\s*)$/, '$1');
     const wrapped = '{\\n' + withoutTrailing + '\\n}';
     try {
       parsed = JSON.parse(wrapped);

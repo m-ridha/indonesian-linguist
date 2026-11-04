@@ -112,4 +112,13 @@ test('engine.analyze: auto-detects JSON key-value snippets without outer braces'
 
   const forcedJson = engine.analyze('{"Back": "punggung"}', { mode: 'json' });
   assert.strictEqual(forcedJson.mode, 'json');
+
+  // Verify snippet regex whitespace tolerance and prose colon discrimination
+  assert.strictEqual(engine.isKeyValueSnippet('  "Back"   : "punggung"'), true);
+  assert.strictEqual(engine.isKeyValueSnippet('Catatan: silahkan periksa jadwal latihan.'), false);
+
+  const proseWithColon = engine.analyze('Catatan: silahkan periksa jadwal latihan.');
+  assert.strictEqual(proseWithColon.mode, 'prose');
+  assert.strictEqual(proseWithColon.valid, true);
+  assert.ok(proseWithColon.findings.some((f) => f.rule === 'kata-tidak-baku' && f.original === 'silahkan'));
 });
