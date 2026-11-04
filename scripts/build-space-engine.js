@@ -325,7 +325,7 @@ export function isMarkdownProse(str) {
  */
 export function isProsePlaceholder(str) {
   if (!str.startsWith('{')) return false;
-  return /^(?:\\{\\{[0-9a-zA-Z_.-]+\\}\\}|\\{[0-9a-zA-Z_.-]+\\})(?!\\s*:)/.test(str);
+  return /^(?:\\{\\{[0-9a-zA-Z_.-]+\\}\\}|\\{[0-9a-zA-Z_.-]+\\}(?!\\s*:))/.test(str);
 }
 
 /**

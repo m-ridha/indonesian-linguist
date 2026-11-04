@@ -251,6 +251,62 @@ function preserveCase(original, replacement) {
 }
 
 /**
+ * Masks URLs in text with length-preserving whitespace.
+ * Handles nested parentheses in URLs and stops at Markdown closing parens or trailing punctuation.
+ * @param {string} text
+ * @returns {string}
+ */
+function maskUrls(text) {
+  if (!text) return '';
+  const chars = String(text).split('');
+  const urlSchemeRx = /https?:\/\//gi;
+  let m;
+
+  while ((m = urlSchemeRx.exec(text)) !== null) {
+    const startIndex = m.index;
+    let i = startIndex;
+    const n = text.length;
+    let parenDepth = 0;
+
+    while (i < n) {
+      const ch = text[i];
+      if (/\s/.test(ch) || ch === '<' || ch === '>' || ch === '"' || ch === "'" || ch === '`') {
+        break;
+      }
+      if (ch === '(') {
+        parenDepth++;
+        i++;
+      } else if (ch === ')') {
+        if (parenDepth > 0) {
+          parenDepth--;
+          i++;
+        } else {
+          break;
+        }
+      } else {
+        i++;
+      }
+    }
+
+    while (i > startIndex) {
+      const lastChar = text[i - 1];
+      if (lastChar === '.' || lastChar === ',' || lastChar === ';' || lastChar === ':' || lastChar === '!' || lastChar === '?') {
+        i--;
+      } else {
+        break;
+      }
+    }
+
+    for (let j = startIndex; j < i; j++) {
+      if (chars[j] !== '\n') chars[j] = ' ';
+    }
+    urlSchemeRx.lastIndex = Math.max(i, startIndex + 1);
+  }
+
+  return chars.join('');
+}
+
+/**
  * Check a string against an explicit pronoun policy ('Anda' or 'kamu').
  * Automatically excludes URLs and supported placeholders before evaluating pronoun occurrences.
  * @param {string} text
@@ -263,8 +319,7 @@ function checkPronounPolicy(text, pronoun) {
   }
 
   const maskSpan = (match) => match.replace(/[^\n]/g, ' ');
-  const textWithoutTokens = String(text || '')
-    .replace(/https?:\/\/[^\s<>"'`()—]+(?:\([^\s<>"'`()—]*\)[^\s<>"'`()—]*)*\/?/gi, maskSpan)
+  const textWithoutTokens = maskUrls(String(text || ''))
     .replace(/\{\{[0-9a-zA-Z_.-]+\}\}|\{[0-9a-zA-Z_.-]+\}|%(?:\d+\$)?[sdif]/g, maskSpan);
 
   const findings = [];
@@ -389,9 +444,7 @@ function auditText(text, options = {}) {
     .replace(/```[\s\S]*?```/g, maskSpan)
     .replace(/~~~[\s\S]*?~~~/g, maskSpan);
   const withoutIndented = stripIndentedCode ? stripIndentedCodeBlocks(withoutFences) : withoutFences;
-  const str = withoutIndented
-    .replace(/`[^`\n]+`/g, maskSpan)
-    .replace(/https?:\/\/[^\s<>"'`()—]+(?:\([^\s<>"'`()—]*\)[^\s<>"'`()—]*)*\/?/gi, maskSpan)
+  const str = maskUrls(withoutIndented.replace(/`[^`\n]+`/g, maskSpan))
     .replace(/\{\{[0-9a-zA-Z_.-]+\}\}|\{[0-9a-zA-Z_.-]+\}|%(?:\d+\$)?[sdif]/g, maskSpan);
 
   const smsRx = new RegExp(SMS_SLANG_REGEX.source, (SMS_SLANG_REGEX.flags || 'i').replace(/g/g, '') + 'g');

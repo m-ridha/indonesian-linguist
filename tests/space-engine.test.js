@@ -169,12 +169,23 @@ test('engine.analyze: auto-detects JSON key-value snippets without outer braces'
   assert.strictEqual(placeholderRes.valid, true);
   assert.ok(placeholderRes.findings.some((f) => f.original.toLowerCase() === 'silahkan'));
 
-  // Double-brace template placeholders route to prose and do not trigger JSON syntax errors
+  // Double-brace template placeholders route to prose (even when followed by colon)
   const doubleBraceInput = '{{name}} silahkan masuk.';
   const doubleBraceRes = engine.analyze(doubleBraceInput);
   assert.strictEqual(doubleBraceRes.mode, 'prose');
   assert.strictEqual(doubleBraceRes.valid, true);
   assert.ok(doubleBraceRes.findings.some((f) => f.original.toLowerCase() === 'silahkan'));
+
+  const doubleBraceColon = '{{name}}: silahkan masuk.';
+  const doubleBraceColonRes = engine.analyze(doubleBraceColon);
+  assert.strictEqual(doubleBraceColonRes.mode, 'prose');
+  assert.strictEqual(doubleBraceColonRes.valid, true);
+  assert.ok(doubleBraceColonRes.findings.some((f) => f.original.toLowerCase() === 'silahkan'));
+
+  // Single-brace placeholder followed by colon is treated as JSON/object key
+  const singleBraceColon = '{name}: "val"';
+  const singleBraceColonRes = engine.analyze(singleBraceColon);
+  assert.strictEqual(singleBraceColonRes.mode, 'json');
 
   // Markdown links followed by em dashes or words are not over-masked
   const linkWithEmDash = '[Panduan](https://example.com)—silahkan catat';
@@ -182,6 +193,20 @@ test('engine.analyze: auto-detects JSON key-value snippets without outer braces'
   assert.strictEqual(linkRes.mode, 'prose');
   assert.ok(linkRes.findings.some((f) => f.original.toLowerCase() === 'silahkan'));
   assert.ok(linkRes.findings.some((f) => f.rule === 'slop-or-pleonasm' && f.message.includes('em dash')));
+
+  // Em dashes inside Markdown destination are preserved and not flagged/changed
+  const linkWithInnerEmDash = '[Panduan](https://example.com/berita—resiko) silahkan catat';
+  const linkInnerRes = engine.analyze(linkWithInnerEmDash);
+  assert.strictEqual(linkInnerRes.findings.some((f) => f.original === 'resiko'), false);
+  assert.ok(linkInnerRes.findings.some((f) => f.original.toLowerCase() === 'silahkan'));
+
+  // Nested parentheses in URLs are completely masked without exposing inner tokens
+  const nestedParenUrl = 'https://example.com/topik(resiko_(contoh)) silahkan catat';
+  const nestedParenRes = engine.analyze(nestedParenUrl);
+  assert.strictEqual(nestedParenRes.findings.some((f) => f.original === 'resiko'), false);
+  assert.strictEqual(nestedParenRes.findings.some((f) => f.original === 'contoh'), false);
+  assert.ok(nestedParenRes.findings.some((f) => f.original.toLowerCase() === 'silahkan'));
+  assert.match(nestedParenRes.cleanText, /https:\/\/example\.com\/topik\(resiko_\(contoh\)\)/);
 
   // Balanced parentheses in URLs are masked without consuming closing Markdown delimiter
   const linkWithParenUrl = '[Panduan](https://example.com/(resiko))—silahkan catat';
