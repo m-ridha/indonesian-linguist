@@ -35,7 +35,7 @@ Invoke `/indonesian-linguist` or prompt your agent for any Indonesian language, 
 
 ### Deterministic Localization & Prose Auditor
 
-Audit any locale dictionary (`.json`, `.js`, `.mjs`) or prose file (`.md`, `.txt`) using the built-in CLI (replace `<path/to/...>` with your file paths):
+Audit any locale dictionary (`.json`, `.js`, `.mjs`, Android `.xml`, iOS `.strings`) or prose file (`.md`, `.txt`) using the built-in CLI (replace `<path/to/...>` with your file paths):
 
 ```bash
 # Compare Indonesian target against English source catalog
@@ -80,6 +80,10 @@ export default {
   'Weight ({0})': 'Berat ({0})',                      // Wrong semantic field for lifting load
   'Landmine': 'Ranjau darat',                         // Military explosive!
   'Abductors': 'Penculik',                            // Kidnapper!
+  'Lengths in': 'Panjang dalam',                      // Dangling prepositional fragment!
+  'End of a hold': 'Akhir tahanan',                   // Detainee / prison custody!
+  'On an assistance machine': 'Pada mesin bantuan',   // Social/disaster relief equipment!
+  'App stores': 'Toko app',                           // Amateur slang for distribution channels!
   'Prev and Next hop over a finished exercise':
     'Sebelumnya dan Berikutnya lanjutkan latihan yang sudah selesai', // Inverted meaning!
 }
@@ -97,6 +101,10 @@ export default {
   'Weight ({0})': 'Beban ({0})',                      // Lifting resistance column
   'Landmine': 'Landmine',                             // Community loanword retained
   'Abductors': 'Abduktor',
+  'Lengths in': 'Satuan panjang',                     // Explicit noun phrase
+  'End of a hold': 'Akhir durasi tahan',              // Qualified isometric timer cue
+  'On an assistance machine': 'Pada mesin assisted',  // Gym subculture counterweight term
+  'App stores': 'Toko aplikasi',                      // Official platform-agnostic umbrella category
   'Prev and Next hop over a finished exercise':
     'Sebelumnya dan Berikutnya melewati latihan yang sudah selesai',
 }
@@ -138,7 +146,7 @@ When activated, [`SKILL.md`](SKILL.md) enforces the core invariants and loads **
 | [`references/anti-slop-and-calques.md`](references/anti-slop-and-calques.md) | Ten zero-tolerance AI-slop bans (*hiruk pikuk*, negative parallelisms, em dashes) and syntactic calque repairs. |
 | [`references/core-grammar-and-eyd.md`](references/core-grammar-and-eyd.md) | EYD Edisi V rules, 60+ `Kata Baku` pairs, `di-` vs. `di`, `meN-` assimilation, D-M word order, and punctuation. |
 | [`references/writing-ux-marketing-seo-academic.md`](references/writing-ux-marketing-seo-academic.md) | Ivan Lanin's 5 registers, social/marketing copy, landing pages, SEO `<title>` rules, and academic IMRaD standards. |
-| [`scripts/audit-id.js`](scripts/audit-id.js) | Zero-dependency CLI auditor for scanning `.json`/`.js` locale dictionaries and `.md` prose for defects. |
+| [`scripts/audit-id.js`](scripts/audit-id.js) | Zero-dependency CLI auditor for scanning `.json`/`.js`/`.mjs`, Android `.xml`, and iOS `.strings` locale dictionaries and `.md` prose for defects. |
 
 ---
 
@@ -207,12 +215,12 @@ Copy [`AGENTS.md`](AGENTS.md) alongside [`SKILL.md`](SKILL.md) and [`references/
 
 ## Deterministic Localization & Prose Auditor (`scripts/audit-id.js`)
 
-This repository includes a zero-dependency Node.js CLI auditor that checks `.json`/`.js` i18n locale files and `.md` prose for:
+This repository includes a zero-dependency Node.js CLI auditor that checks `.json`/`.js`/`.mjs`, Android `.xml`, and iOS `.strings` i18n locale files and `.md` prose for:
 - Silent English identity fallbacks (`key === value` on strings $\ge 16$ characters)
 - Placeholder mismatches (`{0}`, `{1}`, `{name}`)
 - Banned chat/SMS abbreviations (`yg`, `dgn`, `utk`, `krn`, `tdk`, `bgt`)
 - Non-standard spellings (*silahkan, sekedar, resiko, praktek, analisa, merubah, mempengaruhi*)
-- Known UI/domain polysemy calques (*Punggung* for `Back`, *Penculik* for `Abductors`, *Ranjau darat* for `Landmine`, *lanjutkan* for `hop over`, etc.)
+- Known UI/domain polysemy calques (*Punggung* for `Back`, *Penculik* for `Abductors`, *Ranjau darat* for `Landmine`, *lanjutkan* for `hop over`, *mesin bantuan* for `assistance machine`, *akhir tahanan* for `end of a hold`, *panjang dalam* for `lengths in`, *toko app* for `app stores`, etc.)
 - Indonesian AI-slop phrases (*hiruk pikuk*, *di era digital*, *adalah merupakan*, stylistic em dashes `—`)
 
 Run the auditor on any file:

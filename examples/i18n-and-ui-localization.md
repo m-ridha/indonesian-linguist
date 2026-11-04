@@ -158,3 +158,31 @@ export default {
   'iCloud Keychain': 'iCloud Keychain',
 }
 ```
+
+---
+
+## 6. Prepositional Dimension Unit Headers, Counterweight Machinery & Audio Cues
+
+Field feedback from openGym v1.4.5 audits identified four subtle localization traps:
+
+```javascript
+// ❌ BEFORE (Literal prepositional calques, emergency relief terms, and prison custody cues)
+export default {
+  'Lengths in': 'Panjang dalam',                      // Dangling preposition without clause!
+  'Weights in': 'Beban dalam',                        // Truncated header
+  'Distance in': 'Jarak dalam',                       // Dangling fragment
+  'On an assistance machine': 'Pada mesin bantuan',   // Conflated with humanitarian relief!
+  'End of a hold': 'Akhir tahanan',                   // Prisoner custody / detention!
+  'App stores': 'Toko app',                           // Colloquial slang for distribution ecosystem
+}
+
+// ✅ AFTER (With indonesian-linguist — noun-phrase headers, subculture terms, qualified cues)
+export default {
+  'Lengths in': 'Satuan panjang',                     // Explicit noun phrase (or 'Satuan ukuran')
+  'Weights in': 'Satuan beban',                       // Standard measurement unit header
+  'Distance in': 'Satuan jarak',                      // Matches Android/iOS setting standard
+  'On an assistance machine': 'Pada mesin assisted',  // Gym counterweight standard (or 'mesin berbeban bantuan')
+  'End of a hold': 'Akhir durasi tahan',              // Qualified isometric timer cue (or 'Waktu tahan selesai')
+  'App stores': 'Toko aplikasi',                      // Platform-agnostic umbrella category (vs. Apple 'App Store')
+}
+```
