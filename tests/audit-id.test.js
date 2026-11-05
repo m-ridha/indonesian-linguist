@@ -1537,5 +1537,3 @@ test('auditDictionary: bounds per-value findings to MAX_DICTIONARY_FINDINGS and 
   assert.equal(findings[5000].rule, 'findings-limit-exceeded');
   assert.equal(findings.filter((f) => f.rule === 'kata-tidak-baku').length, 5000);
 });
-
-
