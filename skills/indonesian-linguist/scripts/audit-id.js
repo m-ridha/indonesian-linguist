@@ -627,8 +627,8 @@ const MAX_CLI_DIAGNOSTIC_BYTES = 64_000;
  * Tracks visited object references to prevent exponential work on compact shared-reference graphs,
  * and tracks active ancestors to immediately break cycles.
  * @param {Record<string, unknown>} dict
- * @param {{ minFallbackLength?: number, allowlistKeys?: Set<string>, prefix?: string, depth?: number, accumulator?: Array<{key: string, rule: string, category: string, message: string}>, visited?: Map<object, number>, activeStack?: Set<object>, counter?: { entries: number }, source?: unknown, pronoun?: string|null, ignoreKeys?: Set<string>|Array<string>|string|null }} [options]
- * @returns {Array<{key: string, rule: string, category: string, message: string}>}
+ * @param {{ minFallbackLength?: number, allowlistKeys?: Set<string>, prefix?: string, depth?: number, accumulator?: Array<{key: string, rule: string, category?: string, message: string}>, visited?: Map<object, number>, activeStack?: Set<object>, counter?: { entries: number }, source?: unknown, pronoun?: string|null, ignoreKeys?: Set<string>|Array<string>|string|null }} [options]
+ * @returns {Array<{key: string, rule: string, category?: string, message: string}>}
  */
 function auditDictionary(dict, options = {}) {
   const minFallbackLength = options.minFallbackLength ?? 16;
