@@ -37,7 +37,7 @@ Invoke `/indonesian-linguist` or prompt your agent for any Indonesian language, 
 ### Web Playground & Live Demo
 
 Try the 100% deterministic web demo **[Indonesian Linguist](https://huggingface.co/spaces/m-ridha/indonesian-linguist)** on Hugging Face Spaces:
-- **Zero-Setup & Client-Side Privacy**: Runs completely in browser memory with zero remote data egress.
+- **Zero-Setup & Client-Side Privacy**: Input is analyzed locally in browser memory without sending text to remote servers (UI assets like Tailwind CDN and Google Fonts are fetched at page load).
 - **Prose & JSON Catalog Support**: Automatically detects input format, masks markdown code blocks, flags translation calques, and provides safe reverse-order batch fixes.
 
 ### Deterministic Localization & Prose Auditor
