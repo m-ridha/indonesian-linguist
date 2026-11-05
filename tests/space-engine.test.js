@@ -44,6 +44,19 @@ test('engine.analyze: routes JSON vs prose and respects malformed JSON error bou
   assert.strictEqual(badRes.findings.length, 0);
 });
 
+test('engine.analyze: applies pronoun policy to one audited surface at a time', async () => {
+  const bundleUrl = pathToFileURL(path.join(__dirname, '..', 'space', 'engine.bundle.js')).href;
+  const engine = await import(bundleUrl);
+
+  const formal = engine.analyze('Silakan periksa akun Anda.', { pronoun: 'Anda' });
+  const casual = engine.analyze('Silakan periksa akunmu.', { pronoun: 'kamu' });
+  assert.equal(formal.findings.some((finding) => finding.rule === 'pronoun-mismatch'), false);
+  assert.equal(casual.findings.some((finding) => finding.rule === 'pronoun-mismatch'), false);
+
+  const mixed = engine.analyze('Silakan periksa akun Anda. Periksa akunmu juga.', { pronoun: 'Anda' });
+  assert.ok(mixed.findings.some((finding) => finding.rule === 'pronoun-mismatch'));
+});
+
 test('engine.applyBatchFixes: applies multiple replacements in reverse order without offset drift', async () => {
   const bundleUrl = pathToFileURL(path.join(__dirname, '..', 'space', 'engine.bundle.js')).href;
   const engine = await import(bundleUrl);

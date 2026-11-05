@@ -88,11 +88,12 @@
         </div>
 
         <div class="flex items-center space-x-1.5 text-xs">
-          <label for="register-select" class="text-slate-600 font-medium">Policy:</label>
+          <label for="register-select" class="text-slate-600 font-medium">Input policy:</label>
           <select id="register-select" class="bg-slate-100 border border-slate-300 text-slate-700 text-xs rounded-lg px-2.5 py-1.5 focus:ring-emerald-500 focus:border-emerald-500">
-            <option value="">Neutral (Standard)</option>
-            <option value="Anda">Formal (Anda)</option>
-            <option value="kamu">Casual (kamu/-mu)</option>
+            <option value="">Neutral (no pronoun check)</option>
+            <option value="Anda">This surface: Formal (Anda)</option>
+            <option value="kamu">This surface: Casual (kamu/-mu)</option>
+            <option value="mixed">Mixed surfaces/personas</option>
           </select>
         </div>
 
@@ -145,6 +146,8 @@
         </button>
       </div>
     </div>
+
+    <p class="mb-4 text-xs text-slate-500">The pronoun policy applies only to this input. Audit each configured surface or persona separately; mixed content skips cross-surface pronoun checks.</p>
 
     <!-- Workspace Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-[550px]">
