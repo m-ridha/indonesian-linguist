@@ -62,11 +62,11 @@ Every linguistic or localization rule added to this repository must be backed by
    git checkout -b feat/fintech-glossary
    ```
 
-2. **Keep Root and Plugin `SKILL.md` Synchronized**:
-   If you edit the root [`SKILL.md`](SKILL.md), always sync the plugin mirror before committing:
+2. **Keep Root and Plugin Assets Synchronized**:
+   If you edit the root [`SKILL.md`](SKILL.md), [`references/`](references/), or [`scripts/`](scripts/), always sync the plugin mirror before committing:
 
    ```bash
-    npm run sync
+   npm run sync
    ```
 
    *(The `npm run sync` script mirrors `SKILL.md`, `references/`, and `scripts/` into `skills/indonesian-linguist/`. Our automated test suite in [`tests/manifests.test.js`](tests/manifests.test.js) fails if these files drift or if `SKILL.md` exceeds Antigravity's 24,000-byte load limit.)*
