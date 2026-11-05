@@ -50,6 +50,11 @@ const SLOP_AND_PLEONASM_PATTERNS = [
   { regex: /—/, reason: 'Stylistic em dash (—) banned; use comma, colon, parentheses, or "sampai"' },
 ];
 
+/**
+ * @typedef {{ test(key: string, sourceVal?: unknown): boolean }} KeyMatchPredicate
+ * @typedef {{ keyMatch: RegExp | KeyMatchPredicate, badVal: RegExp, fix: string }} CalqueTrap
+ */
+/** @type {CalqueTrap[]} */
 const KNOWN_CALQUE_TRAPS = [
   { keyMatch: /^Back$/, badVal: /\bpunggung\b/i, fix: 'Kembali' },
   { keyMatch: /clear rating/i, badVal: /\bperingkat yang jelas\b/i, fix: 'Hapus penilaian' },
@@ -61,6 +66,7 @@ const KNOWN_CALQUE_TRAPS = [
   { keyMatch: /hop over/i, badVal: /\b(lanjutkan|meneruskan)\b/i, fix: 'melewati / melompati' },
   {
     keyMatch: {
+      /** @param {string} key */
       test(key) {
         const idx = String(key || '').search(/\bsigns\b/i);
         return idx !== -1 && /\bouts?\b/i.test(key.slice(idx + 5));
@@ -77,6 +83,7 @@ const KNOWN_CALQUE_TRAPS = [
   { keyMatch: /assist(ance|ed) machine/i, badVal: /\bmesin bantuan\b/i, fix: 'mesin assisted / mesin berbeban bantuan' },
   {
     keyMatch: {
+      /** @param {string} key @param {unknown} [sourceVal] */
       test(key, sourceVal) {
         const raw = typeof sourceVal === 'string' ? sourceVal : key;
         const text = typeof raw === 'string' ? raw.trim() : raw;
@@ -88,6 +95,7 @@ const KNOWN_CALQUE_TRAPS = [
   },
   {
     keyMatch: {
+      /** @param {string} key @param {unknown} [sourceVal] */
       test(key, sourceVal) {
         const raw = typeof sourceVal === 'string' ? sourceVal : key;
         const text = typeof raw === 'string' ? raw.trim() : raw;
@@ -114,6 +122,7 @@ const RETAINED_LOANWORD_PATTERNS = [
   /^(?:Bahasa Indonesia(?:\s*\([A-Za-z0-9_-]+\))?|Bahasa Melayu(?:\s*\([A-Za-z0-9_-]+\))?|English(?:\s*\([A-Za-z0-9_-]+\))?|[a-z]{2}(?:[-_][A-Z]{2,4})?)$/i,
 ];
 
+/** @type {Record<string, string>} */
 const RULE_CATEGORIES = {
   'kata-tidak-baku': 'grammar',
   'slop-or-pleonasm': 'grammar',
@@ -143,7 +152,7 @@ function getRuleCategory(rule) {
 /**
  * Checks if a given key path is excluded by exact match or wildcard prefix.
  * @param {string} keyPath - The dot-separated key path being checked.
- * @param {Set<string>|Array<string>|null|undefined} ignoreKeys - Collection of ignored keys or wildcards.
+ * @param {Set<string>|Array<string>|string|null|undefined} ignoreKeys - Collection of ignored keys or wildcards.
  * @returns {boolean} True if the key path is ignored.
  */
 function isKeyIgnored(keyPath, ignoreKeys) {
@@ -334,6 +343,7 @@ function checkPronounPolicy(text, pronoun, maxFindings = Infinity) {
     return [];
   }
 
+  /** @type {(match: string) => string} */
   const maskSpan = (match) => match.replace(/[^\n]/g, ' ');
   const textWithoutTokens = maskUrls(String(text || ''))
     .replace(/\{\{[0-9a-zA-Z_.-]+\}\}|\{[0-9a-zA-Z_.-]+\}|%(?:\d+\$)?[sdif]/g, maskSpan);
@@ -405,6 +415,7 @@ function stripIndentedCodeBlocks(text) {
   let afterBlankLine = true;
 
   // Width in columns of a whitespace/marker prefix, using 4-column tab stops.
+  /** @type {(prefix: string) => number} */
   const columns = (prefix) => {
     let col = 0;
     for (const ch of prefix) col += ch === '\t' ? 4 - (col % 4) : 1;
@@ -418,7 +429,7 @@ function stripIndentedCodeBlocks(text) {
       continue;
     }
 
-    const indent = columns(line.match(/^[ \t]*/)[0]);
+    const indent = columns(line.match(/^[ \t]*/)?.[0] ?? '');
     const listMatch = line.match(/^[ \t]*(?:[-*+]|\d+[.)])[ \t]+/);
     // Inside a list, content only becomes code when indented 4+ columns past the item's content.
     const codeThreshold = inListContext ? listContentIndent + 4 : 4;
@@ -450,7 +461,7 @@ function stripIndentedCodeBlocks(text) {
  * Automatically masks protected Markdown fenced code blocks (backticks and tildes),
  * 4-space/tab-indented code blocks, inline code spans, and URLs with length-preserving whitespace.
  * @param {string} text
- * @param {{ stripIndentedCode?: boolean, pronoun?: string, maxFindings?: number }} [options] Set `stripIndentedCode: false` for plain-text input (e.g., dictionary values) where indentation does not mark code.
+ * @param {{ stripIndentedCode?: boolean, pronoun?: string|null, maxFindings?: number }} [options] Set `stripIndentedCode: false` for plain-text input (e.g., dictionary values) where indentation does not mark code.
  * @returns {Array<{rule: string, category: string, message: string, startIndex?: number, endIndex?: number, original?: string, replacement?: string, confidence?: string}>}
  */
 function auditText(text, options = {}) {
@@ -459,6 +470,7 @@ function auditText(text, options = {}) {
   const maxFindings = options.maxFindings ?? Infinity;
   if (maxFindings <= 0) return [];
   const issues = [];
+  /** @type {(match: string) => string} */
   const maskSpan = (match) => match.replace(/[^\n]/g, ' ');
 
   const withoutFences = String(text || '')
@@ -615,8 +627,8 @@ const MAX_CLI_DIAGNOSTIC_BYTES = 64_000;
  * Tracks visited object references to prevent exponential work on compact shared-reference graphs,
  * and tracks active ancestors to immediately break cycles.
  * @param {Record<string, unknown>} dict
- * @param {{ minFallbackLength?: number, allowlistKeys?: Set<string>, prefix?: string, depth?: number, accumulator?: Array<{key: string, rule: string, message: string}>, visited?: Map<object, number>, activeStack?: Set<object>, counter?: { entries: number } }} [options]
- * @returns {Array<{key: string, rule: string, message: string}>}
+ * @param {{ minFallbackLength?: number, allowlistKeys?: Set<string>, prefix?: string, depth?: number, accumulator?: Array<{key: string, rule: string, category?: string, message: string}>, visited?: Map<object, number>, activeStack?: Set<object>, counter?: { entries: number }, source?: unknown, pronoun?: string|null, ignoreKeys?: Set<string>|Array<string>|string|null }} [options]
+ * @returns {Array<{key: string, rule: string, category?: string, message: string}>}
  */
 function auditDictionary(dict, options = {}) {
   const minFallbackLength = options.minFallbackLength ?? 16;
@@ -635,6 +647,7 @@ function auditDictionary(dict, options = {}) {
     return findings;
   }
 
+  /** @param {{key: string, rule: string, category: string, message: string}|null} finding */
   const pushFinding = (finding) => {
     if (findings.length >= MAX_DICTIONARY_FINDINGS) {
       if (findings[findings.length - 1]?.rule !== 'findings-limit-exceeded') {
@@ -647,7 +660,7 @@ function auditDictionary(dict, options = {}) {
       }
       return false;
     }
-    findings.push(finding);
+    if (finding) findings.push(finding);
     return true;
   };
 
@@ -719,11 +732,11 @@ function auditDictionary(dict, options = {}) {
     }
 
     if (value && typeof value === 'object') {
-      auditDictionary(value, {
+      auditDictionary(/** @type {Record<string, unknown>} */(value), {
         ...options,
         prefix: fullKey,
         depth: currentDepth + 1,
-        source: (source && typeof source === 'object') ? source[key] : null,
+        source: (source && typeof source === 'object') ? (/** @type {Record<string, unknown>} */ (source))[key] : null,
         accumulator: findings,
         visited,
         activeStack,
@@ -740,7 +753,10 @@ function auditDictionary(dict, options = {}) {
     }
     if (typeof value !== 'string') continue;
 
-    const sourceValue = (source && typeof source === 'object') ? source[key] : undefined;
+    const sourceValue =
+      source && typeof source === 'object'
+        ? /** @type {Record<string, unknown>} */ (source)[key]
+        : undefined;
 
     // 1. Silent English identity fallback check
     const trimmedVal = value.trim();
@@ -845,6 +861,7 @@ function auditDictionary(dict, options = {}) {
 
         const isLeadingVerbWithObject = isPredicate && hasObjectOrImplicit;
 
+        /** @type {Record<string, RegExp>} */
         const eponymousNounPairs = {
           formula: /^rumus$/i,
           law: /^hukum$/i,
@@ -874,9 +891,12 @@ function auditDictionary(dict, options = {}) {
     let limitHit = false;
     const trimmedValue = value.trim();
     for (const trap of KNOWN_CALQUE_TRAPS) {
-      const isKeyMatch =
-        trap.keyMatch.test(key, sourceValue) ||
-        (typeof sourceValue === 'string' && trap.keyMatch.test(sourceValue));
+      /** @type {(candidate: string) => boolean} */
+      const matchesKey = (candidate) =>
+        trap.keyMatch instanceof RegExp
+          ? trap.keyMatch.test(candidate)
+          : trap.keyMatch.test(candidate, sourceValue);
+      const isKeyMatch = matchesKey(key) || (typeof sourceValue === 'string' && matchesKey(sourceValue));
       if (isKeyMatch && (trap.badVal.test(trimmedValue) || trap.badVal.test(value))) {
         if (!pushFinding({
           key: fullKey,

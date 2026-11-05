@@ -206,20 +206,18 @@ function renderFindingCards(findings, mode) {
               ${escapeHtml(finding.rule)}
             </span>
           </div>
-          ${
-            hasReplacement
-              ? `<button type="button" data-fix-index="${idx}" class="btn-single-fix inline-flex items-center px-2 py-1 text-xs font-medium rounded text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 transition">
+          ${hasReplacement
+        ? `<button type="button" data-fix-index="${idx}" class="btn-single-fix inline-flex items-center px-2 py-1 text-xs font-medium rounded text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 transition">
                   ⚡ Apply: <span class="font-bold ml-1 font-mono">${escapeHtml(finding.replacement)}</span>
                 </button>`
-              : ''
-          }
+        : ''
+      }
         </div>
 
-        ${
-          finding.keyPath
-            ? `<div class="text-[11px] text-slate-500 font-mono">Key: <span class="text-slate-800 font-semibold">${escapeHtml(finding.keyPath)}</span></div>`
-            : ''
-        }
+        ${finding.keyPath
+        ? `<div class="text-[11px] text-slate-500 font-mono">Key: <span class="text-slate-800 font-semibold">${escapeHtml(finding.keyPath)}</span></div>`
+        : ''
+      }
 
         <p class="text-xs text-slate-700 leading-normal">${escapeHtml(finding.message)}</p>
       </div>

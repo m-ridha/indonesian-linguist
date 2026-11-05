@@ -121,7 +121,7 @@ export function analyzeText(text, options = {}) {
   const stats = {
     totalFindings: findings.length,
     highConfidence: findings.filter((f) => f.confidence === 'high').length,
-    byCategory: {},
+    byCategory: /** @type {Record<string, number>} */ ({}),
     isCapped,
   };
   for (const f of findings) {
@@ -179,8 +179,9 @@ function findJsonStringValues(jsonStr) {
       continue;
     }
     if (ch === ',') {
-      if (stack.length > 0 && stack[stack.length - 1].type === 'array') {
-        stack[stack.length - 1].index++;
+      const top = stack[stack.length - 1];
+      if (top?.type === 'array') {
+        top.index = (top.index ?? 0) + 1;
         inValue = true;
       } else {
         inValue = false;
@@ -271,7 +272,7 @@ function cleanJsonRaw(raw, pronoun, cleanupScope = null, spans = null) {
     let issues = auditText(decoded, { stripIndentedCode: false, pronoun, maxFindings: MAX_PROSE_FINDINGS });
     if (cleanupScope) {
       const recorded = cleanupScope.get(span.keyPath);
-      issues = issues.filter((issue) => recorded.has(issue.rule + '\\u0000' + issue.message));
+      issues = issues.filter((issue) => recorded?.has(issue.rule + '\\u0000' + issue.message));
     }
     const fixed = applyBatchFixes(decoded, issues, { highOnly: true });
     if (fixed !== decoded) {
@@ -355,7 +356,7 @@ export function analyzeJson(jsonString, options = {}) {
   const stats = {
     totalFindings: findings.length,
     highConfidence: 0,
-    byCategory: {},
+    byCategory: /** @type {Record<string, number>} */ ({}),
     isCapped,
   };
   for (const f of findings) {
