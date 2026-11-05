@@ -265,10 +265,10 @@ test('engine.analyze: auto-detects JSON key-value snippets without outer braces'
   assert.strictEqual(engine.analyze('silahkan masuk').stats.isCapped, false);
 
   // Snippet with a nested value followed by a second key keeps key semantics
-  const nestedSnippet = engine.analyze('"a": {"x": "ok"},\n"b": "silahkan masuk"');
+  const nestedSnippet = engine.analyze('"a": {"x": "ok"},\n"silahkan": "silahkan masuk"');
   assert.strictEqual(nestedSnippet.mode, 'json');
   assert.strictEqual(nestedSnippet.isSnippet, true);
-  assert.match(nestedSnippet.cleanText, /"b": "silakan masuk"/);
+  assert.match(nestedSnippet.cleanText, /"silahkan": "silakan masuk"/);
 
   // JSON cleaning is bounded to the audited scope when the finding limit is reached
   const bigCatalog = {};
@@ -279,4 +279,22 @@ test('engine.analyze: auto-detects JSON key-value snippets without outer braces'
   assert.strictEqual(cleanedCatalog.k4999, 'silakan');
   assert.strictEqual(cleanedCatalog.k5000, 'silahkan');
   assert.strictEqual(cleanedCatalog.k5004, 'silahkan');
+
+  // A value that was only partially audited before the cap is cleaned only for its recorded finding
+  const partialCatalog = {};
+  for (let i = 0; i < 4999; i++) partialCatalog['k' + i] = 'silahkan';
+  partialCatalog.last = 'silahkan dan aktifitas';
+  const partialRes = engine.analyze(JSON.stringify(partialCatalog, null, 2));
+  assert.strictEqual(partialRes.stats.isCapped, true);
+  assert.strictEqual(JSON.parse(partialRes.cleanText).last, 'silakan dan aktifitas');
+
+  // A literal dotted key and a nested path share a keyPath identity, so ambiguous scopes are skipped
+  const collisionCatalog = {};
+  for (let i = 0; i < 4999; i++) collisionCatalog['k' + i] = 'silahkan';
+  collisionCatalog.p = { 'a.b': 'silahkan', a: { b: 'silahkan' } };
+  const collisionRes = engine.analyze(JSON.stringify(collisionCatalog, null, 2));
+  assert.strictEqual(collisionRes.stats.isCapped, true);
+  const collisionValue = JSON.parse(collisionRes.cleanText).p;
+  assert.strictEqual(collisionValue['a.b'], 'silahkan');
+  assert.strictEqual(collisionValue.a.b, 'silahkan');
 });

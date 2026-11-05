@@ -635,8 +635,24 @@ function auditDictionary(dict, options = {}) {
     return findings;
   }
 
+  const pushFinding = (finding) => {
+    if (findings.length >= MAX_DICTIONARY_FINDINGS) {
+      if (findings[findings.length - 1]?.rule !== 'findings-limit-exceeded') {
+        findings.push({
+          key: currentPrefix || 'root',
+          rule: 'findings-limit-exceeded',
+          category: getRuleCategory('findings-limit-exceeded'),
+          message: `Total dictionary findings exceeded safety limit of ${MAX_DICTIONARY_FINDINGS}.`,
+        });
+      }
+      return false;
+    }
+    findings.push(finding);
+    return true;
+  };
+
   if (currentDepth > MAX_DICTIONARY_DEPTH) {
-    findings.push({
+    pushFinding({
       key: currentPrefix || 'root',
       rule: 'nesting-limit-exceeded',
       category: getRuleCategory('nesting-limit-exceeded'),
@@ -655,22 +671,6 @@ function auditDictionary(dict, options = {}) {
   }
 
   const keys = isObject ? Object.keys(dict) : [];
-
-  const pushFinding = (finding) => {
-    if (findings.length >= MAX_DICTIONARY_FINDINGS) {
-      if (findings[findings.length - 1]?.rule !== 'findings-limit-exceeded') {
-        findings.push({
-          key: currentPrefix || 'root',
-          rule: 'findings-limit-exceeded',
-          category: getRuleCategory('findings-limit-exceeded'),
-          message: `Total dictionary findings exceeded safety limit of ${MAX_DICTIONARY_FINDINGS}.`,
-        });
-      }
-      return false;
-    }
-    findings.push(finding);
-    return true;
-  };
 
   for (const key of keys) {
     counter.entries++;

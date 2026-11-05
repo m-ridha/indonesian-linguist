@@ -633,8 +633,24 @@ function auditDictionary(dict, options = {}) {
     return findings;
   }
 
+  const pushFinding = (finding) => {
+    if (findings.length >= MAX_DICTIONARY_FINDINGS) {
+      if (findings[findings.length - 1]?.rule !== 'findings-limit-exceeded') {
+        findings.push({
+          key: currentPrefix || 'root',
+          rule: 'findings-limit-exceeded',
+          category: getRuleCategory('findings-limit-exceeded'),
+          message: `Total dictionary findings exceeded safety limit of ${MAX_DICTIONARY_FINDINGS}.`,
+        });
+      }
+      return false;
+    }
+    findings.push(finding);
+    return true;
+  };
+
   if (currentDepth > MAX_DICTIONARY_DEPTH) {
-    findings.push({
+    pushFinding({
       key: currentPrefix || 'root',
       rule: 'nesting-limit-exceeded',
       category: getRuleCategory('nesting-limit-exceeded'),
@@ -653,22 +669,6 @@ function auditDictionary(dict, options = {}) {
   }
 
   const keys = isObject ? Object.keys(dict) : [];
-
-  const pushFinding = (finding) => {
-    if (findings.length >= MAX_DICTIONARY_FINDINGS) {
-      if (findings[findings.length - 1]?.rule !== 'findings-limit-exceeded') {
-        findings.push({
-          key: currentPrefix || 'root',
-          rule: 'findings-limit-exceeded',
-          category: getRuleCategory('findings-limit-exceeded'),
-          message: `Total dictionary findings exceeded safety limit of ${MAX_DICTIONARY_FINDINGS}.`,
-        });
-      }
-      return false;
-    }
-    findings.push(finding);
-    return true;
-  };
 
   for (const key of keys) {
     counter.entries++;
@@ -1107,6 +1107,8 @@ function findJsonStringValues(jsonStr) {
           start: startContent,
           end: endContent,
           raw: jsonStr.slice(startContent, endContent),
+          // Dotted join: a nested path "a.b" and a literal key "a.b" share this identity.
+          // Callers that use keyPath as a cleanup allowlist must reject paths that are not unique.
           keyPath: keyParts.join('.'),
         });
         inValue = false;
@@ -1123,21 +1125,22 @@ function findJsonStringValues(jsonStr) {
 
 /**
  * Directly cleans string values in raw JSON text without rewriting numbers or formatting.
- * When auditable keys are provided (bounded audit scope), only values matching auditable
- * keys or findings are cleaned, preventing unreported changes beyond the limit.
+ * When a cleanup scope is provided (bounded audit scope), only values with a recorded
+ * finding are touched, and only the fixes matching those recorded findings are applied.
  * @param {string} raw
  * @param {string | null} pronoun
- * @param {Set<string> | null} [allowedKeyPaths]
+ * @param {Map<string, Set<string>> | null} [cleanupScope]
+ * @param {Array<{ start: number, end: number, raw: string, keyPath: string }> | null} [spans]
  * @returns {string}
  */
-function cleanJsonRaw(raw, pronoun, allowedKeyPaths = null) {
-  const spans = findJsonStringValues(raw);
-  if (spans.length === 0) return raw;
+function cleanJsonRaw(raw, pronoun, cleanupScope = null, spans = null) {
+  const stringSpans = spans || findJsonStringValues(raw);
+  if (stringSpans.length === 0) return raw;
   const parts = [];
   let cursor = 0;
   let changed = false;
-  for (const span of spans) {
-    if (allowedKeyPaths && !allowedKeyPaths.has(span.keyPath)) {
+  for (const span of stringSpans) {
+    if (cleanupScope && !cleanupScope.has(span.keyPath)) {
       continue;
     }
     let decoded;
@@ -1146,7 +1149,11 @@ function cleanJsonRaw(raw, pronoun, allowedKeyPaths = null) {
     } catch {
       continue;
     }
-    const issues = auditText(decoded, { stripIndentedCode: false, pronoun, maxFindings: MAX_PROSE_FINDINGS });
+    let issues = auditText(decoded, { stripIndentedCode: false, pronoun, maxFindings: MAX_PROSE_FINDINGS });
+    if (cleanupScope) {
+      const recorded = cleanupScope.get(span.keyPath);
+      issues = issues.filter((issue) => recorded.has(issue.rule + '\u0000' + issue.message));
+    }
     const fixed = applyBatchFixes(decoded, issues, { highOnly: true });
     if (fixed !== decoded) {
       changed = true;
@@ -1237,19 +1244,30 @@ export function analyzeJson(jsonString, options = {}) {
     stats.byCategory[cat] = (stats.byCategory[cat] || 0) + 1;
   }
 
-  let allowedKeyPaths = null;
+  let cleanupScope = null;
+  let spans = null;
   if (isCapped) {
-    allowedKeyPaths = new Set();
+    spans = findJsonStringValues(raw);
+    // keyPath is a dotted join, so a nested path and a literal dotted key can collide.
+    // Only clean paths that identify exactly one value, so no unaudited value is touched.
+    const pathCounts = new Map();
+    for (const span of spans) {
+      pathCounts.set(span.keyPath, (pathCounts.get(span.keyPath) || 0) + 1);
+    }
+    cleanupScope = new Map();
     for (const f of findings) {
-      if (f.keyPath && f.rule !== 'findings-limit-exceeded' && f.rule !== 'traversal-limit-exceeded') {
-        allowedKeyPaths.add(f.keyPath);
-      }
+      if (!f.keyPath) continue;
+      if (f.rule === 'findings-limit-exceeded' || f.rule === 'traversal-limit-exceeded') continue;
+      if (pathCounts.get(f.keyPath) !== 1) continue;
+      let recorded = cleanupScope.get(f.keyPath);
+      if (!recorded) cleanupScope.set(f.keyPath, (recorded = new Set()));
+      recorded.add(f.rule + '\u0000' + f.message);
     }
   }
 
   let cleanText = raw;
   try {
-    cleanText = cleanJsonRaw(raw, options.pronoun || null, allowedKeyPaths);
+    cleanText = cleanJsonRaw(raw, options.pronoun || null, cleanupScope, spans);
   } catch (_) {
     cleanText = raw;
   }
