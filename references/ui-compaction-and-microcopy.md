@@ -84,6 +84,24 @@ Lead with the actionable news in the first clause so it survives lock-screen tru
 - ✅ **Title**: `Istirahat selesai 💪`, **Body**: `Saatnya set berikutnya.`
 - ✅ **Title**: `Latihan direncanakan hari ini`, **Body**: `Sudah ada di jadwalmu. Ayo mulai latihan 💪`
 
+**Register Decision for Push & Nudge Copy**:
+
+Choose one register tier and apply it consistently to **all notifications on the same surface**. Never mix formal and intimate tones across nudge types on the same surface:
+
+| Register | When to Use | Pronoun / Voice | Colloquial Contractions? |
+| --- | --- | --- | --- |
+| *Konsultatif* | SaaS, productivity, B2B, health data | `Anda` / `-nya` | No |
+| *Santai* | Consumer lifestyle, fitness standard | `kamu` / `-mu` | No |
+| *Akrab* | Explicit gym-buddy persona, mascot dialogue, motivational drill copy | `kamu` / `-mu` | ✅ Permitted (see §7.3 in core-grammar-and-eyd.md for Tier C contractions) |
+
+When an app defines **multiple notification tones** (e.g., friendly, guilt, and drill, as in workout-missed nudges), each tone must still obey its declared register tier. A drill-sergeant tone can use *nggak* and *udah*. The same app's rest-timer push should stay *Santai* (`"Istirahat selesai. Saatnya set berikutnya."`). The tones are parallel surfaces. Each gets its own register, but neither bleeds into the other.
+
+**Hard stops: no colloquial register regardless of persona**:
+- Error messages and failure states (*"Gagal menyimpan. Coba lagi."*)
+- Security, authentication, and permission prompts
+- Data-deletion and destructive-action confirmations
+- Subscription expiry and billing notices
+
 **Caller & Lifecycle State Audit (Notifications & Shared Strings)**:
 When reviewing notifications and system banners, verify the runtime trigger context:
 - **Inspect all callers of a shared string**: If a string resource is reused across multiple events, verify that the wording accurately reflects every trigger condition.

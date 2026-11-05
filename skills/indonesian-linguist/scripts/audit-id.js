@@ -24,6 +24,7 @@ const NON_STANDARD_WORDS = [
   { regex: /\bhandal\b/i, fix: 'andal' },
   { regex: /\bhimbau(an)?\b/i, fix: 'imbau / imbauan' },
   { regex: /\bketrampilan\b/i, fix: 'keterampilan' },
+  { regex: /\b(daluwarsa|kadaluarsa|kadaluwarsa|kedaluarsa)\b/i, fix: 'kedaluwarsa' },
   { regex: /\bdikarenakan\b/i, fix: 'karena / disebabkan oleh' },
   { regex: /\bapapun\b/i, fix: 'apa pun' },
   { regex: /\bsiapapun\b/i, fix: 'siapa pun' },

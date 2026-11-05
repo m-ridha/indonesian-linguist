@@ -53,6 +53,9 @@ Memorize and enforce these 60 most frequently misspelled words in Indonesian dig
 | **kerja sama** *(base)* | kerjasama | **wujud** | ujud |
 | **komoditas** | komoditi | **zaman** | jaman |
 | **komplet** | komplit | **Anda** *(always cap)* | anda |
+| **kedaluwarsa** | daluwarsa, kadaluarsa, kadaluwarsa, kedaluarsa | | |
+
+**Note on `kedaluwarsa`**: The KBBI VI standard form is **`kedaluwarsa`** (from Javanese *kadaluwarsa*, "past its prime"). The variants *daluwarsa*, *kadaluarsa*, *kadaluwarsa*, and *kedaluarsa* are all non-standard. Despite this, *kadaluarsa* is the dominant written form in everyday Indonesian, found in product labels, government notices, and major consumer apps. This is the same de-facto-acceptance pattern as *sekadar/sekedar*. **Use `kedaluwarsa` in UI strings** where correctness is testable and the context is neutral (error messages, subscription banners, passkey expiry screens). Be internally consistent: never mix `kadaluarsa` and `kedaluwarsa` within the same product.
 
 ---
 
@@ -138,6 +141,7 @@ Indonesian syntax places the **head noun (*Diterangkan*) first** and the **modif
    - Write currency without a space after `Rp`: **`Rp50.000`** (not *Rp 50.000* or *Rp. 50.000*).
 3. **Bound Forms (*Bentuk Terikat*)**:
    Write bound prefixes attached without spaces: **`nonaktif`**, **`antarmuka`**, **`antarperangkat`**, **`pascabayaran`**, **`pratinjau`**, **`subkategori`**, **`multibahasa`**, **`ekstrakurikuler`**. Use a hyphen only when followed by a capitalized proper noun or acronym (*`non-Indonesia`*, *`pasca-PR`*).
+   - **`antar-` + English loanword**: When `antar-` prefixes an unassimilated English loanword, attach without a hyphen if the compound reads naturally as one unit: **`antarset`** (*between sets, inter-set rest*). This follows the same bound-form logic as `antarmuka` and `antarperangkat`. In fitness and workout copy, always use **`antarset`** (not *antar set* or *antar-set*) in formal prose; *antar set* (spaced) is broadly accepted in informal editorial contexts (fitness journalism, lifestyle copy) but is non-standard.
 4. **Code-Mixing Hyphenation on Foreign Roots (`EYD V`)**:
    When attaching Indonesian prefixes or enclitics (`di-`, `meN-`, `ter-`, `peN-`, `-nya`, `-mu`) to unassimilated foreign technical terms in developer or technical prose, always separate them with a **hyphen (`-`)**:
    - *Correct*: **`di-deploy`**, **`di-build`**, **`di-render`**, **`di-reset`**, **`commit-nya`**, **`endpoint-nya`**, **`PR-mu`**.
@@ -160,6 +164,11 @@ When writing in casual or conversational register (*ragam santai*):
    - Default to neutral standard or urban conversational Indonesian (`kamu / -mu`, or `Anda` in formal contexts).
    - Never assume `gue / lo` or regional dialect markers (`rek`, `mah`, `atuh`, `bah`, `ji`) from a user's name or location unless explicitly requested by the user or brand persona.
    - Never fabricate unverified regional language outputs or phonetic misspellings that turn into caricature.
+3. **Three-Tier Distinction for Non-Standard Forms**:
+   Not all departures from written standard Indonesian are the same. Before flagging or correcting a non-standard form, identify its tier:
+   - **Tier A: Kata Baku Violations (Always Wrong in UI, Prose & Notifications)**: Misspellings of the KBBI VI standard form: *silahkan*, *sekedar*, *resiko*, *kadaluarsa* (when the product uses `kedaluwarsa` consistently). These are typographical errors regardless of register.
+   - **Tier B: SMS/Chat Abbreviations (Always Wrong in UI & Product Copy)**: Compression abbreviations that destroy written credibility: `yg`, `dgn`, `utk`, `krn`, `tdk`, `bgt`, `dlm`. These are banned in all UI strings and professional writing. No register exception.
+   - **Tier C: Phonological Contractions (*Ragam Akrab*)**: Spoken-register reductions of full standard words: **`udah`** (← *sudah*), **`nggak`** (← *tidak*), **`emang`** (← *memang*), **`banget`** (← *sangat*), **`tuh`** (← *itu*, pragmatic). These are **permitted only** when: (1) the product has an explicit *Akrab* persona decision for a specific surface (push notification tone, onboarding nudge, mascot dialogue), AND (2) the contractions are used consistently within that surface, not scattered throughout. They must not appear in error messages, security flows, data-deletion warnings, or any legally sensitive copy, regardless of brand persona.
 
 ---
 
