@@ -200,6 +200,13 @@ test('engine.analyze: auto-detects JSON key-value snippets without outer braces'
   assert.strictEqual(linkInnerRes.findings.some((f) => f.original === 'resiko'), false);
   assert.ok(linkInnerRes.findings.some((f) => f.original.toLowerCase() === 'silahkan'));
 
+  // Em dashes inside Markdown reference-link definition are preserved and not flagged/changed
+  const refLinkWithInnerEmDash = '[panduan]: https://example.com/berita—resiko\n\nSilahkan catat.';
+  const refLinkInnerRes = engine.analyze(refLinkWithInnerEmDash);
+  assert.strictEqual(refLinkInnerRes.findings.some((f) => f.original === 'resiko'), false);
+  assert.ok(refLinkInnerRes.findings.some((f) => f.original.toLowerCase() === 'silahkan'));
+  assert.strictEqual(refLinkInnerRes.cleanText, '[panduan]: https://example.com/berita—resiko\n\nSilakan catat.');
+
   // Bare URL followed by em dash stops URL mask at em dash so both em dash and following errors are caught
   const bareUrlWithEmDash = 'Kunjungi https://example.com—silahkan catat.';
   const bareUrlEmDashRes = engine.analyze(bareUrlWithEmDash);

@@ -266,6 +266,7 @@ function maskUrls(text) {
     while (prev >= 0 && (text[prev] === ' ' || text[prev] === '\t')) prev--;
     const isExplicitDest =
       (prev >= 1 && text[prev - 1] === ']' && text[prev] === '(') ||
+      (prev >= 1 && text[prev - 1] === ']' && text[prev] === ':') ||
       (prev >= 0 && text[prev] === '<');
 
     let i = startIndex;
@@ -963,15 +964,24 @@ export function applyBatchFixes(text, findings, options = {}) {
     .filter((f) => !highOnly || f.confidence === 'high')
     .sort((a, b) => b.startIndex - a.startIndex);
 
-  let result = text;
+  const kept = [];
   let lastStart = Infinity;
   for (const f of eligible) {
     if (f.endIndex <= lastStart) {
-      result = result.slice(0, f.startIndex) + f.replacement + result.slice(f.endIndex);
+      kept.push(f);
       lastStart = f.startIndex;
     }
   }
-  return result;
+  if (kept.length === 0) return text;
+  const parts = [];
+  let cursor = 0;
+  for (let i = kept.length - 1; i >= 0; i--) {
+    const f = kept[i];
+    parts.push(text.slice(cursor, f.startIndex), f.replacement);
+    cursor = f.endIndex;
+  }
+  parts.push(text.slice(cursor));
+  return parts.join('');
 }
 
 /**
@@ -1076,9 +1086,11 @@ function findJsonStringValues(jsonStr) {
  */
 function cleanJsonRaw(raw, pronoun) {
   const spans = findJsonStringValues(raw);
-  let result = raw;
-  for (let idx = spans.length - 1; idx >= 0; idx--) {
-    const span = spans[idx];
+  if (spans.length === 0) return raw;
+  const parts = [];
+  let cursor = 0;
+  let changed = false;
+  for (const span of spans) {
     let decoded;
     try {
       decoded = JSON.parse('"' + span.raw + '"');
@@ -1088,11 +1100,15 @@ function cleanJsonRaw(raw, pronoun) {
     const issues = auditText(decoded, { stripIndentedCode: false, pronoun });
     const fixed = applyBatchFixes(decoded, issues, { highOnly: true });
     if (fixed !== decoded) {
+      changed = true;
       const encodedFixed = JSON.stringify(fixed).slice(1, -1);
-      result = result.slice(0, span.start) + encodedFixed + result.slice(span.end);
+      parts.push(raw.slice(cursor, span.start), encodedFixed);
+      cursor = span.end;
     }
   }
-  return result;
+  if (!changed) return raw;
+  parts.push(raw.slice(cursor));
+  return parts.join('');
 }
 
 /**

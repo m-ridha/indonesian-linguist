@@ -268,6 +268,7 @@ function maskUrls(text) {
     while (prev >= 0 && (text[prev] === ' ' || text[prev] === '\t')) prev--;
     const isExplicitDest =
       (prev >= 1 && text[prev - 1] === ']' && text[prev] === '(') ||
+      (prev >= 1 && text[prev - 1] === ']' && text[prev] === ':') ||
       (prev >= 0 && text[prev] === '<');
 
     let i = startIndex;
