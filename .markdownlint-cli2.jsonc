@@ -22,6 +22,10 @@
         // Allow duplicate subheadings across distinct Before/After example sections
         "MD024": {
             "siblings_only": true
+        },
+        // Disable front-matter title conflict with document H1
+        "MD025": {
+            "front_matter_title": ""
         }
     },
     "ignores": [

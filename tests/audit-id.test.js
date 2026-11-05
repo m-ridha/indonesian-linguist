@@ -24,6 +24,18 @@ test('auditText: clean natural Indonesian passes with zero findings', () => {
   assert.deepEqual(auditText(clean), []);
 });
 
+test('auditText returns structured finding coordinates and captures all occurrences', () => {
+  const input = 'Mohon silahkan cek aktifitas di era digital ini, silahkan coba lagi.';
+  const issues = auditText(input);
+  assert.ok(issues.length >= 3);
+  const silahkanIssues = issues.filter((i) => i.original && i.original.toLowerCase() === 'silahkan');
+  assert.strictEqual(silahkanIssues.length, 2);
+  assert.strictEqual(silahkanIssues[0].startIndex, 6);
+  assert.strictEqual(silahkanIssues[0].endIndex, 14);
+  assert.strictEqual(silahkanIssues[0].replacement, 'silakan');
+  assert.strictEqual(silahkanIssues[0].confidence, 'high');
+});
+
 test('auditText: ignores protected Markdown inline code spans, backtick/tilde fences, and indented code blocks', () => {
   const docWithCodeExamples = [
     'Gunakan bentuk baku di luar blok kode, bukan `silahkan`, `yg`, atau `hiruk pikuk`.',
@@ -50,6 +62,17 @@ test('auditText: ignores protected Markdown inline code spans, backtick/tilde fe
   const listIssues = auditText(nestedListWithDefect);
   assert.ok(listIssues.some((i) => i.rule === 'kata-tidak-baku'));
   assert.ok(listIssues.some((i) => i.rule === 'sms-abbreviation'));
+});
+
+test('auditText: ignores tokens inside template placeholders ({name}, {{name}}, printf)', () => {
+  const text = 'Silakan periksa {resiko} dan {{aktifitas}} untuk pengguna %s disini.';
+  const issues = auditText(text);
+  assert.strictEqual(issues.some((i) => i.original === 'resiko'), false);
+  assert.strictEqual(issues.some((i) => i.original === 'aktifitas'), false);
+  const disiniIssue = issues.find((i) => i.original === 'disini');
+  assert.ok(disiniIssue);
+  assert.strictEqual(disiniIssue.startIndex, text.indexOf('disini'));
+  assert.strictEqual(disiniIssue.replacement, 'di sini');
 });
 
 test('auditText: flags banned SMS abbreviations (yg, dgn, utk, krn, tdk, bgt)', () => {
@@ -1504,4 +1527,15 @@ test('auditDictionary: flags v1.2.1 assistance machines, prepositional unit head
   );
   assert.deepEqual(urlExemptionClean, []);
 });
+
+test('auditDictionary: bounds per-value findings to MAX_DICTIONARY_FINDINGS and appends findings-limit-exceeded', () => {
+  const findings = auditDictionary({
+    huge: 'silahkan '.repeat(5100),
+    next: 'silahkan',
+  });
+  assert.equal(findings.length, 5001);
+  assert.equal(findings[5000].rule, 'findings-limit-exceeded');
+  assert.equal(findings.filter((f) => f.rule === 'kata-tidak-baku').length, 5000);
+});
+
 

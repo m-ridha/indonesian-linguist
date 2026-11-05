@@ -10,6 +10,7 @@
 
 <p align="center">
   <a href="#quickstart">Quickstart</a> &ensp;·&ensp;
+  <a href="https://huggingface.co/spaces/m-ridha/indonesian-linguist">Live Playground</a> &ensp;·&ensp;
   <a href="#why-indonesian-linguist-exists">Why It Exists</a> &ensp;·&ensp;
   <a href="#how-it-works-single-skill--progressive-disclosure">How It Works</a> &ensp;·&ensp;
   <a href="#installation">Installation</a> &ensp;·&ensp;
@@ -32,6 +33,12 @@ Invoke `/indonesian-linguist` or prompt your agent for any Indonesian language, 
 ```text
 /indonesian-linguist Localize <path/to/id.json> using <path/to/en.json> as source.
 ```
+
+### Web Playground & Live Demo
+
+Try the 100% deterministic web demo **[Indonesian Linguist](https://huggingface.co/spaces/m-ridha/indonesian-linguist)** on Hugging Face Spaces:
+- **Zero-Setup & Client-Side Privacy**: Input is analyzed locally in browser memory without sending text to remote servers (UI assets like Tailwind CDN and Google Fonts are fetched at page load).
+- **Prose & JSON Catalog Support**: Automatically detects input format, masks markdown code blocks, flags translation calques, and provides safe reverse-order batch fixes.
 
 ### Deterministic Localization & Prose Auditor
 

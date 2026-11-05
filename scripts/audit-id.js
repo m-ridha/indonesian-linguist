@@ -8,6 +8,7 @@
 const fs = require('fs');
 const path = require('path');
 
+/* ENGINE_EXPORT_START */
 const SMS_SLANG_REGEX = /\b(yg|dgn|utk|krn|tdk|bgt|dlm|spt)\b/i;
 
 const NON_STANDARD_WORDS = [
@@ -233,37 +234,154 @@ const NON_PRONOUN_MU_EXCEPTIONS =
   /^(?:kamu|ilmu|berilmu|tamu|bertamu|temu|bertemu|ketemu|ditemu|menemu|jamu|ramu|meramu|diramu|semu|bersemu|jemu)$/i;
 
 /**
+ * Helper to preserve original casing (TitleCase, UPPERCASE, lowercase) on replacements.
+ * @param {string} original
+ * @param {string} replacement
+ * @returns {string}
+ */
+function preserveCase(original, replacement) {
+  if (!replacement || !original) return replacement;
+  if (original === original.toUpperCase() && original !== original.toLowerCase()) {
+    return replacement.toUpperCase();
+  }
+  if (original[0] === original[0].toUpperCase() && original[0] !== original[0].toLowerCase()) {
+    return replacement[0].toUpperCase() + replacement.slice(1);
+  }
+  return replacement;
+}
+
+/**
+ * Masks URLs in text with length-preserving whitespace.
+ * Handles nested parentheses in URLs and stops at Markdown closing parens or trailing punctuation.
+ * @param {string} text
+ * @returns {string}
+ */
+function maskUrls(text) {
+  if (!text) return '';
+  const chars = String(text).split('');
+  const urlSchemeRx = /https?:\/\//gi;
+  let m;
+
+  while ((m = urlSchemeRx.exec(text)) !== null) {
+    const startIndex = m.index;
+    let prev = startIndex - 1;
+    while (prev >= 0 && (text[prev] === ' ' || text[prev] === '\t')) prev--;
+    const isExplicitDest =
+      (prev >= 1 && text[prev - 1] === ']' && text[prev] === '(') ||
+      (prev >= 1 && text[prev - 1] === ']' && text[prev] === ':') ||
+      (prev >= 0 && text[prev] === '<');
+
+    let i = startIndex;
+    const n = text.length;
+    let parenDepth = 0;
+
+    while (i < n) {
+      const ch = text[i];
+      if (
+        /\s/.test(ch) ||
+        ch === '<' ||
+        ch === '>' ||
+        ch === '"' ||
+        ch === "'" ||
+        ch === '`' ||
+        (!isExplicitDest && ch === '\u2014')
+      ) {
+        break;
+      }
+      if (ch === '(') {
+        parenDepth++;
+        i++;
+      } else if (ch === ')') {
+        if (parenDepth > 0) {
+          parenDepth--;
+          i++;
+        } else {
+          break;
+        }
+      } else {
+        i++;
+      }
+    }
+
+    while (i > startIndex) {
+      const lastChar = text[i - 1];
+      if (lastChar === '.' || lastChar === ',' || lastChar === ';' || lastChar === ':' || lastChar === '!' || lastChar === '?') {
+        i--;
+      } else {
+        break;
+      }
+    }
+
+    for (let j = startIndex; j < i; j++) {
+      if (chars[j] !== '\n') chars[j] = ' ';
+    }
+    urlSchemeRx.lastIndex = Math.max(i, startIndex + 1);
+  }
+
+  return chars.join('');
+}
+
+/**
  * Check a string against an explicit pronoun policy ('Anda' or 'kamu').
  * Automatically excludes URLs and supported placeholders before evaluating pronoun occurrences.
  * @param {string} text
  * @param {string} pronoun
- * @returns {Array<{rule: string, message: string}>}
+ * @param {number} [maxFindings]
+ * @returns {Array<{rule: string, category: string, message: string, startIndex?: number, endIndex?: number, original?: string, replacement?: string, confidence?: string}>}
  */
-function checkPronounPolicy(text, pronoun) {
-  if (!pronoun || (pronoun !== 'Anda' && pronoun !== 'kamu')) {
+function checkPronounPolicy(text, pronoun, maxFindings = Infinity) {
+  if (!pronoun || (pronoun !== 'Anda' && pronoun !== 'kamu') || maxFindings <= 0) {
     return [];
   }
 
-  const textWithoutTokens = String(text || '')
-    .replace(/https?:\/\/[^\s<>"'`()]+/g, ' ')
-    .replace(/\{\{[0-9a-zA-Z_.-]+\}\}|\{[0-9a-zA-Z_.-]+\}|%(?:\d+\$)?[sdif]/g, ' ');
+  const maskSpan = (match) => match.replace(/[^\n]/g, ' ');
+  const textWithoutTokens = maskUrls(String(text || ''))
+    .replace(/\{\{[0-9a-zA-Z_.-]+\}\}|\{[0-9a-zA-Z_.-]+\}|%(?:\d+\$)?[sdif]/g, maskSpan);
 
   const findings = [];
   if (pronoun === 'Anda') {
-    const hasEncliticMu = (textWithoutTokens.match(/\b[a-zA-Z\u00C0-\u024F]{2,}-?mu\b/gi) || []).some(
-      (w) => !NON_PRONOUN_MU_EXCEPTIONS.test(w),
-    );
-    if (/\b(?:kamu|kau)\b/i.test(textWithoutTokens) || hasEncliticMu) {
+    const informalRx = /\b(?:kamu|kau)\b/gi;
+    for (const m of textWithoutTokens.matchAll(informalRx)) {
+      if (findings.length >= maxFindings) break;
       findings.push({
         rule: 'pronoun-mismatch',
-        message: `Informal pronoun found in "${text}"; formal "Anda" is enforced by project policy.`,
+        category: getRuleCategory('pronoun-mismatch'),
+        message: `Informal pronoun "${m[0]}" found; formal "Anda" is enforced by project policy.`,
+        startIndex: m.index,
+        endIndex: m.index + m[0].length,
+        original: m[0],
+        replacement: 'Anda',
+        confidence: 'contextual',
       });
     }
+    const encliticRx = /\b[a-zA-Z\u00C0-\u024F]{2,}-?mu\b/gi;
+    for (const m of textWithoutTokens.matchAll(encliticRx)) {
+      if (findings.length >= maxFindings) break;
+      if (!NON_PRONOUN_MU_EXCEPTIONS.test(m[0])) {
+        findings.push({
+          rule: 'pronoun-mismatch',
+          category: getRuleCategory('pronoun-mismatch'),
+          message: `Informal pronoun "${m[0]}" found; formal "Anda" is enforced by project policy.`,
+          startIndex: m.index,
+          endIndex: m.index + m[0].length,
+          original: m[0],
+          confidence: 'contextual',
+        });
+      }
+    }
   } else if (pronoun === 'kamu') {
-    if (/\bAnda\b/i.test(textWithoutTokens)) {
+    const formalRx = /\bAnda\b/gi;
+    for (const m of textWithoutTokens.matchAll(formalRx)) {
+      if (findings.length >= maxFindings) break;
       findings.push({
         rule: 'pronoun-mismatch',
-        message: `Formal pronoun "Anda" found in "${text}"; informal "kamu" is enforced by project policy.`,
+        category: getRuleCategory('pronoun-mismatch'),
+        message: `Formal pronoun "${m[0]}" found; informal "kamu" is enforced by project policy.`,
+        startIndex: m.index,
+        endIndex: m.index + m[0].length,
+        original: m[0],
+        replacement: 'kamu',
+        confidence: 'contextual',
       });
     }
   }
@@ -274,6 +392,7 @@ function checkPronounPolicy(text, pronoun) {
 /**
  * Strip Markdown 4-space or tab-indented code blocks while preserving indented list continuations
  * and nested list items (e.g., `- Petunjuk\n\n    - Silahkan...`).
+ * Uses length-preserving whitespace masking so line lengths and character coordinates remain 1:1.
  * @param {string} text
  * @returns {string}
  */
@@ -294,7 +413,7 @@ function stripIndentedCodeBlocks(text) {
 
   for (const line of lines) {
     if (line.trim() === '') {
-      out.push('');
+      out.push(line);
       afterBlankLine = true;
       continue;
     }
@@ -307,7 +426,7 @@ function stripIndentedCodeBlocks(text) {
     if (indent >= codeThreshold && (inIndentedCodeBlock || afterBlankLine)) {
       inIndentedCodeBlock = true;
       afterBlankLine = false;
-      out.push('');
+      out.push(line.replace(/[^\n]/g, ' '));
       continue;
     }
 
@@ -328,61 +447,140 @@ function stripIndentedCodeBlocks(text) {
 
 /**
  * Audit a prose string for Indonesian AI slop, SMS slang, non-standard spelling, and pronoun policy.
- * Automatically strips protected Markdown fenced code blocks (backticks and tildes),
- * 4-space/tab-indented code blocks, and inline code spans.
+ * Automatically masks protected Markdown fenced code blocks (backticks and tildes),
+ * 4-space/tab-indented code blocks, inline code spans, and URLs with length-preserving whitespace.
  * @param {string} text
- * @param {{ stripIndentedCode?: boolean, pronoun?: string }} [options] Set `stripIndentedCode: false` for plain-text input (e.g., dictionary values) where indentation does not mark code.
- * @returns {Array<{rule: string, message: string}>}
+ * @param {{ stripIndentedCode?: boolean, pronoun?: string, maxFindings?: number }} [options] Set `stripIndentedCode: false` for plain-text input (e.g., dictionary values) where indentation does not mark code.
+ * @returns {Array<{rule: string, category: string, message: string, startIndex?: number, endIndex?: number, original?: string, replacement?: string, confidence?: string}>}
  */
 function auditText(text, options = {}) {
   const stripIndentedCode = options.stripIndentedCode ?? true;
   const pronoun = options.pronoun ?? null;
+  const maxFindings = options.maxFindings ?? Infinity;
+  if (maxFindings <= 0) return [];
   const issues = [];
-  const withoutFences = String(text || '')
-    .replace(/```[\s\S]*?```/g, ' ')
-    .replace(/~~~[\s\S]*?~~~/g, ' ');
-  const str = (stripIndentedCode ? stripIndentedCodeBlocks(withoutFences) : withoutFences).replace(/`[^`\n]+`/g, ' ');
+  const maskSpan = (match) => match.replace(/[^\n]/g, ' ');
 
-  const smsMatch = str.match(SMS_SLANG_REGEX);
-  if (smsMatch) {
+  const withoutFences = String(text || '')
+    .replace(/```[\s\S]*?```/g, maskSpan)
+    .replace(/~~~[\s\S]*?~~~/g, maskSpan);
+  const withoutIndented = stripIndentedCode ? stripIndentedCodeBlocks(withoutFences) : withoutFences;
+  const str = maskUrls(withoutIndented.replace(/`[^`\n]+`/g, maskSpan))
+    .replace(/\{\{[0-9a-zA-Z_.-]+\}\}|\{[0-9a-zA-Z_.-]+\}|%(?:\d+\$)?[sdif]/g, maskSpan);
+
+  const smsRx = new RegExp(SMS_SLANG_REGEX.source, (SMS_SLANG_REGEX.flags || 'i').replace(/g/g, '') + 'g');
+  for (const m of str.matchAll(smsRx)) {
+    if (issues.length >= maxFindings) break;
+    const original = m[0];
+    const startIndex = m.index;
+    const endIndex = startIndex + original.length;
     issues.push({
       rule: 'sms-abbreviation',
       category: getRuleCategory('sms-abbreviation'),
-      message: `Banned chat/SMS abbreviation "${smsMatch[0]}" found; use full word or lexical compaction.`,
+      message: `Banned chat/SMS abbreviation "${original}" found; use full word or lexical compaction.`,
+      startIndex,
+      endIndex,
+      original,
+      confidence: 'contextual',
     });
   }
 
   for (const item of NON_STANDARD_WORDS) {
-    const m = str.match(item.regex);
-    if (m) {
+    if (issues.length >= maxFindings) break;
+    const rx = new RegExp(item.regex.source, (item.regex.flags || 'i').replace(/g/g, '') + 'g');
+    for (const m of str.matchAll(rx)) {
+      if (issues.length >= maxFindings) break;
+      const original = m[0];
+      const startIndex = m.index;
+      const endIndex = startIndex + original.length;
+
+      let replacement = undefined;
+      let confidence = 'high';
+
+      if (!item.fix.includes('/') && !item.fix.includes('(')) {
+        replacement = preserveCase(original, item.fix);
+      } else if (item.regex.source.includes('(disini|disana|disitu)')) {
+        const lower = original.toLowerCase();
+        const rep = lower === 'disini' ? 'di sini' : lower === 'disana' ? 'di sana' : 'di situ';
+        replacement = preserveCase(original, rep);
+      } else if (item.regex.source.includes('(diatas|dibawah|didalam|diluar)')) {
+        const lower = original.toLowerCase();
+        const rep = lower === 'diatas' ? 'di atas' : lower === 'dibawah' ? 'di bawah' : lower === 'didalam' ? 'di dalam' : 'di luar';
+        replacement = preserveCase(original, rep);
+      } else if (item.regex.source.includes('(kesana|kesini)')) {
+        const lower = original.toLowerCase();
+        const rep = lower === 'kesana' ? 'ke sana' : 'ke sini';
+        replacement = preserveCase(original, rep);
+      } else if (item.regex.source.includes('himbau(an)?')) {
+        const lower = original.toLowerCase();
+        const rep = lower.endsWith('an') ? 'imbauan' : 'imbau';
+        replacement = preserveCase(original, rep);
+      } else {
+        confidence = 'contextual';
+      }
+
       issues.push({
         rule: 'kata-tidak-baku',
         category: getRuleCategory('kata-tidak-baku'),
-        message: `Non-standard word "${m[0]}" found; use KBBI standard "${item.fix}".`,
+        message: `Non-standard word "${original}" found; use KBBI standard "${item.fix}".`,
+        startIndex,
+        endIndex,
+        original,
+        replacement,
+        confidence,
       });
     }
   }
 
   for (const pat of SLOP_AND_PLEONASM_PATTERNS) {
-    if (pat.regex.test(str)) {
+    if (issues.length >= maxFindings) break;
+    const rx = new RegExp(pat.regex.source, (pat.regex.flags || 'i').replace(/g/g, '') + 'g');
+    for (const m of str.matchAll(rx)) {
+      if (issues.length >= maxFindings) break;
+      const original = m[0];
+      const startIndex = m.index;
+      const endIndex = startIndex + original.length;
+      let replacement = undefined;
+      let confidence = 'contextual';
+
+      if (pat.reason.includes('dalam rangka untuk')) {
+        replacement = preserveCase(original, 'untuk');
+        confidence = 'high';
+      } else if (pat.reason.includes('para hadirin')) {
+        replacement = preserveCase(original, 'hadirin');
+        confidence = 'high';
+      }
+
       issues.push({
         rule: 'slop-or-pleonasm',
         category: getRuleCategory('slop-or-pleonasm'),
         message: pat.reason,
+        startIndex,
+        endIndex,
+        original,
+        replacement,
+        confidence,
       });
     }
   }
 
-  if (pronoun) {
-    for (const pIssue of checkPronounPolicy(str, pronoun)) {
+  if (pronoun && issues.length < maxFindings) {
+    for (const pIssue of checkPronounPolicy(str, pronoun, maxFindings - issues.length)) {
+      if (issues.length >= maxFindings) break;
       issues.push({
         rule: pIssue.rule,
         category: getRuleCategory(pIssue.rule),
         message: pIssue.message,
+        startIndex: pIssue.startIndex,
+        endIndex: pIssue.endIndex,
+        original: pIssue.original,
+        replacement: pIssue.replacement,
+        confidence: pIssue.confidence,
       });
     }
   }
 
+  issues.sort((a, b) => (a.startIndex ?? 0) - (b.startIndex ?? 0));
   return issues;
 }
 
@@ -437,8 +635,24 @@ function auditDictionary(dict, options = {}) {
     return findings;
   }
 
+  const pushFinding = (finding) => {
+    if (findings.length >= MAX_DICTIONARY_FINDINGS) {
+      if (findings[findings.length - 1]?.rule !== 'findings-limit-exceeded') {
+        findings.push({
+          key: currentPrefix || 'root',
+          rule: 'findings-limit-exceeded',
+          category: getRuleCategory('findings-limit-exceeded'),
+          message: `Total dictionary findings exceeded safety limit of ${MAX_DICTIONARY_FINDINGS}.`,
+        });
+      }
+      return false;
+    }
+    findings.push(finding);
+    return true;
+  };
+
   if (currentDepth > MAX_DICTIONARY_DEPTH) {
-    findings.push({
+    pushFinding({
       key: currentPrefix || 'root',
       rule: 'nesting-limit-exceeded',
       category: getRuleCategory('nesting-limit-exceeded'),
@@ -471,12 +685,7 @@ function auditDictionary(dict, options = {}) {
     }
 
     if (findings.length >= MAX_DICTIONARY_FINDINGS) {
-      findings.push({
-        key: currentPrefix || 'root',
-        rule: 'findings-limit-exceeded',
-        category: getRuleCategory('findings-limit-exceeded'),
-        message: `Total dictionary findings exceeded safety limit of ${MAX_DICTIONARY_FINDINGS}.`,
-      });
+      pushFinding(null);
       break;
     }
 
@@ -521,6 +730,12 @@ function auditDictionary(dict, options = {}) {
         counter,
         ignoreKeys: options.ignoreKeys,
       });
+      if (
+        findings[findings.length - 1]?.rule === 'findings-limit-exceeded' ||
+        findings[findings.length - 1]?.rule === 'traversal-limit-exceeded'
+      ) {
+        break;
+      }
       continue;
     }
     if (typeof value !== 'string') continue;
@@ -540,12 +755,12 @@ function auditDictionary(dict, options = {}) {
       /[a-zA-Z]{3,}/.test(textOutsidePlaceholders) &&
       !/^https?:\/\//i.test(trimmedVal)
     ) {
-      findings.push({
+      if (!pushFinding({
         key: fullKey,
         rule: 'silent-fallback',
         category: getRuleCategory('silent-fallback'),
         message: `Untranslated identity fallback (${typeof sourceValue === 'string' ? 'source === value' : 'key === value'}, ${value.length} chars).`,
-      });
+      })) break;
     }
 
     // 2. Placeholder parity and well-formedness check
@@ -553,35 +768,35 @@ function auditDictionary(dict, options = {}) {
 
     // 2a. Malformed placeholder check (unmatched or improperly ordered curly braces)
     if (hasMalformedBraces(value)) {
-      findings.push({
+      if (!pushFinding({
         key: fullKey,
         rule: 'malformed-placeholder',
         category: getRuleCategory('malformed-placeholder'),
         message: `Unmatched or improperly ordered curly braces in placeholder for "${value}".`,
-      });
+      })) break;
     }
 
     // 2b. Placeholder parity check
     if (typeof sourceValue === 'string') {
       const srcPh = extractPlaceholders(sourceValue);
       if (srcPh.join(',') !== valPh.join(',')) {
-        findings.push({
+        if (!pushFinding({
           key: fullKey,
           rule: 'placeholder-mismatch',
           category: getRuleCategory('placeholder-mismatch'),
           message: `Placeholders in source [${srcPh.join(', ')}] do not match value [${valPh.join(', ')}].`,
-        });
+        })) break;
       }
     } else {
       // Standalone mode: only check key placeholders if key itself contains placeholders (flat gettext pattern)
       const keyPh = extractPlaceholders(key);
       if (keyPh.length > 0 && keyPh.join(',') !== valPh.join(',')) {
-        findings.push({
+        if (!pushFinding({
           key: fullKey,
           rule: 'placeholder-mismatch',
           category: getRuleCategory('placeholder-mismatch'),
           message: `Placeholders in key [${keyPh.join(', ')}] do not match value [${valPh.join(', ')}].`,
-        });
+        })) break;
       }
     }
 
@@ -645,53 +860,68 @@ function auditDictionary(dict, options = {}) {
           Boolean(eponymousNounPairs[enNoun] && eponymousNounPairs[enNoun].test(invertedMatch[1]));
 
         if (!isPermittedQuantifier && !isLeadingVerbWithObject && !isEponymousPhrase) {
-          findings.push({
+          if (!pushFinding({
             key: fullKey,
             rule: 'inverted-quantitative-placeholder',
             category: getRuleCategory('inverted-quantitative-placeholder'),
             message: `Quantitative placeholder inverted: "${sourceTemplate}" (${ph} count) translated with placeholder placed after noun ("${value}"); in Indonesian, quantity must precede the noun (${ph} ${invertedMatch[1]}).`,
-          });
+          })) break;
         }
       }
     }
 
     // 3. Known UI/domain polysemy & calque traps
+    let limitHit = false;
     const trimmedValue = value.trim();
     for (const trap of KNOWN_CALQUE_TRAPS) {
       const isKeyMatch =
         trap.keyMatch.test(key, sourceValue) ||
         (typeof sourceValue === 'string' && trap.keyMatch.test(sourceValue));
       if (isKeyMatch && (trap.badVal.test(trimmedValue) || trap.badVal.test(value))) {
-        findings.push({
+        if (!pushFinding({
           key: fullKey,
           rule: 'polysemy-calque',
           category: getRuleCategory('polysemy-calque'),
           message: `Literal calque trap in "${value}"; use "${trap.fix}".`,
-        });
+        })) {
+          limitHit = true;
+          break;
+        }
       }
     }
+    if (limitHit) break;
 
     // 4. Pronoun policy check (when explicit project override is specified)
     if (pronoun) {
-      for (const pIssue of checkPronounPolicy(value, pronoun)) {
-        findings.push({
+      const pronounBudget = Math.max(0, MAX_DICTIONARY_FINDINGS - findings.length) + 1;
+      for (const pIssue of checkPronounPolicy(value, pronoun, pronounBudget)) {
+        if (!pushFinding({
           key: fullKey,
           rule: pIssue.rule,
           category: getRuleCategory(pIssue.rule),
           message: pIssue.message,
-        });
+        })) {
+          limitHit = true;
+          break;
+        }
       }
+      if (limitHit) break;
     }
 
     // 5. Text-level checks (SMS slang, kata tidak baku, slop)
-    for (const issue of auditText(value, { stripIndentedCode: false })) {
-      findings.push({
+    const textBudget = Math.max(0, MAX_DICTIONARY_FINDINGS - findings.length) + 1;
+    for (const issue of auditText(value, { stripIndentedCode: false, maxFindings: textBudget })) {
+      if (!pushFinding({
         key: fullKey,
         rule: issue.rule,
         category: issue.category || getRuleCategory(issue.rule),
         message: issue.message,
-      });
+      })) {
+        limitHit = true;
+        break;
+      }
     }
+    if (limitHit) break;
   }
 
   if (isObject) {
@@ -700,6 +930,7 @@ function auditDictionary(dict, options = {}) {
 
   return findings;
 }
+/* ENGINE_EXPORT_END */
 
 /**
  * Sanitize diagnostic strings to prevent log injection and terminal control sequence tampering.
