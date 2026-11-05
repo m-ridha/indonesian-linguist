@@ -90,10 +90,10 @@ test('auditText: flags non-standard spellings (silahkan, sekedar, resiko, meruba
 });
 
 test('auditText: flags non-standard kedaluwarsa variants', () => {
-  const issues = auditText('Tanggal daluwarsa. Kode ini kadaluarsa. Akses kedaluarsa juga harus diperbarui.');
+  const issues = auditText('Tanggal daluwarsa. Kode ini kadaluarsa. Kadaluwarsa juga harus diperbarui. Akses kedaluarsa juga harus diperbarui.');
   const spellingIssues = issues.filter((issue) => issue.rule === 'kata-tidak-baku');
-  assert.equal(spellingIssues.length, 3);
-  assert.ok(spellingIssues.every((issue) => issue.replacement === 'kedaluwarsa'));
+  assert.equal(spellingIssues.length, 4);
+  assert.ok(spellingIssues.every((issue) => issue.replacement.toLowerCase() === 'kedaluwarsa'));
   assert.equal(auditText('Kode ini kedaluwarsa.').length, 0);
 });
 
