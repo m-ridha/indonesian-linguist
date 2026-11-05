@@ -69,7 +69,7 @@ Every linguistic or localization rule added to this repository must be backed by
    npm run sync
    ```
 
-   *(The `npm run sync` script mirrors `SKILL.md`, `references/`, and tracked files under `scripts/` (excluding `scripts/sync-skill.js`) into `skills/indonesian-linguist/`. Our automated test suite in [`tests/manifests.test.js`](tests/manifests.test.js) fails if those mirrored files drift or if `SKILL.md` exceeds Antigravity's 24,000-byte load limit.)*
+   *(The `npm run sync` script copies all files under `scripts/` except `scripts/sync-skill.js` — including any git-ignored files — along with `SKILL.md` and `references/`, into `skills/indonesian-linguist/`. Our automated test suite in [`tests/manifests.test.js`](tests/manifests.test.js) detects missing or changed plugin copies of current non-ignored root files, but does not detect plugin-only files left behind after a root file is deleted or renamed. It also fails if `SKILL.md` exceeds Antigravity's 24,000-byte load limit.)*
 3. **Run Offline Verification & Self-Audit**:
    Run the zero-dependency test suite and deterministic auditor locally (detailed guidelines in [`docs/testing.md`](docs/testing.md)):
 
