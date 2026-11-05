@@ -200,6 +200,14 @@ test('engine.analyze: auto-detects JSON key-value snippets without outer braces'
   assert.strictEqual(linkInnerRes.findings.some((f) => f.original === 'resiko'), false);
   assert.ok(linkInnerRes.findings.some((f) => f.original.toLowerCase() === 'silahkan'));
 
+  // Bare URL followed by em dash stops URL mask at em dash so both em dash and following errors are caught
+  const bareUrlWithEmDash = 'Kunjungi https://example.com—silahkan catat.';
+  const bareUrlEmDashRes = engine.analyze(bareUrlWithEmDash);
+  assert.strictEqual(bareUrlEmDashRes.mode, 'prose');
+  assert.ok(bareUrlEmDashRes.findings.some((f) => f.rule === 'slop-or-pleonasm' && f.message.includes('em dash')));
+  assert.ok(bareUrlEmDashRes.findings.some((f) => f.original.toLowerCase() === 'silahkan'));
+  assert.strictEqual(bareUrlEmDashRes.cleanText, 'Kunjungi https://example.com—silakan catat.');
+
   // Nested parentheses in URLs are completely masked without exposing inner tokens
   const nestedParenUrl = 'https://example.com/topik(resiko_(contoh)) silahkan catat';
   const nestedParenRes = engine.analyze(nestedParenUrl);

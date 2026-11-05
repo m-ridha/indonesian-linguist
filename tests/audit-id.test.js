@@ -1528,3 +1528,14 @@ test('auditDictionary: flags v1.2.1 assistance machines, prepositional unit head
   assert.deepEqual(urlExemptionClean, []);
 });
 
+test('auditDictionary: bounds per-value findings to MAX_DICTIONARY_FINDINGS and appends findings-limit-exceeded', () => {
+  const findings = auditDictionary({
+    huge: 'silahkan '.repeat(5100),
+    next: 'silahkan',
+  });
+  assert.equal(findings.length, 5001);
+  assert.equal(findings[5000].rule, 'findings-limit-exceeded');
+  assert.equal(findings.filter((f) => f.rule === 'kata-tidak-baku').length, 5000);
+});
+
+
