@@ -18,10 +18,6 @@
   <a href="https://github.com/m-ridha/indonesian-linguist">GitHub</a>
 </p>
 
-<p align="center">
-  <a href="https://huggingface.co/spaces/m-ridha/indonesian-linguist"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Indonesian%20Linguist%20Playground-emerald" alt="Indonesian Linguist Hugging Face Space"></a>
-</p>
-
 <br>
 
 **Indonesian Linguist** is an expert language, software localization (i18n/UX microcopy), and anti-slop writing engine for AI coding agents. It enforces EYD V and KBBI VI grammar, resolves isolated UI polysemy traps, compacts mobile layouts without SMS slang, retains established developer and fitness loanwords, and eliminates Indonesian AI slop.
@@ -30,12 +26,6 @@
 
 ## Quickstart
 
-### Web Playground & Live Demo
-
-Try the 100% deterministic web demo **[Indonesian Linguist](https://huggingface.co/spaces/m-ridha/indonesian-linguist)** on Hugging Face Spaces:
-- **Zero-Setup & Client-Side Privacy**: Runs completely in browser memory with zero remote data egress.
-- **Prose & JSON Catalog Support**: Automatically detects input format, masks markdown code blocks, flags translation calques, and provides safe reverse-order batch fixes.
-
 ### In Chat & Pair Programming
 
 Invoke `/indonesian-linguist` or prompt your agent for any Indonesian language, translation, or localization task (replace `<path/to/...>` with your catalog paths):
@@ -43,6 +33,12 @@ Invoke `/indonesian-linguist` or prompt your agent for any Indonesian language, 
 ```text
 /indonesian-linguist Localize <path/to/id.json> using <path/to/en.json> as source.
 ```
+
+### Web Playground & Live Demo
+
+Try the 100% deterministic web demo **[Indonesian Linguist](https://huggingface.co/spaces/m-ridha/indonesian-linguist)** on Hugging Face Spaces:
+- **Zero-Setup & Client-Side Privacy**: Runs completely in browser memory with zero remote data egress.
+- **Prose & JSON Catalog Support**: Automatically detects input format, masks markdown code blocks, flags translation calques, and provides safe reverse-order batch fixes.
 
 ### Deterministic Localization & Prose Auditor
 
