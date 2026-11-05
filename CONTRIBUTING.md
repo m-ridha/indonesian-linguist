@@ -66,10 +66,10 @@ Every linguistic or localization rule added to this repository must be backed by
    If you edit the root [`SKILL.md`](SKILL.md), always sync the plugin mirror before committing:
 
    ```bash
-   cp SKILL.md skills/indonesian-linguist/SKILL.md
+    npm run sync
    ```
 
-   *(Our automated test suite in [`tests/manifests.test.js`](tests/manifests.test.js) fails if the two files drift or if `SKILL.md` exceeds Antigravity's 24,000-byte load limit.)*
+   *(The `npm run sync` script mirrors `SKILL.md`, `references/`, and `scripts/` into `skills/indonesian-linguist/`. Our automated test suite in [`tests/manifests.test.js`](tests/manifests.test.js) fails if these files drift or if `SKILL.md` exceeds Antigravity's 24,000-byte load limit.)*
 3. **Run Offline Verification & Self-Audit**:
    Run the zero-dependency test suite and deterministic auditor locally (detailed guidelines in [`docs/testing.md`](docs/testing.md)):
 
