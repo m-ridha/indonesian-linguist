@@ -1,12 +1,6 @@
 name: Deploy Space
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'space/**'
-      - 'scripts/audit-id.js'
-      - 'scripts/build-space-engine.js'
   release:
     types: [published]
   workflow_dispatch:

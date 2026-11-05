@@ -30,6 +30,7 @@ flowchart TD
     D --> E["5. CI validates tag SemVer & main ancestry"]
     E --> F["6. gh release create generates draft with notes"]
     F --> G["7. Maintainer reviews draft in GitHub UI & clicks Publish"]
+    G --> H["8. Published release deploys the static Space"]
 ```
 
 ### Step 1: Version Bump PR
@@ -70,6 +71,7 @@ When a `v*` tag is pushed:
 1. Navigate to the repository's [Releases page](https://github.com/m-ridha/indonesian-linguist/releases).
 2. The newly created release will be marked as a **Draft** (only visible to repository maintainers).
 3. Review the release notes, optionally add highlights or migration notes, and click **"Publish release"**.
+4. Publishing also triggers `.github/workflows/deploy-space.yml`, which rebuilds the static engine and deploys the Space to Hugging Face. For a Space-only redeploy without cutting a release, run that workflow manually via `workflow_dispatch`.
 
 ---
 
