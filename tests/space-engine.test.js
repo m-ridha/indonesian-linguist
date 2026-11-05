@@ -251,4 +251,14 @@ test('engine.analyze: auto-detects JSON key-value snippets without outer braces'
     assert.strictEqual(f.message.includes(longText), false);
     assert.match(f.message, /Informal pronoun "kamu" found/);
   }
+
+  // Prose findings are capped at MAX_PROSE_FINDINGS (default 5000) or caller-specified maxFindings
+  const hugeProse = 'silahkan '.repeat(5100);
+  const cappedProseRes = engine.analyze(hugeProse);
+  assert.strictEqual(cappedProseRes.findings.length, engine.MAX_PROSE_FINDINGS);
+  assert.strictEqual(cappedProseRes.stats.totalFindings, engine.MAX_PROSE_FINDINGS);
+
+  const customCapRes = engine.analyze(hugeProse, { maxFindings: 25 });
+  assert.strictEqual(customCapRes.findings.length, 25);
+  assert.strictEqual(customCapRes.stats.totalFindings, 25);
 });

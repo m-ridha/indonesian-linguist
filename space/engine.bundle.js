@@ -985,13 +985,19 @@ export function applyBatchFixes(text, findings, options = {}) {
 }
 
 /**
+ * Maximum allowed findings collected during a prose audit before bounding output.
+ */
+export const MAX_PROSE_FINDINGS = 5000;
+
+/**
  * Analyze freeform Indonesian prose string.
  * @param {string} text
- * @param {{ pronoun?: string, stripIndentedCode?: boolean }} [options]
+ * @param {{ pronoun?: string, stripIndentedCode?: boolean, maxFindings?: number }} [options]
  * @returns {{ mode: 'prose', valid: true, findings: Array<any>, stats: any, cleanText: string }}
  */
 export function analyzeText(text, options = {}) {
-  const findings = auditText(text, options);
+  const maxFindings = options.maxFindings ?? MAX_PROSE_FINDINGS;
+  const findings = auditText(text, { ...options, maxFindings });
   const stats = {
     totalFindings: findings.length,
     highConfidence: findings.filter((f) => f.confidence === 'high').length,
