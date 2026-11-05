@@ -66,6 +66,7 @@ const KNOWN_CALQUE_TRAPS = [
   { keyMatch: /hop over/i, badVal: /\b(lanjutkan|meneruskan)\b/i, fix: 'melewati / melompati' },
   {
     keyMatch: {
+      /** @param {string} key */
       test(key) {
         const idx = String(key || '').search(/\bsigns\b/i);
         return idx !== -1 && /\bouts?\b/i.test(key.slice(idx + 5));
@@ -82,6 +83,7 @@ const KNOWN_CALQUE_TRAPS = [
   { keyMatch: /assist(ance|ed) machine/i, badVal: /\bmesin bantuan\b/i, fix: 'mesin assisted / mesin berbeban bantuan' },
   {
     keyMatch: {
+      /** @param {string} key @param {unknown} [sourceVal] */
       test(key, sourceVal) {
         const raw = typeof sourceVal === 'string' ? sourceVal : key;
         const text = typeof raw === 'string' ? raw.trim() : raw;
@@ -93,6 +95,7 @@ const KNOWN_CALQUE_TRAPS = [
   },
   {
     keyMatch: {
+      /** @param {string} key @param {unknown} [sourceVal] */
       test(key, sourceVal) {
         const raw = typeof sourceVal === 'string' ? sourceVal : key;
         const text = typeof raw === 'string' ? raw.trim() : raw;
@@ -149,7 +152,7 @@ function getRuleCategory(rule) {
 /**
  * Checks if a given key path is excluded by exact match or wildcard prefix.
  * @param {string} keyPath - The dot-separated key path being checked.
- * @param {Set<string>|Array<string>|null|undefined} ignoreKeys - Collection of ignored keys or wildcards.
+ * @param {Set<string>|Array<string>|string|null|undefined} ignoreKeys - Collection of ignored keys or wildcards.
  * @returns {boolean} True if the key path is ignored.
  */
 function isKeyIgnored(keyPath, ignoreKeys) {
@@ -733,7 +736,7 @@ function auditDictionary(dict, options = {}) {
         ...options,
         prefix: fullKey,
         depth: currentDepth + 1,
-        source: (source && typeof source === 'object') ? source[key] : null,
+        source: (source && typeof source === 'object') ? (/** @type {Record<string, unknown>} */ (source))[key] : null,
         accumulator: findings,
         visited,
         activeStack,

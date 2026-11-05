@@ -181,7 +181,7 @@ function findJsonStringValues(jsonStr) {
     if (ch === ',') {
       const top = stack[stack.length - 1];
       if (top?.type === 'array') {
-        top.index++;
+        top.index = (top.index ?? 0) + 1;
         inValue = true;
       } else {
         inValue = false;
