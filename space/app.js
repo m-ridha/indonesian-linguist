@@ -192,7 +192,7 @@ function renderFindingCards(findings, mode) {
     const cat = finding.category || 'general';
     const catLabel = categoryLabels[cat] || cat;
     const badgeColor = categoryBadgeColors[cat] || categoryBadgeColors.general;
-    const hasReplacement = typeof finding.replacement === 'string';
+    const hasReplacement = mode === 'prose' && typeof finding.replacement === 'string';
 
     html += `
       <div id="issue-card-${idx}" class="p-3 bg-white rounded-lg border border-slate-200 hover:border-slate-300 shadow-sm transition space-y-2">
@@ -253,13 +253,6 @@ function applySingleFix(finding, mode) {
     rawInput.value = nextVal;
     showToast(`Applied fix "${finding.replacement}" successfully!`);
     runAnalysis();
-  } else if (mode === 'json') {
-    // In JSON mode, apply batch fix or re-run analysis
-    if (currentAnalysis && currentAnalysis.cleanText) {
-      rawInput.value = currentAnalysis.cleanText;
-      showToast('JSON catalog fixes applied successfully!');
-      runAnalysis();
-    }
   }
 }
 
