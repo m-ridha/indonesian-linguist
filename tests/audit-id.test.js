@@ -89,6 +89,14 @@ test('auditText: flags non-standard spellings (silahkan, sekedar, resiko, meruba
   assert.ok(issues.some((i) => i.rule === 'slop-or-pleonasm' && i.message.includes('dalam rangka untuk')));
 });
 
+test('auditText: flags non-standard kedaluwarsa variants', () => {
+  const issues = auditText('Tanggal daluwarsa. Kode ini kadaluarsa. Kadaluwarsa juga harus diperbarui. Akses kedaluarsa juga harus diperbarui.');
+  const spellingIssues = issues.filter((issue) => issue.rule === 'kata-tidak-baku');
+  assert.equal(spellingIssues.length, 4);
+  assert.ok(spellingIssues.every((issue) => issue.replacement.toLowerCase() === 'kedaluwarsa'));
+  assert.equal(auditText('Kode ini kedaluwarsa.').length, 0);
+});
+
 test('auditText: flags AI slop vocabulary, negative parallelism, and stylistic em dashes', () => {
   const slop =
     'Di era digital ini, aplikasi ini—di tengah hiruk pikuk kesibukan—bukan hanya mencatat beban, tetapi juga adalah merupakan teman latihan.';

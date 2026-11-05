@@ -261,12 +261,13 @@ function applySingleFix(finding, mode) {
 function runAnalysis() {
   if (!rawInput) return;
   const text = rawInput.value;
-  const pronoun = registerSelect ? registerSelect.value : '';
+  const selectedPolicy = registerSelect ? registerSelect.value : '';
+  const pronoun = selectedPolicy === 'mixed' ? undefined : selectedPolicy || undefined;
   const mode = modeSelect ? modeSelect.value : 'auto';
 
   updateInputStats(text);
 
-  currentAnalysis = analyze(text, { pronoun: pronoun || undefined, mode });
+  currentAnalysis = analyze(text, { pronoun, mode });
 
   // Update format badge
   if (formatBadge) {
