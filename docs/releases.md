@@ -24,7 +24,7 @@ Our automated test suite (`tests/manifests.test.js`) validates that all manifest
 
 ```mermaid
 flowchart TD
-    A["1. Bump versions in all 6 manifests via PR"] --> B["2. Review & merge PR to main"]
+    A["1. Bump versions and regenerate Space assets via PR"] --> B["2. Review & merge PR to main"]
     B --> C["3. Create annotated git tag (vX.Y.Z) & push"]
     C --> D["4. GitHub Actions runs release workflow"]
     D --> E["5. CI validates tag SemVer & main ancestry"]
@@ -36,9 +36,10 @@ flowchart TD
 ### Step 1: Version Bump PR
 1. Create a branch `chore/bump-vX.Y.Z`.
 2. Update the version string in all six manifests.
-3. Run all quality checks locally per [`docs/testing.md`](testing.md) (`npm test`, `node scripts/audit-id.js docs/*.md scripts/README.md references/README.md references/domains/README.md`, and `npx markdownlint-cli2`).
-4. Open a pull request titled `chore(release): bump version to X.Y.Z`.
-5. Review and merge the pull request into `main`.
+3. Run `npm run build:space` to regenerate the derived Hugging Face Space assets from `package.json`: `space/engine.bundle.js` (`VERSION`) and the `#app-version` label in `space/index.html`.
+4. Run all quality checks locally per [`docs/testing.md`](testing.md) (`npm test`, `node scripts/audit-id.js docs/*.md scripts/README.md references/README.md references/domains/README.md`, and `npx markdownlint-cli2`).
+5. Open a pull request titled `chore(release): bump version to X.Y.Z`.
+6. Review and merge the pull request into `main`.
 
 ### Step 2: Create & Push Git Tag
 Once the PR is merged to `main`, checkout the latest `main` locally and push an annotated git tag:
