@@ -18,6 +18,7 @@ const countStyle = document.getElementById('count-style');
 const countParity = document.getElementById('count-parity');
 const jsonErrorBanner = document.getElementById('json-error-banner');
 const jsonErrorText = document.getElementById('json-error-text');
+const cappedWarningBanner = document.getElementById('capped-warning-banner');
 const reviewDisplay = document.getElementById('review-display');
 const issuesList = document.getElementById('issues-list');
 const btnApplyBatch = document.getElementById('btn-apply-batch');
@@ -292,6 +293,7 @@ function runAnalysis() {
 
   // Handle JSON error boundary
   if (currentAnalysis.mode === 'json' && !currentAnalysis.valid) {
+    if (cappedWarningBanner) cappedWarningBanner.classList.add('hidden');
     if (jsonErrorBanner) jsonErrorBanner.classList.remove('hidden');
     if (jsonErrorText) jsonErrorText.textContent = currentAnalysis.error || 'Invalid JSON syntax.';
     if (reviewDisplay) {
@@ -307,6 +309,15 @@ function runAnalysis() {
   }
 
   if (jsonErrorBanner) jsonErrorBanner.classList.add('hidden');
+
+  // Handle prose capped findings warning banner
+  if (cappedWarningBanner) {
+    if (currentAnalysis.mode === 'prose' && stats.isCapped) {
+      cappedWarningBanner.classList.remove('hidden');
+    } else {
+      cappedWarningBanner.classList.add('hidden');
+    }
+  }
 
   // Render review display
   if (currentAnalysis.mode === 'json') {

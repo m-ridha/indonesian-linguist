@@ -261,4 +261,16 @@ test('engine.analyze: auto-detects JSON key-value snippets without outer braces'
   const customCapRes = engine.analyze(hugeProse, { maxFindings: 25 });
   assert.strictEqual(customCapRes.findings.length, 25);
   assert.strictEqual(customCapRes.stats.totalFindings, 25);
+  assert.strictEqual(cappedProseRes.stats.isCapped, true);
+  assert.strictEqual(engine.analyze('silahkan masuk').stats.isCapped, false);
+
+  // JSON cleaning is bounded to the audited scope when the finding limit is reached
+  const bigCatalog = {};
+  for (let i = 0; i < 5005; i++) bigCatalog['k' + i] = 'silahkan';
+  const cappedJsonRes = engine.analyze(JSON.stringify(bigCatalog, null, 2));
+  assert.strictEqual(cappedJsonRes.stats.isCapped, true);
+  const cleanedCatalog = JSON.parse(cappedJsonRes.cleanText);
+  assert.strictEqual(cleanedCatalog.k4999, 'silakan');
+  assert.strictEqual(cleanedCatalog.k5000, 'silahkan');
+  assert.strictEqual(cleanedCatalog.k5004, 'silahkan');
 });

@@ -998,10 +998,12 @@ export const MAX_PROSE_FINDINGS = 5000;
 export function analyzeText(text, options = {}) {
   const maxFindings = options.maxFindings ?? MAX_PROSE_FINDINGS;
   const findings = auditText(text, { ...options, maxFindings });
+  const isCapped = findings.length >= maxFindings;
   const stats = {
     totalFindings: findings.length,
     highConfidence: findings.filter((f) => f.confidence === 'high').length,
     byCategory: {},
+    isCapped,
   };
   for (const f of findings) {
     const cat = f.category || 'general';
@@ -1021,7 +1023,7 @@ export function analyzeText(text, options = {}) {
  * Scans a JSON string and extracts all string value positions (excluding object keys).
  * Preserves numbers, booleans, null, keys, comments, and formatting exactly as written.
  * @param {string} jsonStr
- * @returns {Array<{ start: number, end: number, raw: string }>}
+ * @returns {Array<{ start: number, end: number, raw: string, keyPath: string }>}
  */
 function findJsonStringValues(jsonStr) {
   const spans = [];
@@ -1037,14 +1039,18 @@ function findJsonStringValues(jsonStr) {
       continue;
     }
     if (ch === '{' || ch === '[') {
-      stack.push(ch === '{' ? 'object' : 'array');
-      inValue = stack[stack.length - 1] === 'array';
+      stack.push({
+        type: ch === '{' ? 'object' : 'array',
+        currentKey: null,
+        index: ch === '[' ? 0 : undefined,
+      });
+      inValue = stack[stack.length - 1].type === 'array';
       i++;
       continue;
     }
     if (ch === '}' || ch === ']') {
       stack.pop();
-      inValue = stack.length > 0 && stack[stack.length - 1] === 'array';
+      inValue = stack.length > 0 && stack[stack.length - 1].type === 'array';
       i++;
       continue;
     }
@@ -1054,7 +1060,12 @@ function findJsonStringValues(jsonStr) {
       continue;
     }
     if (ch === ',') {
-      inValue = stack.length > 0 && stack[stack.length - 1] === 'array';
+      if (stack.length > 0 && stack[stack.length - 1].type === 'array') {
+        stack[stack.length - 1].index++;
+        inValue = true;
+      } else {
+        inValue = false;
+      }
       i++;
       continue;
     }
@@ -1072,10 +1083,35 @@ function findJsonStringValues(jsonStr) {
       }
       const endContent = i;
       i++;
-      const isKey = (stack.length === 0 || stack[stack.length - 1] === 'object') && !inValue;
-      if (!isKey) {
-        spans.push({ start: startContent, end: endContent, raw: jsonStr.slice(startContent, endContent) });
+      const isKey = (stack.length === 0 || stack[stack.length - 1].type === 'object') && !inValue;
+      if (isKey) {
+        let lastKey;
+        try {
+          lastKey = JSON.parse('"' + jsonStr.slice(startContent, endContent) + '"');
+        } catch {
+          lastKey = jsonStr.slice(startContent, endContent);
+        }
+        if (stack.length > 0) stack[stack.length - 1].currentKey = lastKey;
+        else stack.push({ type: 'root-snippet', currentKey: lastKey });
+      } else {
+        const keyParts = [];
+        for (const frame of stack) {
+          if (frame.currentKey !== null && frame.currentKey !== undefined) {
+            keyParts.push(frame.currentKey);
+          } else if (frame.type === 'array' && frame.index !== undefined) {
+            keyParts.push(frame.index);
+          }
+        }
+        spans.push({
+          start: startContent,
+          end: endContent,
+          raw: jsonStr.slice(startContent, endContent),
+          keyPath: keyParts.join('.'),
+        });
         inValue = false;
+        if (stack.length === 1 && stack[0].type === 'root-snippet') {
+          stack.pop();
+        }
       }
       continue;
     }
@@ -1086,17 +1122,23 @@ function findJsonStringValues(jsonStr) {
 
 /**
  * Directly cleans string values in raw JSON text without rewriting numbers or formatting.
+ * When auditable keys are provided (bounded audit scope), only values matching auditable
+ * keys or findings are cleaned, preventing unreported changes beyond the limit.
  * @param {string} raw
  * @param {string | null} pronoun
+ * @param {Set<string> | null} [allowedKeyPaths]
  * @returns {string}
  */
-function cleanJsonRaw(raw, pronoun) {
+function cleanJsonRaw(raw, pronoun, allowedKeyPaths = null) {
   const spans = findJsonStringValues(raw);
   if (spans.length === 0) return raw;
   const parts = [];
   let cursor = 0;
   let changed = false;
   for (const span of spans) {
+    if (allowedKeyPaths && !allowedKeyPaths.has(span.keyPath)) {
+      continue;
+    }
     let decoded;
     try {
       decoded = JSON.parse('"' + span.raw + '"');
@@ -1182,19 +1224,31 @@ export function analyzeJson(jsonString, options = {}) {
     keyPath: f.key,
   }));
 
+  const isCapped = rawFindings.some((f) => f.rule === 'findings-limit-exceeded' || f.rule === 'traversal-limit-exceeded');
   const stats = {
     totalFindings: findings.length,
     highConfidence: 0,
     byCategory: {},
+    isCapped,
   };
   for (const f of findings) {
     const cat = f.category || 'general';
     stats.byCategory[cat] = (stats.byCategory[cat] || 0) + 1;
   }
 
+  let allowedKeyPaths = null;
+  if (isCapped) {
+    allowedKeyPaths = new Set();
+    for (const f of findings) {
+      if (f.keyPath && f.rule !== 'findings-limit-exceeded' && f.rule !== 'traversal-limit-exceeded') {
+        allowedKeyPaths.add(f.keyPath);
+      }
+    }
+  }
+
   let cleanText = raw;
   try {
-    cleanText = cleanJsonRaw(raw, options.pronoun || null);
+    cleanText = cleanJsonRaw(raw, options.pronoun || null, allowedKeyPaths);
   } catch (_) {
     cleanText = raw;
   }
