@@ -202,7 +202,8 @@ function findJsonStringValues(jsonStr) {
       }
       const endContent = i;
       i++;
-      const isKey = (stack.length === 0 || stack[stack.length - 1].type === 'object') && !inValue;
+      const top = stack[stack.length - 1];
+      const isKey = (!top || top.type === 'object' || top.type === 'root-snippet') && !inValue;
       if (isKey) {
         let lastKey;
         try {
@@ -264,7 +265,7 @@ function cleanJsonRaw(raw, pronoun, allowedKeyPaths = null) {
     } catch {
       continue;
     }
-    const issues = auditText(decoded, { stripIndentedCode: false, pronoun });
+    const issues = auditText(decoded, { stripIndentedCode: false, pronoun, maxFindings: MAX_PROSE_FINDINGS });
     const fixed = applyBatchFixes(decoded, issues, { highOnly: true });
     if (fixed !== decoded) {
       changed = true;

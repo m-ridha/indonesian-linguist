@@ -264,6 +264,12 @@ test('engine.analyze: auto-detects JSON key-value snippets without outer braces'
   assert.strictEqual(cappedProseRes.stats.isCapped, true);
   assert.strictEqual(engine.analyze('silahkan masuk').stats.isCapped, false);
 
+  // Snippet with a nested value followed by a second key keeps key semantics
+  const nestedSnippet = engine.analyze('"a": {"x": "ok"},\n"b": "silahkan masuk"');
+  assert.strictEqual(nestedSnippet.mode, 'json');
+  assert.strictEqual(nestedSnippet.isSnippet, true);
+  assert.match(nestedSnippet.cleanText, /"b": "silakan masuk"/);
+
   // JSON cleaning is bounded to the audited scope when the finding limit is reached
   const bigCatalog = {};
   for (let i = 0; i < 5005; i++) bigCatalog['k' + i] = 'silahkan';
