@@ -40,6 +40,7 @@ Never force stiff literal translations onto terms that have established Indonesi
 | **Gym / At the gym / My gym** | Sasana / Gimnasium / Di gimnasium | **Gym / Di gym / Gym saya** | Universal daily usage |
 | **Check in / Check-out** | Lapor masuk / Lapor keluar | **Check-in / Check-out** | Gym arrival, QR access, geofence check-in |
 | **Working set / Work set** | Perangkat kerja / Set pekerjaan | **Set utama** | Primary target sets (*Make it a warm-up set* $\rightarrow$ **Jadikan set pemanasan**) |
+| **Work weight / Working weight** | Beban kerja / Berat kerja | **Beban set utama / Beban utama** | Target load for working sets; *beban kerja* denotes occupational job workload |
 | **Warm-up set** | Set hangat | **Set pemanasan** | Preparatory lighter sets |
 | **Ramp-up sets** | Set peningkatan | **Set ramp-up** | Progressive feeder sets leading to working weight |
 | **Drop set / Drop-set** | Set penurunan / Jatuhkan set | **Drop set / Drop-set** | Immediate weight reduction without rest |
@@ -82,7 +83,7 @@ Automated translators notoriously mangle exercise names, gym equipment, and musc
 | **Seated good morning** | Duduk selamat pagi | **Seated good morning** | Hip-hinge exercise name |
 | **Barbell / Bar only** | Batang besi / Hanya bilah | **Barbel / Hanya barbel kosong (Hanya bar)** | Unloaded barbell without plates |
 | **Dumbbell / Dumbbells** | Halter *(archaic)* | **Dumbbell** | Modern gym standard |
-| **Weight plate / Plate loading** | Piringan / Pemuatan pelat | **Plat beban / Beban plat (plate loading)** | Plate-loaded machines & barbell plates |
+| **Plates / Weight plates / Plate loading** | Piringan / Piringan beban / Pemuatan pelat | **Plat / Plat beban / Beban plat (plate loading)** | Standard gym term for Olympic or standard weight plates (*tambah plat*, *pasang plat*, *rak plat*) and plate-loaded machines |
 | **Weight stack / Single stack** | Tumpukan berat / Tumpukan tunggal | **Tumpukan beban / Beban tunggal** | Selectorized cable machine weight stack |
 | **Assistance machine / Assisted machine** | Mesin bantuan | **Mesin assisted** / **Mesin berbeban bantuan** | Equipment with counterweight assistance (e.g., assisted chin-up/dip). Never use bare "mesin bantuan" (which sounds like emergency or social relief aid) |
 | **Landmine** | Ranjau darat *(military explosive!)* | **Landmine** | Pivoting barbell floor sleeve |
