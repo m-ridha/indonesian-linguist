@@ -108,6 +108,16 @@ const KNOWN_CALQUE_TRAPS = [
   { keyMatch: /^weights in\s*:?$/i, badVal: /^(?:beban|berat) dalam\s*:?$/i, fix: 'Satuan beban / Satuan berat badan' },
   { keyMatch: /^distance in\s*:?$/i, badVal: /^jarak dalam\s*:?$/i, fix: 'Satuan jarak' },
   { keyMatch: /end of a hold/i, badVal: /\b(akhir|ujung)\s+tahanan\b/i, fix: 'Akhir durasi tahan / Waktu tahan selesai' },
+  {
+    keyMatch: /\b(?:weight\s+plates?|plates?\s+loading|plate[- ]loaded)\b|^plates?$/i,
+    badVal: /\bpiringan(?:\s+beban)?\b/i,
+    fix: 'Plat / Plat beban',
+  },
+  {
+    keyMatch: /\bwork(?:ing)?\s+weights?\b/i,
+    badVal: /\b(?:beban|berat)\s+kerja\b/i,
+    fix: 'Beban set utama / Beban utama',
+  },
 ];
 
 // Full-string anchored patterns for complete retained loanwords, exercise names, Latin muscle names,
@@ -869,10 +879,11 @@ function auditDictionary(dict, options = {}) {
           principle: /^prinsip$/i,
         };
         const enNoun = quantMatch[2].toLowerCase();
-        // Eponymous concepts strictly name a single formula/law (e.g. "{0} formula" -> "Rumus {0}"),
+        // Eponymous concepts strictly name a single formula/law (e.g. "{0} formula" -> "Rumus {0}"
+        // or "{0} formula: calculated..." -> "Rumus {0}: dihitung..."),
         // rather than counting items (e.g. "{0} law available" or "{0} laws found").
         const isEponymousPhrase =
-          /^(?:\{\{[0-9a-zA-Z_.-]+\}\}|\{[0-9a-zA-Z_.-]+\}|%(?:\d+\$)?[sdif])\s+(?:formula|law|theorem|equation|principle)$/i.test(sourceTemplate.trim()) &&
+          /^(?:\{\{[0-9a-zA-Z_.-]+\}\}|\{[0-9a-zA-Z_.-]+\}|%(?:\d+\$)?[sdif])\s+(?:formula|law|theorem|equation|principle)(?:$|\s*[:;,.\(\[\-\u2013\u2014\/])/i.test(sourceTemplate.trim()) &&
           Boolean(eponymousNounPairs[enNoun] && eponymousNounPairs[enNoun].test(invertedMatch[1]));
 
         if (!isPermittedQuantifier && !isLeadingVerbWithObject && !isEponymousPhrase) {
