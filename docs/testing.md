@@ -40,7 +40,7 @@ Unit tests for `scripts/audit-id.js`:
 Space engine and bundle synchronization tests:
 - **Bundle Sync**: Asserts that `space/engine.bundle.js` matches the output of `generateSpaceEngine()` from `scripts/build-space-engine.js`, so a rule change without a rebuild fails CI.
 - **Format Routing**: Verifies JSON versus prose auto-detection, key-value snippet handling, malformed JSON and snippet error boundaries, and clean-text generation.
-- **Engine Behavior**: Covers per-surface pronoun enforcement, reverse-order batch fixes without offset drift, Markdown and URL masking with 1:1 character coordinates, finding caps, and JSON cleaning without precision loss or prototype pollution.
+- **Engine Behavior**: Covers per-surface pronoun enforcement, reverse-order batch fixes without offset drift, Markdown and URL masking with 1:1 character coordinates, finding caps, and JSON cleaning without precision loss while preserving `__proto__` keys.
 
 ---
 
