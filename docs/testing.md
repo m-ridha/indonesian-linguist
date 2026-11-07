@@ -10,8 +10,8 @@ Testing is divided into three distinct automated layers:
 
 | Layer | Runner / Tool | Target | Purpose |
 | --- | --- | --- | --- |
-| **1. Unit & Manifest Tests** | `node --test tests/*.test.js` (`npm test`) | `tests/manifests.test.js`<br>`tests/audit-id.test.js` | Verifies multi-agent manifest consistency, byte limits, link integrity, and auditor functions. |
-| **2. Deterministic Prose & i18n Auditor** | `node scripts/audit-id.js <targets>` | `docs/*.md`, `scripts/*.md`, `references/**/*.md` | Audits documentation and reference modules for AI slop, banned SMS slang, and non-standard spelling. |
+| **1. Unit & Manifest Tests** | `node --test tests/*.test.js` (`npm test`) | `tests/manifests.test.js`<br>`tests/audit-id.test.js`<br>`tests/space-engine.test.js` | Verifies multi-agent manifest consistency, byte limits, link integrity, auditor functions, and Space engine/bundle parity. |
+| **2. Deterministic Prose & i18n Auditor** | `node scripts/audit-id.js <targets>` | `docs/*.md`, `scripts/README.md`, `references/README.md`, `references/domains/README.md` | Audits documentation and reference indexes for AI slop, banned SMS slang, and non-standard spelling. Modules that quote banned forms as teaching examples are excluded. |
 | **3. Markdown Style Linter** | `npx markdownlint-cli2` | All `.md` files | Enforces GitHub Flavored Markdown standards, code fence symmetry, and heading hierarchy. |
 
 ---
@@ -35,6 +35,12 @@ Unit tests for `scripts/audit-id.js`:
 - **Dictionary Auditing (`auditDictionary`)**: Checks flat and nested locale dictionaries for silent English fallbacks (`key === value`), placeholder mismatches, and known UI calque traps (*Back* -> *Punggung*, *Clear rating* -> *Peringkat yang jelas*).
 - **JS Locale Parsing (`parseSimpleJsLocale`)**: Tests parsing of unquoted and quoted keys, stripping of line/block comments outside string literals, and error throwing on unsupported syntax.
 - **CLI Runner**: Executes the CLI runner against clean and defective files to confirm non-zero exit codes on errors.
+
+### `tests/space-engine.test.js`
+Space engine and bundle synchronization tests:
+- **Bundle Sync**: Asserts that `space/engine.bundle.js` matches the output of `generateSpaceEngine()` from `scripts/build-space-engine.js`, so a rule change without a rebuild fails CI.
+- **Format Routing**: Verifies JSON versus prose auto-detection, key-value snippet handling, malformed JSON and snippet error boundaries, and clean-text generation.
+- **Engine Behavior**: Covers per-surface pronoun enforcement, reverse-order batch fixes without offset drift, Markdown and URL masking with 1:1 character coordinates, finding caps, and JSON cleaning without precision loss or prototype pollution.
 
 ---
 
