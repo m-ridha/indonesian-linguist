@@ -1162,9 +1162,10 @@ test('auditDictionary: permits eponymous/named concepts following Indonesian D-M
   const countCatalog = {
     '{0} models available': 'Model {0} tersedia',
     '{0} law available': 'Hukum {0} tersedia',
+    '{0} formula(s) available': 'Rumus {0} tersedia',
   };
   const countFindings = auditDictionary(countCatalog);
-  assert.equal(countFindings.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 2);
+  assert.equal(countFindings.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 3);
 
   // Mismatched English/Indonesian eponymous noun pair is not exempt
   const mismatchedCatalog = {
@@ -1174,20 +1175,34 @@ test('auditDictionary: permits eponymous/named concepts following Indonesian D-M
   assert.ok(mismatchFindings.some((f) => f.rule === 'inverted-quantitative-placeholder'));
 });
 
-test('auditDictionary: flags weight plates (piringan beban) and work weight (beban kerja) calque traps', () => {
+test('auditDictionary: flags weight plates (piringan beban), plate loading (pemuatan pelat), and work weight (beban kerja) calque traps', () => {
   const badFitnessCatalog = {
     Plates: 'Piringan beban',
     'Weight plates': 'Piringan beban',
+    'Add plates': 'Tambahkan piringan',
+    'Plate loading': 'Pemuatan pelat',
+    'Plate loading (piringan)': 'Piringan beban',
     'Work weight': 'Beban kerja',
     'Working weight': 'Berat kerja',
   };
   const badFindings = auditDictionary(badFitnessCatalog);
   const polysemyFindings = badFindings.filter((f) => f.rule === 'polysemy-calque');
-  assert.equal(polysemyFindings.length, 4);
+  assert.equal(polysemyFindings.length, 7);
+  assert.ok(
+    polysemyFindings.some((f) => f.key === 'Plate loading' && f.message.includes('use "Beban plat"')),
+  );
+  assert.ok(
+    polysemyFindings.some((f) => f.key === 'Plate loading (piringan)' && f.message.includes('use "Beban plat"')),
+  );
+  assert.ok(
+    polysemyFindings.some((f) => f.key === 'Add plates' && f.message.includes('use "Plat / Plat beban"')),
+  );
 
   const goodFitnessCatalog = {
     Plates: 'Plat beban',
     'Weight plates': 'Plat beban',
+    'Add plates': 'Tambahkan plat',
+    'Plate loading': 'Beban plat',
     'Work weight': 'Beban set utama',
     'Working weight': 'Beban utama',
   };

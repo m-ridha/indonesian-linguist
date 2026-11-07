@@ -109,9 +109,14 @@ const KNOWN_CALQUE_TRAPS = [
   { keyMatch: /^distance in\s*:?$/i, badVal: /^jarak dalam\s*:?$/i, fix: 'Satuan jarak' },
   { keyMatch: /end of a hold/i, badVal: /\b(akhir|ujung)\s+tahanan\b/i, fix: 'Akhir durasi tahan / Waktu tahan selesai' },
   {
-    keyMatch: /\b(?:weight\s+plates?|plates?\s+loading|plate[- ]loaded)\b|^plates?$/i,
+    keyMatch: /\b(?:weight\s+plates?|plate[- ]loaded|plate\s+racks?|(?:add|load|put|remove|rack|stack)\s+plates?)\b|^plates?$/i,
     badVal: /\bpiringan(?:\s+beban)?\b/i,
     fix: 'Plat / Plat beban',
+  },
+  {
+    keyMatch: /\bplates?\s+loading\b/i,
+    badVal: /\b(?:pemuatan\s+(?:pelat|plat|piringan)|piringan(?:\s+beban)?)\b/i,
+    fix: 'Beban plat',
   },
   {
     keyMatch: /\bwork(?:ing)?\s+weights?\b/i,
@@ -883,7 +888,7 @@ function auditDictionary(dict, options = {}) {
         // or "{0} formula: calculated..." -> "Rumus {0}: dihitung..."),
         // rather than counting items (e.g. "{0} law available" or "{0} laws found").
         const isEponymousPhrase =
-          /^(?:\{\{[0-9a-zA-Z_.-]+\}\}|\{[0-9a-zA-Z_.-]+\}|%(?:\d+\$)?[sdif])\s+(?:formula|law|theorem|equation|principle)(?:$|\s*[:;,.\(\[\-\u2013\u2014\/])/i.test(sourceTemplate.trim()) &&
+          /^(?:\{\{[0-9a-zA-Z_.-]+\}\}|\{[0-9a-zA-Z_.-]+\}|%(?:\d+\$)?[sdif])\s+(?:formula|law|theorem|equation|principle)(?!\s*\(\s*e?s\s*\))(?:$|\s*[:;,.\(\[\-\u2013\u2014\/])/i.test(sourceTemplate.trim()) &&
           Boolean(eponymousNounPairs[enNoun] && eponymousNounPairs[enNoun].test(invertedMatch[1]));
 
         if (!isPermittedQuantifier && !isLeadingVerbWithObject && !isEponymousPhrase) {
