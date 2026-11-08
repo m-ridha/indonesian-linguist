@@ -1227,11 +1227,12 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
     'Over the counter pain relief': 'Pereda nyeri di atas meja kasir',
     'Over-the-counter medicines in stock': 'Obat di atas meja kasir tersedia',
     'Stock market impact on OTC medicines': 'Dampak pasar saham terhadap obat di atas meja kasir',
+    'Buy OTC aspirin': 'Beli aspirin di atas meja',
     OTC: 'Di atas meja',
   };
   const badFindings = auditDictionary(badMedicalCatalog);
   const polysemyFindings = badFindings.filter((f) => f.rule === 'polysemy-calque');
-  assert.equal(polysemyFindings.length, 16);
+  assert.equal(polysemyFindings.length, 17);
 
   const goodMedicalCatalog = {
     'Patient discharge': 'Pemulangan pasien',
@@ -1249,6 +1250,7 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
     'Over the counter pain relief': 'Pereda nyeri tanpa resep',
     'Over-the-counter medicines in stock': 'Obat bebas tersedia',
     'Stock market impact on OTC medicines': 'Dampak pasar saham terhadap obat tanpa resep',
+    'Buy OTC aspirin': 'Beli aspirin tanpa resep',
     OTC: 'Obat bebas (tanpa resep dokter)',
   };
   const goodFindings = auditDictionary(goodMedicalCatalog);
@@ -1274,6 +1276,15 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
   });
   assert.deepEqual(sourceAwareElectricalFindings, []);
 
+  // Source-aware electrical test: electrical context in source value while key has medical context must NOT be flagged
+  const sourceAwareElectricalInSource = {
+    'Patient discharge status': 'Arus pelepasan muatan baterai',
+  };
+  const sourceAwareElectricalInSourceFindings = auditDictionary(sourceAwareElectricalInSource, {
+    source: { 'Patient discharge status': 'Battery discharge current' },
+  });
+  assert.deepEqual(sourceAwareElectricalInSourceFindings, []);
+
   // Non-medical contexts (electrical discharge, battery discharge status, furniture stool, OTC financial trading) must not be falsely flagged
   const nonMedicalCatalog = {
     'Discharge current': 'Arus pelepasan muatan listrik',
@@ -1284,6 +1295,7 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
     'Wooden stool': 'Bangku kayu',
     Stool: 'Kursi',
     'The OTC trading documents are on the table': 'Dokumen perdagangan OTC ada di atas meja',
+    'OTC derivative products are on the table': 'Produk derivatif OTC ada di atas meja',
   };
   const nonMedicalFindings = auditDictionary(nonMedicalCatalog);
   assert.deepEqual(nonMedicalFindings, []);

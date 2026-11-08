@@ -162,7 +162,7 @@ const KNOWN_CALQUE_TRAPS = [
         const sourceText = typeof sourceVal === 'string' ? sourceVal : '';
         const combined = (keyText + ' ' + sourceText).trim();
         const hasMedicalOTC = /\b(?:over(?:-|\s+)the(?:-|\s+)counter|otc)\b/i.test(combined) &&
-          /\b(?:drugs?|medicines?|medications?|pharmaceuticals?|products?|pain\s+relief|painkillers?|pills?|tablets?|syrup|capsules?|remed(?:y|ies)|treatment|prescription|pharmacy|clinic|dosage)\b/i.test(combined);
+          /\b(?:drugs?|medicines?|medications?|pharmaceuticals?|healthcare\s+products?|pain\s+relief|painkillers?|aspirin|paracetamol|ibuprofen|pills?|tablets?|syrup|capsules?|remed(?:y|ies)|treatment|prescription|pharmacy|clinic|dosage)\b/i.test(combined);
         // Exclude financial / securities trading OTC contexts unless explicit medical OTC context is present
         if (!hasMedicalOTC && /\b(?:otc\s+(?:trading|market|derivatives?|transactions?|securities|stocks?|shares?|broker|equity|forex|crypto|swap|settlement)|(?:financial|securities|stock|derivatives?)\s+(?:trading|market))\b/i.test(combined)) {
           return false;

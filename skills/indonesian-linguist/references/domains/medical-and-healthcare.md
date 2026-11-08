@@ -10,15 +10,20 @@ Use this reference module whenever translating, localizing, or editing medical r
 
 ## 1. Domain Overview & Register/Pronoun Lock
 
-### A. Register Selection (5 Formality Levels)
-1. **Resmi (Formal)**:
-   - *Surfaces*: Electronic Medical Records (RME), discharge summaries (*resume medis*), hospital admission documents, informed consent (*Persetujuan Tindakan Kedokteran*), laboratory & pathology reports, and official BPOM package inserts / drug leaflets.
+### A. Register Selection Across 5 Formality Levels
+1. **Beku (Frozen, Statutory & Ritualized)**:
+   - *Surfaces*: Statutory informed consent (*Persetujuan Tindakan Kedokteran* / PerMenKes), clinical liability waivers, organ donation pledges, death certificates, hospital bylaws, and statutory confidentiality oaths.
+   - *Tone*: Unchanging, formulaic, legally binding, highly solemn.
+2. **Resmi (Formal)**:
+   - *Surfaces*: Electronic Medical Records (RME), discharge summaries (*resume medis*), hospital admission documents, laboratory & pathology reports, and official BPOM package inserts / drug leaflets.
    - *Tone*: Objective, precise, clinically rigorous, emotionally neutral.
-2. **Konsultatif (Consultative, Empathetic & Reassuring)**:
+3. **Konsultatif (Consultative, Empathetic & Reassuring)**:
    - *Surfaces*: Telemedicine doctor-patient chat, appointment booking, triage questionnaires, symptom checkers, digital health companion apps, and patient education articles.
    - *Tone*: Warm, empathetic, clear, calm, and reassuring without sacrificing medical accuracy.
-3. **Santai & Akrab (BANNED)**:
-   - Never use casual or intimate registers (*gue/lo*, slang contractions like *nggak/udah*, or flippant pragmatic particles) on clinical screens, diagnostic results, medication reminders, or consent dialogs.
+4. **Santai (Casual, BANNED on clinical surfaces)**:
+   - Casual speech (*nggak/udah*, colloquial particles) is strictly banned on clinical screens, diagnostic results, medication reminders, or consent dialogs.
+5. **Akrab (Intimate, BANNED)**:
+   - Intimate slang (*gue/lo*, regional street slang) must never appear in healthcare or telemedicine user interfaces.
 
 ### B. Pronoun Policy: Mandatory Formal `Anda`
 - **Second-Person Address**: Strictly lock to **`Anda`** (always capitalized) across all medical surfaces (including consumer health apps per `SKILL.md` Section 2.A.3). Health data is personal, intimate, and legally sensitive; addressing patients with casual *kamu* or *-mu* diminishes clinical authority and trust.
