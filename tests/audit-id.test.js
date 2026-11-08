@@ -1225,11 +1225,12 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
     'Over the counter medicine': 'Obat di atas meja kasir',
     'This medicine is available over the counter': 'Obat ini tersedia di atas meja kasir',
     'Over the counter pain relief': 'Pereda nyeri di atas meja kasir',
+    'Over-the-counter medicines in stock': 'Obat di atas meja kasir tersedia',
     OTC: 'Di atas meja',
   };
   const badFindings = auditDictionary(badMedicalCatalog);
   const polysemyFindings = badFindings.filter((f) => f.rule === 'polysemy-calque');
-  assert.equal(polysemyFindings.length, 14);
+  assert.equal(polysemyFindings.length, 15);
 
   const goodMedicalCatalog = {
     'Patient discharge': 'Pemulangan pasien',
@@ -1245,6 +1246,7 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
     'Over the counter medicine': 'Obat tanpa resep',
     'This medicine is available over the counter': 'Obat ini tersedia tanpa resep dokter',
     'Over the counter pain relief': 'Pereda nyeri tanpa resep',
+    'Over-the-counter medicines in stock': 'Obat bebas tersedia',
     OTC: 'Obat bebas (tanpa resep dokter)',
   };
   const goodFindings = auditDictionary(goodMedicalCatalog);

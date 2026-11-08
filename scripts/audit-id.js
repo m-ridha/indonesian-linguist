@@ -163,8 +163,8 @@ const KNOWN_CALQUE_TRAPS = [
         const keyText = typeof key === 'string' ? key : String(key || '');
         const sourceText = typeof sourceVal === 'string' ? sourceVal : '';
         const combined = (keyText + ' ' + sourceText).trim();
-        // Exclude financial / securities trading OTC contexts
-        if (/\b(?:trading|stock|shares?|derivatives?|market|broker|securities|equity|forex|crypto|swap|settlement)\b/i.test(combined)) {
+        // Exclude financial / securities trading OTC contexts (narrowed to financial phrases so pharmacy inventory like "in stock" is preserved)
+        if (/\b(?:otc\s+(?:trading|market|derivatives?|transactions?|securities|stocks?|shares?|broker|equity|forex|crypto|swap|settlement)|(?:financial|securities|stock|derivatives?)\s+(?:trading|market))\b/i.test(combined)) {
           return false;
         }
         // Match exact standalone keys in either key or source
