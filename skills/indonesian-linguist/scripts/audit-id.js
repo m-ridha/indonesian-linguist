@@ -157,26 +157,57 @@ const KNOWN_CALQUE_TRAPS = [
     fix: 'Kultur (Kultur darah / Kultur urine)',
   },
   {
+    keyMatch: /\b(?:over(?:-|\s+)the(?:-|\s+)counter|otc)\s+healthcare\s+products?\b/i,
+    badVal: {
+      /** @param {string} val */
+      test(val) {
+        if (/\bdi\s+atas\s+meja\s+kasir\b/i.test(val)) return true;
+        if (/\b(?:produk(?:\s+kesehatan)?)\s+di\s+atas\s+meja\b/i.test(val)) return true;
+        return /^di\s+atas\s+meja$/i.test(val.trim());
+      },
+    },
+    fix: 'Produk kesehatan tanpa resep / Produk bebas',
+  },
+  {
     keyMatch: {
       /** @param {string} key @param {unknown} [sourceVal] */
       test(key, sourceVal) {
         const keyText = typeof key === 'string' ? key : String(key || '');
         const sourceText = typeof sourceVal === 'string' ? sourceVal : '';
         const combined = (keyText + ' ' + sourceText).trim();
-        const hasMedicalOTC = /\b(?:over(?:-|\s+)the(?:-|\s+)counter|otc)\b/i.test(combined) &&
-          /\b(?:drugs?|medicines?|medications?|pharmaceuticals?|healthcare\s+products?|pain\s+relief|painkillers?|aspirin|paracetamol|ibuprofen|pills?|tablets?|syrup|capsules?|remed(?:y|ies)|treatment|prescription|pharmacy|clinic|dosage)\b/i.test(combined);
-        // Exclude financial / securities trading OTC contexts unless explicit medical OTC context is present
-        if (!hasMedicalOTC && /\b(?:otc\s+(?:trading|market|derivatives?|transactions?|securities|stocks?|shares?|broker|equity|forex|crypto|swap|settlement)|(?:financial|securities|stock|derivatives?)\s+(?:trading|market))\b/i.test(combined)) {
-          return false;
-        }
+
         // Match exact standalone keys in either key or source
         if (/^(?:over(?:-|\s+)the(?:-|\s+)counter|otc)$/i.test(keyText.trim()) || /^(?:over(?:-|\s+)the(?:-|\s+)counter|otc)$/i.test(sourceText.trim())) {
           return true;
         }
-        return hasMedicalOTC;
+
+        // Exclude financial OTC trading/market/derivatives when OTC is part of the financial phrase
+        if (/\b(?:otc\s+(?:trading|market|derivatives?|transactions?|securities|stocks?|shares?|broker|equity|forex|crypto|swap|settlement)|(?:financial|securities|stock|derivatives?)\s+(?:trading|market))\b/i.test(combined)) {
+          // If OTC is directly in a medical phrase like "OTC medicines", preserve medical context despite financial words elsewhere
+          if (!/\b(?:over(?:-|\s+)the(?:-|\s+)counter|otc)\s+(?:drugs?|medicines?|medications?|pharmaceuticals?|pain\s+relief|painkillers?|aspirin|paracetamol|ibuprofen|pills?|tablets?|syrup|capsules?|remed(?:y|ies))\b/i.test(combined)) {
+            return false;
+          }
+        }
+
+        // Require medication term to be associated with OTC (adjacent or in the same sentence/clause)
+        if (/\b(?:over(?:-|\s+)the(?:-|\s+)counter|otc)\s+(?:drugs?|medicines?|medications?|pharmaceuticals?|pain\s+relief|painkillers?|aspirin|paracetamol|ibuprofen|pills?|tablets?|syrup|capsules?|remed(?:y|ies)|treatment|prescription|dosage)\b/i.test(combined)) {
+          return true;
+        }
+        if (/\b(?:drugs?|medicines?|medications?|pharmaceuticals?|pain\s+relief|painkillers?|aspirin|paracetamol|ibuprofen)\b[^.?!;:]*?\b(?:over(?:-|\s+)the(?:-|\s+)counter|otc)\b/i.test(combined)) {
+          return true;
+        }
+
+        return false;
       },
     },
-    badVal: /\bdi\s+atas\s+meja(?:\s+kasir)?\b/i,
+    badVal: {
+      /** @param {string} val */
+      test(val) {
+        if (/\bdi\s+atas\s+meja\s+kasir\b/i.test(val)) return true;
+        if (/\b(?:obat|aspirin|paracetamol|ibuprofen|pereda\s+nyeri)\s+di\s+atas\s+meja\b/i.test(val)) return true;
+        return /^di\s+atas\s+meja$/i.test(val.trim());
+      },
+    },
     fix: 'Obat tanpa resep',
   },
 ];

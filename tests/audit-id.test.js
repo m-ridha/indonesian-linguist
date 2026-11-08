@@ -1228,11 +1228,15 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
     'Over-the-counter medicines in stock': 'Obat di atas meja kasir tersedia',
     'Stock market impact on OTC medicines': 'Dampak pasar saham terhadap obat di atas meja kasir',
     'Buy OTC aspirin': 'Beli aspirin di atas meja',
+    'Over-the-counter healthcare products': 'Produk kesehatan di atas meja',
     OTC: 'Di atas meja',
   };
   const badFindings = auditDictionary(badMedicalCatalog);
   const polysemyFindings = badFindings.filter((f) => f.rule === 'polysemy-calque');
-  assert.equal(polysemyFindings.length, 17);
+  assert.equal(polysemyFindings.length, 18);
+  const healthcareProdFinding = polysemyFindings.find((f) => f.key === 'Over-the-counter healthcare products');
+  assert.ok(healthcareProdFinding);
+  assert.ok(healthcareProdFinding.message.includes('Produk kesehatan tanpa resep / Produk bebas'));
 
   const goodMedicalCatalog = {
     'Patient discharge': 'Pemulangan pasien',
@@ -1251,6 +1255,8 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
     'Over-the-counter medicines in stock': 'Obat bebas tersedia',
     'Stock market impact on OTC medicines': 'Dampak pasar saham terhadap obat tanpa resep',
     'Buy OTC aspirin': 'Beli aspirin tanpa resep',
+    'Over-the-counter healthcare products': 'Produk kesehatan tanpa resep',
+    'Buy OTC aspirin without prescription: tablets are on the table': 'Beli aspirin tanpa resep: tabletnya ada di atas meja',
     OTC: 'Obat bebas (tanpa resep dokter)',
   };
   const goodFindings = auditDictionary(goodMedicalCatalog);
@@ -1296,6 +1302,7 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
     Stool: 'Kursi',
     'The OTC trading documents are on the table': 'Dokumen perdagangan OTC ada di atas meja',
     'OTC derivative products are on the table': 'Produk derivatif OTC ada di atas meja',
+    'OTC market reports for pharmacy stocks are on the table': 'Laporan pasar OTC untuk saham farmasi ada di atas meja',
   };
   const nonMedicalFindings = auditDictionary(nonMedicalCatalog);
   assert.deepEqual(nonMedicalFindings, []);
