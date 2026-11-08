@@ -161,6 +161,8 @@ const KNOWN_CALQUE_TRAPS = [
     badVal: {
       /** @param {string} val */
       test(val) {
+        // Do not flag when a valid non-prescription rendering is present and "di atas meja" describes physical placement
+        if (/\b(?:tanpa\s+resep|obat\s+bebas|produk\s+bebas)\b/i.test(val)) return false;
         if (/\bdi\s+atas\s+meja\s+kasir\b/i.test(val)) return true;
         if (/\b(?:produk(?:\s+kesehatan)?)\s+di\s+atas\s+meja\b/i.test(val)) return true;
         return /^di\s+atas\s+meja$/i.test(val.trim());
@@ -183,14 +185,14 @@ const KNOWN_CALQUE_TRAPS = [
 
         // Exclude financial OTC trading/market/derivatives when OTC is part of the financial phrase
         if (/\b(?:otc\s+(?:trading|market|derivatives?|transactions?|securities|stocks?|shares?|broker|equity|forex|crypto|swap|settlement)|(?:financial|securities|stock|derivatives?)\s+(?:trading|market))\b/i.test(combined)) {
-          // If OTC is directly in a medical phrase like "OTC medicines", preserve medical context despite financial words elsewhere
-          if (!/\b(?:over(?:-|\s+)the(?:-|\s+)counter|otc)\s+(?:drugs?|medicines?|medications?|pharmaceuticals?|pain\s+relief|painkillers?|aspirin|paracetamol|ibuprofen|pills?|tablets?|syrup|capsules?|remed(?:y|ies))\b/i.test(combined)) {
+          // If OTC is directly in a medical phrase like "OTC medicines" or "OTC cough syrup", preserve medical context
+          if (!/\b(?:over(?:-|\s+)the(?:-|\s+)counter|otc)(?:\s+[a-z-]+){0,2}\s+(?:drugs?|medicines?|medications?|pharmaceuticals?|pain\s+relief|painkillers?|aspirin|paracetamol|ibuprofen|pills?|tablets?|syrups?|capsules?|remed(?:y|ies))\b/i.test(combined)) {
             return false;
           }
         }
 
-        // Require medication term to be associated with OTC (adjacent or in the same sentence/clause)
-        if (/\b(?:over(?:-|\s+)the(?:-|\s+)counter|otc)\s+(?:drugs?|medicines?|medications?|pharmaceuticals?|pain\s+relief|painkillers?|aspirin|paracetamol|ibuprofen|pills?|tablets?|syrup|capsules?|remed(?:y|ies)|treatment|prescription|dosage)\b/i.test(combined)) {
+        // Require medication term to be associated with OTC (allowing optional modifiers like "cough" in "OTC cough syrup")
+        if (/\b(?:over(?:-|\s+)the(?:-|\s+)counter|otc)(?:\s+[a-z-]+){0,2}\s+(?:drugs?|medicines?|medications?|pharmaceuticals?|pain\s+relief|painkillers?|aspirin|paracetamol|ibuprofen|pills?|tablets?|syrups?|capsules?|remed(?:y|ies)|treatments?|prescriptions?|dosages?)\b/i.test(combined)) {
           return true;
         }
         if (/\b(?:drugs?|medicines?|medications?|pharmaceuticals?|pain\s+relief|painkillers?|aspirin|paracetamol|ibuprofen)\b[^.?!;:]*?\b(?:over(?:-|\s+)the(?:-|\s+)counter|otc)\b/i.test(combined)) {
@@ -203,6 +205,8 @@ const KNOWN_CALQUE_TRAPS = [
     badVal: {
       /** @param {string} val */
       test(val) {
+        // Do not flag when a valid non-prescription rendering is present and "di atas meja" describes physical placement
+        if (/\b(?:tanpa\s+resep|obat\s+bebas|produk\s+bebas)\b/i.test(val)) return false;
         if (/\bdi\s+atas\s+meja\s+kasir\b/i.test(val)) return true;
         if (/\b(?:obat|aspirin|paracetamol|ibuprofen|pereda\s+nyeri)\s+di\s+atas\s+meja\b/i.test(val)) return true;
         return /^di\s+atas\s+meja$/i.test(val.trim());

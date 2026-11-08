@@ -23,10 +23,10 @@ Use this reference module whenever translating, localizing, or editing medical r
 4. **Santai (Casual, BANNED on clinical surfaces)**:
    - Casual speech (*nggak/udah*, colloquial particles) is strictly banned on clinical screens, diagnostic results, medication reminders, or consent dialogs.
 5. **Akrab (Intimate, BANNED by default)**:
-   - Intimate slang (*gue/lo*, regional street slang) must never appear in healthcare or telemedicine user interfaces by default, unless an explicitly requested project voice or pronoun override (e.g., specialized peer companion bots) specifically mandates it.
+   - Intimate slang (*gue/lo*, regional street slang) must never appear in healthcare or telemedicine user interfaces by default, unless an explicitly requested project voice or pronoun override (e.g., specialized peer companion bots) specifically mandates it. This exception does not apply to approved or prescribed consent wording that must remain unchanged.
 
-### B. Pronoun Policy: Mandatory Formal `Anda`
-- **Second-Person Address**: Strictly lock to **`Anda`** (always capitalized) across all medical surfaces (including consumer health apps per `SKILL.md` Section 2.A.3). Health data is personal, intimate, and legally sensitive; addressing patients with casual *kamu* or *-mu* diminishes clinical authority and trust.
+### B. Pronoun Policy: Mandatory Formal `Anda` by Default
+- **Second-Person Address**: Strictly lock to **`Anda`** (always capitalized) by default across medical surfaces (including consumer health apps per `SKILL.md` Section 2.A.3), unless an explicitly requested project voice or pronoun override (e.g., `--pronoun lo` or `--pronoun kamu` for a specialized youth wellness bot) specifically mandates otherwise. Health data is personal, intimate, and legally sensitive; addressing patients with casual *kamu* or *-mu* diminishes clinical authority and trust unless deliberately branded.
 - **Honorific Alternative**: In direct doctor-patient telemedicine chat or customer care scripts, **`Bapak/Ibu`** (or **`Pasien`**) is standard and respectful.
 - **Drop the Pronoun (Implicit UI Controls)**: On interactive buttons and direct instructions, omit the pronoun entirely (*"Masukkan nomor rekam medis"*, not *"Masukkan nomor rekam medis Anda"*).
 - **Third-Person Human Restraint**: Refer to inanimate entities (specimens, tests, medications, organs, servers) by repeating the noun or using demonstratives (*"Sampel tersebut"*, *"Data ini"*). Never use *ia* or *mereka* for medical equipment, test results, or physiological parameters.
