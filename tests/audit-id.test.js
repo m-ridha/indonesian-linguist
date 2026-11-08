@@ -1242,10 +1242,13 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
   const goodFindings = auditDictionary(goodMedicalCatalog);
   assert.deepEqual(goodFindings, []);
 
-  // Non-medical contexts (electrical discharge, furniture stool) must not be falsely flagged
+  // Non-medical contexts (electrical discharge, battery discharge status, furniture stool) must not be falsely flagged
   const nonMedicalCatalog = {
     'Discharge current': 'Arus pelepasan muatan listrik',
     'Battery discharge': 'Pelepasan muatan baterai',
+    'Battery discharge status': 'Status pelepasan muatan baterai',
+    'Capacitor discharge rate': 'Laju pelepasan muatan kapasitor',
+    'Electrostatic discharge': 'Pelepasan muatan elektrostatik',
     'Wooden stool': 'Bangku kayu',
     Stool: 'Kursi',
   };

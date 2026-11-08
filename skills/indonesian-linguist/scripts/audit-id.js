@@ -130,7 +130,17 @@ const KNOWN_CALQUE_TRAPS = [
     fix: 'Beban set utama / Beban utama',
   },
   {
-    keyMatch: /\b(?:patient\s+discharge|discharge\s+summary|discharge\s+(?:plan(?:ning)?|instructions?|date|order|status)|hospital\s+discharge)\b/i,
+    keyMatch: {
+      /** @param {string} key @param {unknown} [sourceVal] */
+      test(key, sourceVal) {
+        const raw = typeof sourceVal === 'string' ? sourceVal : key;
+        const text = typeof raw === 'string' ? raw : String(raw || '');
+        if (/\b(?:battery|electric(?:al)?|electrostatic|capacit(?:or|ance)|current|voltage|spark|arc|plasma|corona|rate|depth|cycle)\b/i.test(text)) {
+          return false;
+        }
+        return /\b(?:patient\s+discharge|discharge\s+summary|discharge\s+(?:plan(?:ning)?|instructions?|date|order|status)|hospital\s+discharge)\b/i.test(text);
+      },
+    },
     badVal: /\b(?:pemecatan|pelepasan\s+muatan)\b/i,
     fix: 'Pemulangan pasien / Pasien pulang / Ringkasan pulang',
   },

@@ -147,7 +147,8 @@ Interactive controls on patient booking, telemedicine consultations, and laborat
 - `Book appointment` $\rightarrow$ **`Jadwalkan Konsultasi / Buat Janji Medis`** (never *Membuat janji*)
 - `Consult now` $\rightarrow$ **`Konsultasi Sekarang`**
 - `Upload prescription` $\rightarrow$ **`Unggah Resep Dokter`**
-- `Redeem prescription / Buy medicine` $\rightarrow$ **`Tebus Resep`**
+- `Redeem prescription` $\rightarrow$ **`Tebus Resep`**
+- `Buy medicine` $\rightarrow$ **`Beli Obat`**
 - `View lab results` $\rightarrow$ **`Lihat Hasil Lab`**
 - `Download medical resume` $\rightarrow$ **`Unduh Resume Medis`**
 - `Choose doctor` $\rightarrow$ **`Pilih Dokter`**
