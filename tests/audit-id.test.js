@@ -1229,12 +1229,13 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
     'Stock market impact on OTC medicines': 'Dampak pasar saham terhadap obat di atas meja kasir',
     'Buy OTC aspirin': 'Beli aspirin di atas meja',
     'OTC cough syrup': 'Sirup obat batuk di atas meja kasir',
+    'OTC market for cold medicines': 'Pasar obat di atas meja kasir untuk obat flu',
     'Over-the-counter healthcare products': 'Produk kesehatan di atas meja',
     OTC: 'Di atas meja',
   };
   const badFindings = auditDictionary(badMedicalCatalog);
   const polysemyFindings = badFindings.filter((f) => f.rule === 'polysemy-calque');
-  assert.equal(polysemyFindings.length, 19);
+  assert.equal(polysemyFindings.length, 20);
   const healthcareProdFinding = polysemyFindings.find((f) => f.key === 'Over-the-counter healthcare products');
   assert.ok(healthcareProdFinding);
   assert.ok(healthcareProdFinding.message.includes('Produk kesehatan tanpa resep / Produk bebas'));
@@ -1271,10 +1272,40 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
   const ungroundedTableCatalog = {
     'Buy OTC medicine': 'Beli obat tanpa resep, obat di atas meja kasir',
     'Buy OTC healthcare products': 'Beli produk kesehatan tanpa resep, produk di atas meja kasir',
+    'OTC medicine: consult the dosage table': 'Beli obat tanpa resep, obat di atas meja kasir',
+    'OTC healthcare products: consult the dosage table': 'Beli produk kesehatan tanpa resep, produk di atas meja kasir',
   };
   const ungroundedTableFindings = auditDictionary(ungroundedTableCatalog);
   const ungroundedPolysemy = ungroundedTableFindings.filter((f) => f.rule === 'polysemy-calque');
-  assert.equal(ungroundedPolysemy.length, 2);
+  assert.equal(ungroundedPolysemy.length, 4);
+
+  // Source-aware physical counter test: physical counters exempt valid non-prescription translations
+  const physicalCounterCatalog = {
+    'Place OTC medicines on the counter': 'Letakkan obat tanpa resep di atas meja kasir',
+    'Place OTC healthcare products on the checkout counter': 'Letakkan produk kesehatan tanpa resep di atas meja kasir',
+  };
+  const physicalCounterFindings = auditDictionary(physicalCounterCatalog);
+  assert.deepEqual(physicalCounterFindings, []);
+
+  // Source-only regression test: opaque translation keys with matching source establishing table meaning
+  const sourceOnlyTableCatalog = {
+    'meds.checkout.action': 'Letakkan obat tanpa resep di atas meja kasir',
+  };
+  const sourceOnlyTableFindings = auditDictionary(sourceOnlyTableCatalog, {
+    source: { 'meds.checkout.action': 'Place OTC medicines on the checkout table' },
+  });
+  assert.deepEqual(sourceOnlyTableFindings, []);
+
+  // Source-aware signs-out test: opaque translation key with source containing "signs ... out" triggers calque finding
+  const signsOutCatalog = {
+    'auth.action.signout': 'Aksi ini menandakan pengguna',
+  };
+  const signsOutFindings = auditDictionary(signsOutCatalog, {
+    source: { 'auth.action.signout': 'This action signs the user out' },
+  });
+  const signsOutPolysemy = signsOutFindings.filter((f) => f.rule === 'polysemy-calque');
+  assert.equal(signsOutPolysemy.length, 1);
+  assert.ok(signsOutPolysemy[0].message.includes('mengeluarkan'));
 
   // Source-aware discharge test: ambiguous source 'Discharge' with patient key context
   const sourceAwareCatalog = {
@@ -1318,6 +1349,7 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
     'OTC derivative products are on the table': 'Produk derivatif OTC ada di atas meja',
     'OTC market reports for pharmacy stocks are on the table': 'Laporan pasar OTC untuk saham farmasi ada di atas meja',
     'OTC market for medicine company shares are on the table': 'Pasar OTC untuk saham perusahaan obat ada di atas meja',
+    'Over-the-counter market for medicine company shares are on the table': 'Pasar over-the-counter untuk saham perusahaan obat ada di atas meja',
     'Medicine company shares on the OTC market are on the table': 'Saham perusahaan obat di pasar OTC ada di atas meja',
     'Medication reports for the OTC market are on the cashier desk': 'Laporan obat-obatan untuk pasar OTC ada di atas meja kasir',
   };

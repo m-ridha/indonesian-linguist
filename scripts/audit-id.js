@@ -72,10 +72,13 @@ const KNOWN_CALQUE_TRAPS = [
   { keyMatch: /hop over/i, badVal: /\b(lanjutkan|meneruskan)\b/i, fix: 'melewati / melompati' },
   {
     keyMatch: {
-      /** @param {string} key */
-      test(key) {
-        const idx = String(key || '').search(/\bsigns\b/i);
-        return idx !== -1 && /\bouts?\b/i.test(key.slice(idx + 5));
+      /** @param {string} key @param {unknown} [sourceVal] */
+      test(key, sourceVal) {
+        const keyText = typeof key === 'string' ? key : String(key || '');
+        const sourceText = typeof sourceVal === 'string' ? sourceVal : '';
+        const combined = (keyText + ' ' + sourceText).trim();
+        const idx = combined.search(/\bsigns\b/i);
+        return idx !== -1 && /\bouts?\b/i.test(combined.slice(idx + 5));
       },
     },
     badVal: /\bmenandakan\b/i,
@@ -163,9 +166,11 @@ const KNOWN_CALQUE_TRAPS = [
       /** @param {string} val @param {string} [key] @param {unknown} [sourceVal] */
       test(val, key, sourceVal) {
         const sourceText = (String(key || '') + ' ' + (typeof sourceVal === 'string' ? sourceVal : '')).trim();
-        const hasSourceTable = /\b(?:tables?|desks?|countertops?)\b/i.test(sourceText);
-        // Only exempt when source genuinely mentions a physical table/desk and a valid non-prescription rendering is present
-        if (hasSourceTable && /\b(?:tanpa\s+resep|obat\s+bebas|produk\s+bebas)\b/i.test(val)) return false;
+        const strippedSource = sourceText.replace(/\bover(?:-|\s+)the(?:-|\s+)counter\b/gi, '');
+        const withoutInfoTables = strippedSource.replace(/\b(?:dosage|dose|dosing|comparison|pricing|price|data|lookup|spec|specification|schedule|summary)\s+tables?\b/gi, '');
+        const hasSourceFurniture = /\b(?:tables?|desks?|countertops?|counters?)\b/i.test(withoutInfoTables);
+        // Only exempt when source genuinely mentions physical furniture and a valid non-prescription rendering is present
+        if (hasSourceFurniture && /\b(?:tanpa\s+resep|obat\s+bebas|produk\s+bebas)\b/i.test(val)) return false;
         if (/\bdi\s+atas\s+meja\s+kasir\b/i.test(val)) return true;
         if (/\b(?:produk(?:\s+kesehatan)?)\s+di\s+atas\s+meja\b/i.test(val)) return true;
         return /^di\s+atas\s+meja$/i.test(val.trim());
@@ -181,21 +186,24 @@ const KNOWN_CALQUE_TRAPS = [
         const sourceText = typeof sourceVal === 'string' ? sourceVal : '';
         const combined = (keyText + ' ' + sourceText).trim();
 
-        // Match exact standalone keys in either key or source
+        // 1. Strict financial exclusion FIRST: if OTC directly qualifies financial terms (e.g. "OTC market",
+        // "OTC trading", "OTC derivatives"), or financial trading directly qualifies OTC, or OTC market
+        // is tied to shares/stocks/securities/derivatives/equity/finance (e.g. "Over-the-counter market for
+        // medicine company shares"), exclude so financial contexts are never classified as medical
+        if (
+          /\b(?:(?:over(?:-|\s+)the(?:-|\s+)counter|otc)\s+(?:trading|derivatives?|transactions?|securities|stocks?|shares?|broker|equity|forex|crypto|swap|settlement)|(?:financial|securities|stock|derivatives?|shares?)\s+(?:trading|market)\s+(?:for|in|on|at|of)?\s*(?:over(?:-|\s+)the(?:-|\s+)counter|otc)|(?:on|in|at|for|from)\s+(?:the\s+)?(?:over(?:-|\s+)the(?:-|\s+)counter|otc)\s+market)\b/i.test(combined) ||
+          (/\b(?:over(?:-|\s+)the(?:-|\s+)counter|otc)\s+market\b/i.test(combined) && /\b(?:shares?|stocks?|securities|derivatives?|equity|equities|broker|company\s+shares?)\b/i.test(combined))
+        ) {
+          return false;
+        }
+
+        // 2. Standalone fallback (only exact standalone OTC / over-the-counter in key or source)
         if (/^(?:over(?:-|\s+)the(?:-|\s+)counter|otc)$/i.test(keyText.trim()) || /^(?:over(?:-|\s+)the(?:-|\s+)counter|otc)$/i.test(sourceText.trim())) {
           return true;
         }
 
-        // Strict financial exclusion: if OTC directly qualifies financial terms (e.g. "OTC market",
-        // "OTC trading", "OTC derivatives") or financial trading directly qualifies OTC, exclude
-        // even if medication/drugs appears elsewhere (e.g. "OTC market for medicine company shares" or
-        // "Medicine company shares on the OTC market")
-        if (/\b(?:otc\s+(?:trading|market|derivatives?|transactions?|securities|stocks?|shares?|broker|equity|forex|crypto|swap|settlement)|(?:financial|securities|stock|derivatives?|shares?)\s+(?:trading|market)\s+(?:for|in|on|at|of)?\s*otc|(?:on|in|at)\s+(?:the\s+)?otc\s+market)\b/i.test(combined)) {
-          return false;
-        }
-
-        // Require medication term to be associated with OTC (allowing optional medical modifiers like "cough" in "OTC cough syrup")
-        if (/\b(?:over(?:-|\s+)the(?:-|\s+)counter|otc)(?:\s+(?:cough|cold|allergy|flu|headache|pain|fever|nasal|eye|skin|sleep|stomach|digestive|[a-z]+)){0,2}\s+(?:drugs?|medicines?|medications?|pharmaceuticals?|pain\s+relief|painkillers?|aspirin|paracetamol|ibuprofen|pills?|tablets?|syrups?|capsules?|remed(?:y|ies)|treatments?|prescriptions?|dosages?)\b/i.test(combined)) {
+        // 3. Require medication term to be associated with OTC (allowing up to 3 modifier words, e.g. "OTC market for cold medicines", "OTC cough syrup")
+        if (/\b(?:over(?:-|\s+)the(?:-|\s+)counter|otc)(?:\s+[a-z-]+){0,3}\s+(?:drugs?|medicines?|medications?|pharmaceuticals?|pain\s+relief|painkillers?|aspirin|paracetamol|ibuprofen|pills?|tablets?|syrups?|capsules?|remed(?:y|ies)|treatments?|prescriptions?|dosages?)\b/i.test(combined)) {
           return true;
         }
         if (/\b(?:drugs?|medicines?|medications?|pharmaceuticals?|pain\s+relief|painkillers?|aspirin|paracetamol|ibuprofen)\b[^.?!;:]*?\b(?:over(?:-|\s+)the(?:-|\s+)counter|otc)\b/i.test(combined)) {
@@ -209,9 +217,11 @@ const KNOWN_CALQUE_TRAPS = [
       /** @param {string} val @param {string} [key] @param {unknown} [sourceVal] */
       test(val, key, sourceVal) {
         const sourceText = (String(key || '') + ' ' + (typeof sourceVal === 'string' ? sourceVal : '')).trim();
-        const hasSourceTable = /\b(?:tables?|desks?|countertops?)\b/i.test(sourceText);
-        // Only exempt when source genuinely mentions a physical table/desk and a valid non-prescription rendering is present
-        if (hasSourceTable && /\b(?:tanpa\s+resep|obat\s+bebas|produk\s+bebas)\b/i.test(val)) return false;
+        const strippedSource = sourceText.replace(/\bover(?:-|\s+)the(?:-|\s+)counter\b/gi, '');
+        const withoutInfoTables = strippedSource.replace(/\b(?:dosage|dose|dosing|comparison|pricing|price|data|lookup|spec|specification|schedule|summary)\s+tables?\b/gi, '');
+        const hasSourceFurniture = /\b(?:tables?|desks?|countertops?|counters?)\b/i.test(withoutInfoTables);
+        // Only exempt when source genuinely mentions physical furniture and a valid non-prescription rendering is present
+        if (hasSourceFurniture && /\b(?:tanpa\s+resep|obat\s+bebas|produk\s+bebas)\b/i.test(val)) return false;
         if (/\bdi\s+atas\s+meja\s+kasir\b/i.test(val)) return true;
         if (/\b(?:obat|aspirin|paracetamol|ibuprofen|pereda\s+nyeri)\s+di\s+atas\s+meja\b/i.test(val)) return true;
         return /^di\s+atas\s+meja$/i.test(val.trim());
