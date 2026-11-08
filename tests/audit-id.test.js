@@ -1214,29 +1214,43 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
   const badMedicalCatalog = {
     'Patient discharge': 'Pemecatan pasien',
     'Discharge summary': 'Ringkasan pelepasan muatan',
+    'Discharge instructions': 'Instruksi pemecatan',
     'Stool sample': 'Sampel bangku',
-    Stool: 'Kursi',
+    'Stool test': 'Tes kursi',
     'Blood culture': 'Budaya darah',
     'Urine culture': 'Kebudayaan urine',
     'Over-the-counter': 'Di atas meja kasir',
+    'Over the counter medicine': 'Obat di atas meja kasir',
     OTC: 'Di atas meja',
   };
   const badFindings = auditDictionary(badMedicalCatalog);
   const polysemyFindings = badFindings.filter((f) => f.rule === 'polysemy-calque');
-  assert.equal(polysemyFindings.length, 8);
+  assert.equal(polysemyFindings.length, 10);
 
   const goodMedicalCatalog = {
     'Patient discharge': 'Pemulangan pasien',
     'Discharge summary': 'Ringkasan pulang',
+    'Discharge instructions': 'Petunjuk kepulangan',
     'Stool sample': 'Sampel feses',
-    Stool: 'Tinja',
+    'Stool test': 'Pemeriksaan tinja',
     'Blood culture': 'Kultur darah',
     'Urine culture': 'Kultur urine',
     'Over-the-counter': 'Obat bebas',
+    'Over the counter medicine': 'Obat tanpa resep',
     OTC: 'Obat bebas (tanpa resep dokter)',
   };
   const goodFindings = auditDictionary(goodMedicalCatalog);
   assert.deepEqual(goodFindings, []);
+
+  // Non-medical contexts (electrical discharge, furniture stool) must not be falsely flagged
+  const nonMedicalCatalog = {
+    'Discharge current': 'Arus pelepasan muatan listrik',
+    'Battery discharge': 'Pelepasan muatan baterai',
+    'Wooden stool': 'Bangku kayu',
+    Stool: 'Kursi',
+  };
+  const nonMedicalFindings = auditDictionary(nonMedicalCatalog);
+  assert.deepEqual(nonMedicalFindings, []);
 });
 
 test('auditText / auditDictionary: flags high-frequency medical kata tidak baku (diagnosa, apotik, nafas, cidera)', () => {

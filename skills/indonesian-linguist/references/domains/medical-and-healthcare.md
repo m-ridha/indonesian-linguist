@@ -44,7 +44,7 @@ The following table resolves high-frequency false cognates, machine calques, and
 | **Positive / Negative** *(diagnostic test)* | `Bagus / Buruk / Menguntungkan` | **Positif / Negatif (Terdeteksi / Tidak terdeteksi)** | In pathology/virology, *positif* often means disease/pathogen presence; clarify with *Terdeteksi / Reaktif* where ambiguity alarms patients |
 | **Acute** *(onset/duration)* | `Parah sekali / Kritis` | **Akut (terjadi mendadak / jangka pendek)** | In clinical medicine, *akut* denotes sudden onset or short duration, not necessarily severity; contrast with *kronis* |
 | **Chronic** *(duration)* | `Berbahaya / Sangat parah` | **Kronis / Menahun (jangka panjang)** | Denotes persistence over months/years; *menahun* is the natural patient-facing explanation |
-| **Over-the-counter (OTC)** | `Di atas meja kasir / Di atas meja` | **Obat bebas / Obat tanpa resep** | Official BPOM regulatory category; sold legally without a doctor's prescription |
+| **Over-the-counter (OTC)** | `Di atas meja kasir / Di atas meja` | **Obat tanpa resep / Obat bebas** | General availability term (*obat tanpa resep*); for specific classification, check packaging (e.g. *Obat Bebas* vs. *Obat Bebas Terbatas* with warning labels) |
 | **Prescription drug / Ethical drug** | `Obat etis / Obat resep moral` | **Obat keras / Obat resep (dengan resep dokter)** | BPOM red circle (*lingkaran merah bergaris tepi hitam dengan huruf K*) category |
 | **Side effects** | `Efek sampingan` | **Efek samping** | Secondary pharmacological reaction; *efek sampingan* is grammatically non-standard |
 | **Adverse drug reaction (ADR) / Adverse event** | `Peristiwa yang merugikan / Kejadian buruk` | **Kejadian tidak diinginkan (KTD) / Reaksi obat yang tidak diinginkan (ROTD)** | Formal Indonesian pharmacovigilance standard (BPOM / Kemenkes) |
@@ -52,12 +52,12 @@ The following table resolves high-frequency false cognates, machine calques, and
 | **Inpatient** | `Pasien dalam` | **Rawat inap** | Patient admitted to hospital bed overnight |
 | **General Practitioner (GP)** | `Praktisi umum` | **Dokter umum** | Primary care physician |
 | **Attending physician / Physician in charge** | `Dokter yang hadir / Dokter yang bertugas` | **Dokter Penanggung Jawab Pelayanan (DPJP)** | Official Indonesian hospital accreditation term for the primary managing specialist |
-| **Medical record / Electronic Medical Record (EMR)** | `Catatan medis / Rekam medis elektronik` | **Rekam medis / Rekam Medis Elektronik (RME)** | Statutory Indonesian terminology per Permenkes No. 24 Tahun 2022 |
+| **Medical record / Electronic Medical Record (EMR)** | `Catatan medis` | **Rekam medis / Rekam Medis Elektronik (RME)** | Statutory Indonesian terminology per Permenkes No. 24 Tahun 2022 (lowercase *rekam medis elektronik* is fully standard in prose) |
 | **Informed consent** | `Persetujuan yang diinformasikan` | **Persetujuan Tindakan Kedokteran (Informed Consent)** | Legal authorization signed before surgical/invasive procedures |
-| **Referral / Referral letter** | `Rujukan / Surat penyerahan` | **Rujukan / Surat rujukan** | BPJS Kesehatan and hospital referral between primary (FKTP) and secondary/tertiary facilities (FKRTL) |
+| **Referral / Referral letter** | `Surat penyerahan` | **Rujukan / Surat rujukan** | BPJS Kesehatan and hospital referral between primary (FKTP) and secondary/tertiary facilities (FKRTL) |
 | **Triage** | `Penyortiran / Pemilahan` | **Triase** | Emergency room severity sorting (Merah, Kuning, Hijau, Hitam) |
 | **Vitals / Vital signs** | `Tanda penting / Tanda vitalitas` | **Tanda-tanda vital (TTV)** | Clinical panel: blood pressure, pulse, respiration, temperature |
-| **Blood pressure (BP)** | `Tekanan darah` | **Tekanan darah** | Expressed as sistolik / diastolik (mmHg) |
+| **Blood pressure (BP)** | `Tekanan tensi` | **Tekanan darah** | Expressed as sistolik / diastolik (mmHg) |
 | **Fasting blood sugar (FBS)** | `Gula darah cepat` | **Gula darah puasa (GDP)** | Diagnostic laboratory test for diabetes |
 | **Complete Blood Count (CBC)** | `Hitungan darah lengkap` | **Darah lengkap (DL) / Hematologi lengkap** | Standard laboratory blood panel |
 | **Urinalysis** | `Analisa urin` | **Urinalisis / Analisis urine** | Laboratory analysis of urine; note standard spelling **analisis** and **urine** |
@@ -71,7 +71,7 @@ The following table resolves high-frequency false cognates, machine calques, and
 | **Route of administration** | `Rute administrasi` | **Rute pemberian obat / Cara penggunaan** | Method of introducing drug into body (oral, intravena, topikal) |
 | **NPO (Nil per os) / Fasting before surgery** | `Nol per mulut` | **Puasa makan dan minum / Pasien dipuasakan** | Clinical pre-operative restriction |
 | **PRN (Pro re nata) / As needed** | `Untuk kelahiran ulang` | **Bila perlu / Jika diperlukan (p.r.n.)** | Dosage instruction when symptoms arise (e.g., fever/pain) |
-| **Overdose** | `Kelebihan dosis` | **Overdosis / Kelebihan dosis** | Toxic dose administration |
+| **Overdose** | `Pemberian berlebih yang salah` | **Overdosis / Kelebihan dosis** | Toxic dose administration |
 | **Screening** *(medical)* | `Penyaringan` | **Pemeriksaan dini / Skrining kesehatan** | Proactive population or individual health check |
 | **Check-up / Medical check-up (MCU)** | `Pemeriksaan medis` | **Pemeriksaan kesehatan menyeluruh / Medical check-up (MCU)** | Comprehensive diagnostic wellness evaluation |
 | **Swab test** | `Uji sapu` | **Tes usap / Swab test** | Mucosal specimen collection |
@@ -128,7 +128,8 @@ When presenting pharmaceutical information in telemedicine carts or drug diction
 1. **Obat Bebas** (Green circle with black border): Can be bought freely without prescription (e.g., parasetamol).
 2. **Obat Bebas Terbatas** (Blue circle with black border, with warning labels P.No. 1 to P.No. 6): Over-the-counter with cautionary instructions.
 3. **Obat Keras** (Red circle with black border and black letter **K**): Prescription-only ethical medication (e.g., antibiotik, obat hipertensi).
-4. **Obat Golongan Narkotika & Psikotropika** (White circle with red cross): Strictly controlled substances.
+4. **Obat Golongan Narkotika** (White circle with red border and red cross): Strictly controlled substances.
+5. **Obat Golongan Psikotropika** (Red circle with black border and black letter **K**): Strictly controlled psychoactive pharmaceuticals.
 
 ### C. Retained Global Medical Loanwords
 Keep these terms intact or in standard bracketed loan form; do not force awkward indigenization:
@@ -156,8 +157,9 @@ Interactive controls on patient booking, telemedicine consultations, and laborat
 - `In queue` $\rightarrow$ **`Dalam antrean`** (or **`Menunggu antrean`**)
 - `Doctor is typing` $\rightarrow$ **`Dokter sedang mengetik…`**
 - `Prescription issued` $\rightarrow$ **`Resep dokter terbit`**
-- `Medicine prepared` $\rightarrow$ **`Obat sedang disiapkan`**
-- `Delivered / Completed` $\rightarrow$ **`Selesai / Terkirim`**
+- `Medicine prepared` $\rightarrow$ **`Obat selesai disiapkan`**
+- `Delivered` $\rightarrow$ **`Terkirim`**
+- `Completed` $\rightarrow$ **`Selesai`**
 - `Cancelled by patient` $\rightarrow$ **`Dibatalkan oleh pasien`**
 - `Follow-up required` $\rightarrow$ **`Perlu kontrol lanjutan`**
 
@@ -166,4 +168,4 @@ Clinical findings must never be translated in a sensationalist or alarmist manne
 - ❌ *Hasil tes Anda positif dan berbahaya!*
 - ✅ *Hasil tes menunjukkan hasil positif (terdeteksi). Dokter kami siap mendiskusikan langkah perawatan selanjutnya dengan Anda.*
 - ❌ *Gagal menghubungkan ke dokter, kondisi Anda berisiko.*
-- ✅ *Koneksi konsultasi terputus. Kami sedang mencoba menyambungkan Anda kembali dengan dokter.*
+- ✅ *Koneksi terputus saat konsultasi berlangsung. Kami sedang mencoba menyambungkan Anda kembali secara otomatis… Jika sambungan belum pulih, silakan ketuk "Hubungkan Ulang" atau hubungi layanan bantuan.*

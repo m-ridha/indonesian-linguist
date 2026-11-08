@@ -130,12 +130,12 @@ const KNOWN_CALQUE_TRAPS = [
     fix: 'Beban set utama / Beban utama',
   },
   {
-    keyMatch: /\b(?:patient\s+)?discharge(?:\s+summary)?\b/i,
+    keyMatch: /\b(?:patient\s+discharge|discharge\s+summary|discharge\s+(?:plan(?:ning)?|instructions?|date|order|status)|hospital\s+discharge)\b/i,
     badVal: /\b(?:pemecatan|pelepasan\s+muatan)\b/i,
     fix: 'Pemulangan pasien / Pasien pulang / Ringkasan pulang',
   },
   {
-    keyMatch: /\bstool\s+(?:samples?|tests?|specimens?)\b|^stool$/i,
+    keyMatch: /\bstool\s+(?:samples?|tests?|specimens?|cultures?|examinations?)\b/i,
     badVal: /\b(?:bangku|kursi)\b/i,
     fix: 'Feses / Tinja',
   },
@@ -145,9 +145,9 @@ const KNOWN_CALQUE_TRAPS = [
     fix: 'Kultur (Kultur darah / Kultur urine)',
   },
   {
-    keyMatch: /\b(?:over-the-counter|otc)\b/i,
+    keyMatch: /\b(?:over(?:-|\s+)the(?:-|\s+)counter|otc)\b/i,
     badVal: /\bdi\s+atas\s+meja(?:\s+kasir)?\b/i,
-    fix: 'Obat bebas (tanpa resep dokter)',
+    fix: 'Obat bebas / Obat tanpa resep',
   },
 ];
 
