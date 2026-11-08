@@ -11,6 +11,7 @@ This directory houses modular domain and subculture glossaries for `indonesian-l
 | Domain Module | Scope & Triggers |
 | --- | --- |
 | [fitness-and-gym.md](fitness-and-gym.md) | Strength training, bodybuilding, calisthenics, workout trackers (e.g., openGym, Strava, Hevy), sports anatomy, 1RM estimation, gamification streaks, and coaching personas. |
+| [medical-and-healthcare.md](medical-and-healthcare.md) | Telemedicine, electronic medical records (RME / SatuSehat), clinical hospital workflows, diagnostic lab specimens, BPOM drug classifications, and patient-facing consultations. |
 | [tech-and-developer.md](tech-and-developer.md) | Software engineering, APIs, cloud infrastructure, authentication/security, official Apple iOS & Google Android Indonesian system strings, and consumer SaaS settings. |
 
 ---

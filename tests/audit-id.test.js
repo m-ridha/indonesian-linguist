@@ -1210,6 +1210,50 @@ test('auditDictionary: flags weight plates (piringan beban), plate loading (pemu
   assert.deepEqual(goodFindings, []);
 });
 
+test('auditDictionary: flags medical calque traps (patient discharge, stool sample, blood culture, OTC)', () => {
+  const badMedicalCatalog = {
+    'Patient discharge': 'Pemecatan pasien',
+    'Discharge summary': 'Ringkasan pelepasan muatan',
+    'Stool sample': 'Sampel bangku',
+    Stool: 'Kursi',
+    'Blood culture': 'Budaya darah',
+    'Urine culture': 'Kebudayaan urine',
+    'Over-the-counter': 'Di atas meja kasir',
+    OTC: 'Di atas meja',
+  };
+  const badFindings = auditDictionary(badMedicalCatalog);
+  const polysemyFindings = badFindings.filter((f) => f.rule === 'polysemy-calque');
+  assert.equal(polysemyFindings.length, 8);
+
+  const goodMedicalCatalog = {
+    'Patient discharge': 'Pemulangan pasien',
+    'Discharge summary': 'Ringkasan pulang',
+    'Stool sample': 'Sampel feses',
+    Stool: 'Tinja',
+    'Blood culture': 'Kultur darah',
+    'Urine culture': 'Kultur urine',
+    'Over-the-counter': 'Obat bebas',
+    OTC: 'Obat bebas (tanpa resep dokter)',
+  };
+  const goodFindings = auditDictionary(goodMedicalCatalog);
+  assert.deepEqual(goodFindings, []);
+});
+
+test('auditText / auditDictionary: flags high-frequency medical kata tidak baku (diagnosa, apotik, nafas, cidera)', () => {
+  const badText = 'Pasien mengalami cidera dan sesak nafas setelah datang ke apotik untuk diagnosa.';
+  const findings = auditText(badText);
+  const spellingFindings = findings.filter((f) => f.rule === 'kata-tidak-baku');
+  assert.equal(spellingFindings.length, 4);
+  assert.ok(spellingFindings.some((f) => f.message.includes('diagnosa') && f.message.includes('diagnosis')));
+  assert.ok(spellingFindings.some((f) => f.message.includes('apotik') && f.message.includes('apotek')));
+  assert.ok(spellingFindings.some((f) => f.message.includes('nafas') && f.message.includes('napas')));
+  assert.ok(spellingFindings.some((f) => f.message.includes('cidera') && f.message.includes('cedera')));
+
+  const goodText = 'Pasien mengalami cedera dan sesak napas setelah datang ke apotek untuk diagnosis.';
+  const goodFindings = auditText(goodText);
+  assert.deepEqual(goodFindings, []);
+});
+
 test('parseAndroidXmlLocale: parses strings, string-arrays, plurals, entities, and comments', () => {
   const xml = `<?xml version="1.0" encoding="utf-8"?>
 <resources>

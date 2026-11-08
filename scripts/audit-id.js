@@ -37,6 +37,10 @@ const NON_STANDARD_WORDS = [
   { regex: /\b(disini|disana|disitu)\b/i, fix: 'di sini / di sana / di situ' },
   { regex: /\b(diatas|dibawah|didalam|diluar)\b/i, fix: 'di atas / di bawah / di dalam / di luar' },
   { regex: /\b(kesana|kesini)\b/i, fix: 'ke sana / ke sini' },
+  { regex: /\bdiagnosa\b/i, fix: 'diagnosis' },
+  { regex: /\bapotik\b/i, fix: 'apotek' },
+  { regex: /\bnafas\b/i, fix: 'napas' },
+  { regex: /\bcidera\b/i, fix: 'cedera' },
 ];
 
 const SLOP_AND_PLEONASM_PATTERNS = [
@@ -125,6 +129,26 @@ const KNOWN_CALQUE_TRAPS = [
     badVal: /\b(?:beban|berat)\s+kerja\b/i,
     fix: 'Beban set utama / Beban utama',
   },
+  {
+    keyMatch: /\b(?:patient\s+)?discharge(?:\s+summary)?\b/i,
+    badVal: /\b(?:pemecatan|pelepasan\s+muatan)\b/i,
+    fix: 'Pemulangan pasien / Pasien pulang / Ringkasan pulang',
+  },
+  {
+    keyMatch: /\bstool\s+(?:samples?|tests?|specimens?)\b|^stool$/i,
+    badVal: /\b(?:bangku|kursi)\b/i,
+    fix: 'Feses / Tinja',
+  },
+  {
+    keyMatch: /\b(?:blood|urine)\s+cultures?\b/i,
+    badVal: /\b(?:budaya|kebudayaan)\b/i,
+    fix: 'Kultur (Kultur darah / Kultur urine)',
+  },
+  {
+    keyMatch: /\b(?:over-the-counter|otc)\b/i,
+    badVal: /\bdi\s+atas\s+meja(?:\s+kasir)?\b/i,
+    fix: 'Obat bebas (tanpa resep dokter)',
+  },
 ];
 
 // Full-string anchored patterns for complete retained loanwords, exercise names, Latin muscle names,
@@ -133,7 +157,8 @@ const RETAINED_LOANWORD_PATTERNS = [
   /^(?:Drop-set\s*\/\s*rest-pause|Drop-set|Superset(?:\s+\{[0-9]+\}(?:\s*\/\s*\{[0-9]+\}|\s*:\s*\{[0-9]+\}\s*\(\{[0-9]+\}\))?)?|Rest-pause|Deload|Bodyweight|Thibaudeau\s*\(Powerlifting\))$/i,
   /^(?:(?:(?:single|one|two)-(?:leg|arm)|(?:reverse|close|wide|neutral|narrow|overhand|underhand|hammer|snatch)-grip|incline|decline|flat|barbell|dumbbell|ez-bar|cable|smith machine|seated|standing|close-grip|wide-grip|romanian|sumo|conventional|deficit|pause|paused|single-arm|one-arm|high-bar|low-bar|safety-bar|zercher|hack|belt|box|bulgarian)\s+){0,3}(?:bench press|barbell curl|back squat|front squat|split squat|squat|deadlift|overhead press|leverage machine)(?:\s*\([A-Za-z0-9 -]+\))?$/i,
   /^(?:serratus anterior|latissimus dorsi|sternocleidomastoid|pectoralis(?:\s+major|\s+minor)?|gluteus(?:\s+maximus|\s+medius)?|gastrocnemius)$/i,
-  /^(?:Face ID(?:\s*\/\s*Touch ID)?|Touch ID|iCloud Keychain|Google Password Manager|Health Connect|Apple Health|Apple Watch|Google Play(?:\s+Store)?|App Store|Cloudflare Access)$/i,
+  /^(?:Face ID(?:\s*\/\s*Touch ID)?|Touch ID|iCloud Keychain|Google Password Manager|Health Connect|Apple Health|Apple Watch|Google Play(?:\s+Store)?|App Store|Cloudflare Access|SatuSehat|Mobile JKN)$/i,
+  /^(?:USG|CT Scan|MRI|EKG|Pap smear|Biopsi|Endoskopi|Kolonoskopi|Infus|Kateter|Ventilator)$/i,
   /^(?:API key|endpoint|reverse proxy|source code|webhook)$/i,
   /^(?:Bahasa Indonesia(?:\s*\([A-Za-z0-9_-]+\))?|Bahasa Melayu(?:\s*\([A-Za-z0-9_-]+\))?|English(?:\s*\([A-Za-z0-9_-]+\))?|[a-z]{2}(?:[-_][A-Z]{2,4})?)$/i,
 ];

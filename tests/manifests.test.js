@@ -39,6 +39,7 @@ const REQUIRED_REFERENCES = [
   'references/writing-ux-marketing-seo-academic.md',
   'references/domains/README.md',
   'references/domains/fitness-and-gym.md',
+  'references/domains/medical-and-healthcare.md',
   'references/domains/tech-and-developer.md',
   'scripts/README.md',
 ];
