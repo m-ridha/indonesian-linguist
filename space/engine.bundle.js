@@ -133,7 +133,8 @@ const KNOWN_CALQUE_TRAPS = [
       test(key, sourceVal) {
         const raw = typeof sourceVal === 'string' ? sourceVal : key;
         const text = typeof raw === 'string' ? raw : String(raw || '');
-        if (/\b(?:battery|electric(?:al)?|electrostatic|capacit(?:or|ance)|current|voltage|spark|arc|plasma|corona|rate|depth|cycle)\b/i.test(text)) {
+        // Exclude specific compound electrical/battery discharge contexts
+        if (/\b(?:battery\s+discharge|electric(?:al)?\s+discharge|electrostatic\s+discharge|discharge\s+current|discharge\s+voltage|discharge\s+rate|discharge\s+capacity|capacit(?:or|ance)\s+discharge|depth\s+of\s+discharge|discharge\s+cycle|arc\s+discharge|spark\s+discharge|plasma\s+discharge|corona\s+discharge)\b/i.test(text)) {
           return false;
         }
         return /\b(?:patient\s+discharge|discharge\s+summary|discharge\s+(?:plan(?:ning)?|instructions?|date|order|status)|hospital\s+discharge)\b/i.test(text);
@@ -153,7 +154,22 @@ const KNOWN_CALQUE_TRAPS = [
     fix: 'Kultur (Kultur darah / Kultur urine)',
   },
   {
-    keyMatch: /\b(?:over(?:-|\s+)the(?:-|\s+)counter|otc)\b/i,
+    keyMatch: {
+      /** @param {string} key @param {unknown} [sourceVal] */
+      test(key, sourceVal) {
+        const raw = typeof sourceVal === 'string' ? sourceVal : key;
+        const text = typeof raw === 'string' ? raw : String(raw || '');
+        // Require explicit medical context (drugs, medicine, pharma) if source is a full sentence or standalone abbreviation
+        if (/\b(?:over(?:-|\s+)the(?:-|\s+)counter\s+(?:drugs?|medicines?|medications?|pharmaceuticals?|products?)|otc\s+(?:drugs?|medicines?|medications?|products?))\b/i.test(text)) {
+          return true;
+        }
+        // Match exact standalone keys
+        if (/^(?:over(?:-|\s+)the(?:-|\s+)counter|otc)$/i.test(text.trim())) {
+          return true;
+        }
+        return false;
+      },
+    },
     badVal: /\bdi\s+atas\s+meja(?:\s+kasir)?\b/i,
     fix: 'Obat bebas / Obat tanpa resep',
   },

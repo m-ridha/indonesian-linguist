@@ -52,7 +52,7 @@ The following table resolves high-frequency false cognates, machine calques, and
 | **Inpatient** | `Pasien dalam` | **Rawat inap** | Patient admitted to hospital bed overnight |
 | **General Practitioner (GP)** | `Praktisi umum` | **Dokter umum** | Primary care physician |
 | **Attending physician / Physician in charge** | `Dokter yang hadir / Dokter yang bertugas` | **Dokter Penanggung Jawab Pelayanan (DPJP)** | Official Indonesian hospital accreditation term for the primary managing specialist |
-| **Medical record / Electronic Medical Record (EMR)** | `Catatan medis` | **Rekam medis / Rekam Medis Elektronik (RME)** | Statutory Indonesian terminology per Permenkes No. 24 Tahun 2022 (lowercase *rekam medis elektronik* is fully standard in prose) |
+| **Medical record / Electronic Medical Record (EMR)** | `Catatan riwayat non-medis` | **Rekam medis / Rekam Medis Elektronik (RME)** | Statutory Indonesian terminology per Permenkes No. 24 Tahun 2022 (in patient-facing conversational copy, *catatan medis* is also widely used and accepted alongside *rekam medis*) |
 | **Informed consent** | `Persetujuan yang diinformasikan` | **Persetujuan Tindakan Kedokteran (Informed Consent)** | Legal authorization signed before surgical/invasive procedures |
 | **Referral / Referral letter** | `Surat penyerahan` | **Rujukan / Surat rujukan** | BPJS Kesehatan and hospital referral between primary (FKTP) and secondary/tertiary facilities (FKRTL) |
 | **Triage** | `Penyortiran / Pemilahan` | **Triase** | Emergency room severity sorting (Merah, Kuning, Hijau, Hitam) |
@@ -159,14 +159,15 @@ Interactive controls on patient booking, telemedicine consultations, and laborat
 - `Doctor is typing` $\rightarrow$ **`Dokter sedang mengetik…`**
 - `Prescription issued` $\rightarrow$ **`Resep dokter terbit`**
 - `Medicine prepared` $\rightarrow$ **`Obat selesai disiapkan`**
-- `Delivered` $\rightarrow$ **`Terkirim`**
+- `Delivered` $\rightarrow$ **`Pesanan diterima`** (or **`Terkirim`**)
 - `Completed` $\rightarrow$ **`Selesai`**
 - `Cancelled by patient` $\rightarrow$ **`Dibatalkan oleh pasien`**
 - `Follow-up required` $\rightarrow$ **`Perlu kontrol lanjutan`**
 
 ### C. Reassuring Patient Messaging (Anti-Panic & Empathy Invariant)
-Clinical findings must never be translated in a sensationalist or alarmist manner:
+Clinical findings and system issues must never be translated in a sensationalist or alarmist manner:
 - ❌ *Hasil tes Anda positif dan berbahaya!*
 - ✅ *Hasil tes menunjukkan hasil positif (terdeteksi). Dokter kami siap mendiskusikan langkah perawatan selanjutnya dengan Anda.*
 - ❌ *Gagal menghubungkan ke dokter, kondisi Anda berisiko.*
-- ✅ *Koneksi terputus saat konsultasi berlangsung. Kami sedang mencoba menyambungkan Anda kembali secara otomatis… Jika sambungan belum pulih, silakan ketuk "Hubungkan Ulang" atau hubungi layanan bantuan.*
+- ✅ **Sebelum konsultasi dimulai (Gagal terhubung)**: *Belum berhasil terhubung ke dokter. Silakan periksa koneksi internet Anda atau coba hubungkan kembali.*
+- ✅ **Saat konsultasi sedang berlangsung (Koneksi terputus)**: *Koneksi terputus saat konsultasi berlangsung. Kami sedang mencoba menyambungkan Anda kembali secara otomatis… Jika sambungan belum pulih, silakan ketuk "Hubungkan Ulang" atau hubungi layanan bantuan.*

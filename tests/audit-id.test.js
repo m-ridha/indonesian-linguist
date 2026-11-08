@@ -1215,6 +1215,8 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
     'Patient discharge': 'Pemecatan pasien',
     'Discharge summary': 'Ringkasan pelepasan muatan',
     'Discharge instructions': 'Instruksi pemecatan',
+    'Current patient discharge status': 'Status pemecatan pasien saat ini',
+    'Discharge summary: current medications': 'Ringkasan pemecatan: obat saat ini',
     'Stool sample': 'Sampel bangku',
     'Stool test': 'Tes kursi',
     'Blood culture': 'Budaya darah',
@@ -1225,12 +1227,14 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
   };
   const badFindings = auditDictionary(badMedicalCatalog);
   const polysemyFindings = badFindings.filter((f) => f.rule === 'polysemy-calque');
-  assert.equal(polysemyFindings.length, 10);
+  assert.equal(polysemyFindings.length, 12);
 
   const goodMedicalCatalog = {
     'Patient discharge': 'Pemulangan pasien',
     'Discharge summary': 'Ringkasan pulang',
     'Discharge instructions': 'Petunjuk kepulangan',
+    'Current patient discharge status': 'Status kepulangan pasien saat ini',
+    'Discharge summary: current medications': 'Ringkasan pulang: obat saat ini',
     'Stool sample': 'Sampel feses',
     'Stool test': 'Pemeriksaan tinja',
     'Blood culture': 'Kultur darah',
@@ -1242,7 +1246,7 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
   const goodFindings = auditDictionary(goodMedicalCatalog);
   assert.deepEqual(goodFindings, []);
 
-  // Non-medical contexts (electrical discharge, battery discharge status, furniture stool) must not be falsely flagged
+  // Non-medical contexts (electrical discharge, battery discharge status, furniture stool, OTC financial trading) must not be falsely flagged
   const nonMedicalCatalog = {
     'Discharge current': 'Arus pelepasan muatan listrik',
     'Battery discharge': 'Pelepasan muatan baterai',
@@ -1251,6 +1255,7 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
     'Electrostatic discharge': 'Pelepasan muatan elektrostatik',
     'Wooden stool': 'Bangku kayu',
     Stool: 'Kursi',
+    'The OTC trading documents are on the table': 'Dokumen perdagangan OTC ada di atas meja',
   };
   const nonMedicalFindings = auditDictionary(nonMedicalCatalog);
   assert.deepEqual(nonMedicalFindings, []);
