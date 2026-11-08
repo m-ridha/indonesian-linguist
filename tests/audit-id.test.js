@@ -1266,6 +1266,16 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
   const goodFindings = auditDictionary(goodMedicalCatalog);
   assert.deepEqual(goodFindings, []);
 
+  // Source-aware table test: valid non-prescription rendering does NOT suppress literal "di atas meja"
+  // when source does NOT describe a physical table
+  const ungroundedTableCatalog = {
+    'Buy OTC medicine': 'Beli obat tanpa resep, obat di atas meja kasir',
+    'Buy OTC healthcare products': 'Beli produk kesehatan tanpa resep, produk di atas meja kasir',
+  };
+  const ungroundedTableFindings = auditDictionary(ungroundedTableCatalog);
+  const ungroundedPolysemy = ungroundedTableFindings.filter((f) => f.rule === 'polysemy-calque');
+  assert.equal(ungroundedPolysemy.length, 2);
+
   // Source-aware discharge test: ambiguous source 'Discharge' with patient key context
   const sourceAwareCatalog = {
     'Patient discharge': 'Pemecatan pasien',
@@ -1307,6 +1317,8 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
     'The OTC trading documents are on the table': 'Dokumen perdagangan OTC ada di atas meja',
     'OTC derivative products are on the table': 'Produk derivatif OTC ada di atas meja',
     'OTC market reports for pharmacy stocks are on the table': 'Laporan pasar OTC untuk saham farmasi ada di atas meja',
+    'OTC market for medicine company shares are on the table': 'Pasar OTC untuk saham perusahaan obat ada di atas meja',
+    'Medicine company shares on the OTC market are on the table': 'Saham perusahaan obat di pasar OTC ada di atas meja',
     'Medication reports for the OTC market are on the cashier desk': 'Laporan obat-obatan untuk pasar OTC ada di atas meja kasir',
   };
   const nonMedicalFindings = auditDictionary(nonMedicalCatalog);

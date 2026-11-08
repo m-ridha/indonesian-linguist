@@ -55,7 +55,8 @@ const SLOP_AND_PLEONASM_PATTERNS = [
 
 /**
  * @typedef {{ test(key: string, sourceVal?: unknown): boolean }} KeyMatchPredicate
- * @typedef {{ keyMatch: RegExp | KeyMatchPredicate, badVal: RegExp, fix: string }} CalqueTrap
+ * @typedef {{ test(val: string, key?: string, sourceVal?: unknown): boolean }} BadValPredicate
+ * @typedef {{ keyMatch: RegExp | KeyMatchPredicate, badVal: RegExp | BadValPredicate, fix: string }} CalqueTrap
  */
 /** @type {CalqueTrap[]} */
 const KNOWN_CALQUE_TRAPS = [
@@ -157,10 +158,12 @@ const KNOWN_CALQUE_TRAPS = [
   {
     keyMatch: /\b(?:over(?:-|\s+)the(?:-|\s+)counter|otc)\s+healthcare\s+products?\b/i,
     badVal: {
-      /** @param {string} val */
-      test(val) {
-        // Do not flag when a valid non-prescription rendering is present and "di atas meja" describes physical placement
-        if (/\b(?:tanpa\s+resep|obat\s+bebas|produk\s+bebas)\b/i.test(val)) return false;
+      /** @param {string} val @param {string} [key] @param {unknown} [sourceVal] */
+      test(val, key, sourceVal) {
+        const sourceText = (String(key || '') + ' ' + (typeof sourceVal === 'string' ? sourceVal : '')).trim();
+        const hasSourceTable = /\b(?:tables?|desks?|countertops?)\b/i.test(sourceText);
+        // Only exempt when source genuinely mentions a physical table/desk and a valid non-prescription rendering is present
+        if (hasSourceTable && /\b(?:tanpa\s+resep|obat\s+bebas|produk\s+bebas)\b/i.test(val)) return false;
         if (/\bdi\s+atas\s+meja\s+kasir\b/i.test(val)) return true;
         if (/\b(?:produk(?:\s+kesehatan)?)\s+di\s+atas\s+meja\b/i.test(val)) return true;
         return /^di\s+atas\s+meja$/i.test(val.trim());
@@ -181,16 +184,16 @@ const KNOWN_CALQUE_TRAPS = [
           return true;
         }
 
-        // Exclude financial OTC trading/market/derivatives when OTC is part of the financial phrase
-        if (/\b(?:otc\s+(?:trading|market|derivatives?|transactions?|securities|stocks?|shares?|broker|equity|forex|crypto|swap|settlement)|(?:financial|securities|stock|derivatives?)\s+(?:trading|market))\b/i.test(combined)) {
-          // If OTC is directly in a medical phrase like "OTC medicines" or "OTC cough syrup", preserve medical context
-          if (!/\b(?:over(?:-|\s+)the(?:-|\s+)counter|otc)(?:\s+[a-z-]+){0,2}\s+(?:drugs?|medicines?|medications?|pharmaceuticals?|pain\s+relief|painkillers?|aspirin|paracetamol|ibuprofen|pills?|tablets?|syrups?|capsules?|remed(?:y|ies))\b/i.test(combined)) {
-            return false;
-          }
+        // Strict financial exclusion: if OTC directly qualifies financial terms (e.g. "OTC market",
+        // "OTC trading", "OTC derivatives") or financial trading directly qualifies OTC, exclude
+        // even if medication/drugs appears elsewhere (e.g. "OTC market for medicine company shares" or
+        // "Medicine company shares on the OTC market")
+        if (/\b(?:otc\s+(?:trading|market|derivatives?|transactions?|securities|stocks?|shares?|broker|equity|forex|crypto|swap|settlement)|(?:financial|securities|stock|derivatives?|shares?)\s+(?:trading|market)\s+(?:for|in|on|at|of)?\s*otc|(?:on|in|at)\s+(?:the\s+)?otc\s+market)\b/i.test(combined)) {
+          return false;
         }
 
-        // Require medication term to be associated with OTC (allowing optional modifiers like "cough" in "OTC cough syrup")
-        if (/\b(?:over(?:-|\s+)the(?:-|\s+)counter|otc)(?:\s+[a-z-]+){0,2}\s+(?:drugs?|medicines?|medications?|pharmaceuticals?|pain\s+relief|painkillers?|aspirin|paracetamol|ibuprofen|pills?|tablets?|syrups?|capsules?|remed(?:y|ies)|treatments?|prescriptions?|dosages?)\b/i.test(combined)) {
+        // Require medication term to be associated with OTC (allowing optional medical modifiers like "cough" in "OTC cough syrup")
+        if (/\b(?:over(?:-|\s+)the(?:-|\s+)counter|otc)(?:\s+(?:cough|cold|allergy|flu|headache|pain|fever|nasal|eye|skin|sleep|stomach|digestive|[a-z]+)){0,2}\s+(?:drugs?|medicines?|medications?|pharmaceuticals?|pain\s+relief|painkillers?|aspirin|paracetamol|ibuprofen|pills?|tablets?|syrups?|capsules?|remed(?:y|ies)|treatments?|prescriptions?|dosages?)\b/i.test(combined)) {
           return true;
         }
         if (/\b(?:drugs?|medicines?|medications?|pharmaceuticals?|pain\s+relief|painkillers?|aspirin|paracetamol|ibuprofen)\b[^.?!;:]*?\b(?:over(?:-|\s+)the(?:-|\s+)counter|otc)\b/i.test(combined)) {
@@ -201,10 +204,12 @@ const KNOWN_CALQUE_TRAPS = [
       },
     },
     badVal: {
-      /** @param {string} val */
-      test(val) {
-        // Do not flag when a valid non-prescription rendering is present and "di atas meja" describes physical placement
-        if (/\b(?:tanpa\s+resep|obat\s+bebas|produk\s+bebas)\b/i.test(val)) return false;
+      /** @param {string} val @param {string} [key] @param {unknown} [sourceVal] */
+      test(val, key, sourceVal) {
+        const sourceText = (String(key || '') + ' ' + (typeof sourceVal === 'string' ? sourceVal : '')).trim();
+        const hasSourceTable = /\b(?:tables?|desks?|countertops?)\b/i.test(sourceText);
+        // Only exempt when source genuinely mentions a physical table/desk and a valid non-prescription rendering is present
+        if (hasSourceTable && /\b(?:tanpa\s+resep|obat\s+bebas|produk\s+bebas)\b/i.test(val)) return false;
         if (/\bdi\s+atas\s+meja\s+kasir\b/i.test(val)) return true;
         if (/\b(?:obat|aspirin|paracetamol|ibuprofen|pereda\s+nyeri)\s+di\s+atas\s+meja\b/i.test(val)) return true;
         return /^di\s+atas\s+meja$/i.test(val.trim());
@@ -999,7 +1004,8 @@ function auditDictionary(dict, options = {}) {
       const isKeyMatch = trap.keyMatch instanceof RegExp
         ? (trap.keyMatch.test(key) || (typeof sourceValue === 'string' && trap.keyMatch.test(sourceValue)))
         : trap.keyMatch.test(key, sourceValue);
-      if (isKeyMatch && (trap.badVal.test(trimmedValue) || trap.badVal.test(value))) {
+      const isBadVal = trap.badVal.test(trimmedValue, key, sourceValue) || trap.badVal.test(value, key, sourceValue);
+      if (isKeyMatch && isBadVal) {
         if (!pushFinding({
           key: fullKey,
           rule: 'polysemy-calque',

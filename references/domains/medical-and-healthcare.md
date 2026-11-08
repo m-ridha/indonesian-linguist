@@ -20,8 +20,8 @@ Use this reference module whenever translating, localizing, or editing medical r
 3. **Konsultatif (Consultative, Empathetic & Reassuring)**:
    - *Surfaces*: Telemedicine doctor-patient chat, appointment booking, triage questionnaires, symptom checkers, digital health companion apps, and patient education articles.
    - *Tone*: Warm, empathetic, clear, calm, and reassuring without sacrificing medical accuracy.
-4. **Santai (Casual, BANNED on clinical surfaces)**:
-   - Casual speech (*nggak/udah*, colloquial particles) is strictly banned on clinical screens, diagnostic results, medication reminders, or consent dialogs.
+4. **Santai (Casual, restricted on clinical surfaces)**:
+   - Casual speech (*nggak/udah*, colloquial particles) is strictly banned on clinical screens, diagnostic results, medication reminders, or consent dialogs, except for second-person pronouns specifically mandated by an explicit project voice or pronoun override (e.g., `--pronoun kamu`). Approved or prescribed consent wording must remain unchanged.
 5. **Akrab (Intimate, BANNED by default)**:
    - Intimate slang (*gue/lo*, regional street slang) must never appear in healthcare or telemedicine user interfaces by default, unless an explicitly requested project voice or pronoun override (e.g., specialized peer companion bots) specifically mandates it. This exception does not apply to approved or prescribed consent wording that must remain unchanged.
 
