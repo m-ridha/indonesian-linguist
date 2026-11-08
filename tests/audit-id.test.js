@@ -1226,11 +1226,12 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
     'This medicine is available over the counter': 'Obat ini tersedia di atas meja kasir',
     'Over the counter pain relief': 'Pereda nyeri di atas meja kasir',
     'Over-the-counter medicines in stock': 'Obat di atas meja kasir tersedia',
+    'Stock market impact on OTC medicines': 'Dampak pasar saham terhadap obat di atas meja kasir',
     OTC: 'Di atas meja',
   };
   const badFindings = auditDictionary(badMedicalCatalog);
   const polysemyFindings = badFindings.filter((f) => f.rule === 'polysemy-calque');
-  assert.equal(polysemyFindings.length, 15);
+  assert.equal(polysemyFindings.length, 16);
 
   const goodMedicalCatalog = {
     'Patient discharge': 'Pemulangan pasien',
@@ -1247,6 +1248,7 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
     'This medicine is available over the counter': 'Obat ini tersedia tanpa resep dokter',
     'Over the counter pain relief': 'Pereda nyeri tanpa resep',
     'Over-the-counter medicines in stock': 'Obat bebas tersedia',
+    'Stock market impact on OTC medicines': 'Dampak pasar saham terhadap obat tanpa resep',
     OTC: 'Obat bebas (tanpa resep dokter)',
   };
   const goodFindings = auditDictionary(goodMedicalCatalog);
@@ -1262,6 +1264,15 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
   const sourceAwarePolysemy = sourceAwareFindings.filter((f) => f.rule === 'polysemy-calque');
   assert.equal(sourceAwarePolysemy.length, 1);
   assert.ok(sourceAwarePolysemy[0].message.includes('Pemulangan pasien / Pasien pulang / Ringkasan pulang'));
+
+  // Source-aware electrical test: ambiguous source 'Discharge status' with battery key context must NOT be flagged
+  const sourceAwareElectricalCatalog = {
+    'Battery discharge status': 'Status pelepasan muatan baterai',
+  };
+  const sourceAwareElectricalFindings = auditDictionary(sourceAwareElectricalCatalog, {
+    source: { 'Battery discharge status': 'Discharge status' },
+  });
+  assert.deepEqual(sourceAwareElectricalFindings, []);
 
   // Non-medical contexts (electrical discharge, battery discharge status, furniture stool, OTC financial trading) must not be falsely flagged
   const nonMedicalCatalog = {

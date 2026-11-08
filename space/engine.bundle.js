@@ -161,20 +161,17 @@ const KNOWN_CALQUE_TRAPS = [
         const keyText = typeof key === 'string' ? key : String(key || '');
         const sourceText = typeof sourceVal === 'string' ? sourceVal : '';
         const combined = (keyText + ' ' + sourceText).trim();
-        // Exclude financial / securities trading OTC contexts (narrowed to financial phrases so pharmacy inventory like "in stock" is preserved)
-        if (/\b(?:otc\s+(?:trading|market|derivatives?|transactions?|securities|stocks?|shares?|broker|equity|forex|crypto|swap|settlement)|(?:financial|securities|stock|derivatives?)\s+(?:trading|market))\b/i.test(combined)) {
+        const hasMedicalOTC = /\b(?:over(?:-|\s+)the(?:-|\s+)counter|otc)\b/i.test(combined) &&
+          /\b(?:drugs?|medicines?|medications?|pharmaceuticals?|products?|pain\s+relief|painkillers?|pills?|tablets?|syrup|capsules?|remed(?:y|ies)|treatment|prescription|pharmacy|clinic|dosage)\b/i.test(combined);
+        // Exclude financial / securities trading OTC contexts unless explicit medical OTC context is present
+        if (!hasMedicalOTC && /\b(?:otc\s+(?:trading|market|derivatives?|transactions?|securities|stocks?|shares?|broker|equity|forex|crypto|swap|settlement)|(?:financial|securities|stock|derivatives?)\s+(?:trading|market))\b/i.test(combined)) {
           return false;
         }
         // Match exact standalone keys in either key or source
         if (/^(?:over(?:-|\s+)the(?:-|\s+)counter|otc)$/i.test(keyText.trim()) || /^(?:over(?:-|\s+)the(?:-|\s+)counter|otc)$/i.test(sourceText.trim())) {
           return true;
         }
-        // Match when OTC appears alongside medical/pharmaceutical context anywhere in key or source text
-        if (/\b(?:over(?:-|\s+)the(?:-|\s+)counter|otc)\b/i.test(combined) &&
-            /\b(?:drugs?|medicines?|medications?|pharmaceuticals?|products?|pain\s+relief|painkillers?|pills?|tablets?|syrup|capsules?|remed(?:y|ies)|treatment|prescription|pharmacy|clinic|dosage)\b/i.test(combined)) {
-          return true;
-        }
-        return false;
+        return hasMedicalOTC;
       },
     },
     badVal: /\bdi\s+atas\s+meja(?:\s+kasir)?\b/i,
@@ -964,12 +961,9 @@ function auditDictionary(dict, options = {}) {
     let limitHit = false;
     const trimmedValue = value.trim();
     for (const trap of KNOWN_CALQUE_TRAPS) {
-      /** @type {(candidate: string) => boolean} */
-      const matchesKey = (candidate) =>
-        trap.keyMatch instanceof RegExp
-          ? trap.keyMatch.test(candidate)
-          : trap.keyMatch.test(candidate, sourceValue);
-      const isKeyMatch = matchesKey(key) || (typeof sourceValue === 'string' && matchesKey(sourceValue));
+      const isKeyMatch = trap.keyMatch instanceof RegExp
+        ? (trap.keyMatch.test(key) || (typeof sourceValue === 'string' && trap.keyMatch.test(sourceValue)))
+        : trap.keyMatch.test(key, sourceValue);
       if (isKeyMatch && (trap.badVal.test(trimmedValue) || trap.badVal.test(value))) {
         if (!pushFinding({
           key: fullKey,
