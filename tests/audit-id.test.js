@@ -1223,11 +1223,13 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
     'Urine culture': 'Kebudayaan urine',
     'Over-the-counter': 'Di atas meja kasir',
     'Over the counter medicine': 'Obat di atas meja kasir',
+    'This medicine is available over the counter': 'Obat ini tersedia di atas meja kasir',
+    'Over the counter pain relief': 'Pereda nyeri di atas meja kasir',
     OTC: 'Di atas meja',
   };
   const badFindings = auditDictionary(badMedicalCatalog);
   const polysemyFindings = badFindings.filter((f) => f.rule === 'polysemy-calque');
-  assert.equal(polysemyFindings.length, 12);
+  assert.equal(polysemyFindings.length, 14);
 
   const goodMedicalCatalog = {
     'Patient discharge': 'Pemulangan pasien',
@@ -1241,10 +1243,23 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
     'Urine culture': 'Kultur urine',
     'Over-the-counter': 'Obat bebas',
     'Over the counter medicine': 'Obat tanpa resep',
+    'This medicine is available over the counter': 'Obat ini tersedia tanpa resep dokter',
+    'Over the counter pain relief': 'Pereda nyeri tanpa resep',
     OTC: 'Obat bebas (tanpa resep dokter)',
   };
   const goodFindings = auditDictionary(goodMedicalCatalog);
   assert.deepEqual(goodFindings, []);
+
+  // Source-aware discharge test: ambiguous source 'Discharge' with patient key context
+  const sourceAwareCatalog = {
+    'Patient discharge': 'Pemecatan pasien',
+  };
+  const sourceAwareFindings = auditDictionary(sourceAwareCatalog, {
+    source: { 'Patient discharge': 'Discharge' },
+  });
+  const sourceAwarePolysemy = sourceAwareFindings.filter((f) => f.rule === 'polysemy-calque');
+  assert.equal(sourceAwarePolysemy.length, 1);
+  assert.ok(sourceAwarePolysemy[0].message.includes('Pemulangan pasien / Pasien pulang / Ringkasan pulang'));
 
   // Non-medical contexts (electrical discharge, battery discharge status, furniture stool, OTC financial trading) must not be falsely flagged
   const nonMedicalCatalog = {

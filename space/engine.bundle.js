@@ -131,13 +131,14 @@ const KNOWN_CALQUE_TRAPS = [
     keyMatch: {
       /** @param {string} key @param {unknown} [sourceVal] */
       test(key, sourceVal) {
-        const raw = typeof sourceVal === 'string' ? sourceVal : key;
-        const text = typeof raw === 'string' ? raw : String(raw || '');
+        const keyText = typeof key === 'string' ? key : String(key || '');
+        const sourceText = typeof sourceVal === 'string' ? sourceVal : '';
+        const combined = (keyText + ' ' + sourceText).trim();
         // Exclude specific compound electrical/battery discharge contexts
-        if (/\b(?:battery\s+discharge|electric(?:al)?\s+discharge|electrostatic\s+discharge|discharge\s+current|discharge\s+voltage|discharge\s+rate|discharge\s+capacity|capacit(?:or|ance)\s+discharge|depth\s+of\s+discharge|discharge\s+cycle|arc\s+discharge|spark\s+discharge|plasma\s+discharge|corona\s+discharge)\b/i.test(text)) {
+        if (/\b(?:battery\s+discharge|electric(?:al)?\s+discharge|electrostatic\s+discharge|discharge\s+current|discharge\s+voltage|discharge\s+rate|discharge\s+capacity|capacit(?:or|ance)\s+discharge|depth\s+of\s+discharge|discharge\s+cycle|arc\s+discharge|spark\s+discharge|plasma\s+discharge|corona\s+discharge)\b/i.test(combined)) {
           return false;
         }
-        return /\b(?:patient\s+discharge|discharge\s+summary|discharge\s+(?:plan(?:ning)?|instructions?|date|order|status)|hospital\s+discharge)\b/i.test(text);
+        return /\b(?:patient\s+discharge|discharge\s+summary|discharge\s+(?:plan(?:ning)?|instructions?|date|order|status)|hospital\s+discharge)\b/i.test(combined);
       },
     },
     badVal: /\b(?:pemecatan|pelepasan\s+muatan)\b/i,
@@ -157,21 +158,27 @@ const KNOWN_CALQUE_TRAPS = [
     keyMatch: {
       /** @param {string} key @param {unknown} [sourceVal] */
       test(key, sourceVal) {
-        const raw = typeof sourceVal === 'string' ? sourceVal : key;
-        const text = typeof raw === 'string' ? raw : String(raw || '');
-        // Require explicit medical context (drugs, medicine, pharma) if source is a full sentence or standalone abbreviation
-        if (/\b(?:over(?:-|\s+)the(?:-|\s+)counter\s+(?:drugs?|medicines?|medications?|pharmaceuticals?|products?)|otc\s+(?:drugs?|medicines?|medications?|products?))\b/i.test(text)) {
+        const keyText = typeof key === 'string' ? key : String(key || '');
+        const sourceText = typeof sourceVal === 'string' ? sourceVal : '';
+        const combined = (keyText + ' ' + sourceText).trim();
+        // Exclude financial / securities trading OTC contexts
+        if (/\b(?:trading|stock|shares?|derivatives?|market|broker|securities|equity|forex|crypto|swap|settlement)\b/i.test(combined)) {
+          return false;
+        }
+        // Match exact standalone keys in either key or source
+        if (/^(?:over(?:-|\s+)the(?:-|\s+)counter|otc)$/i.test(keyText.trim()) || /^(?:over(?:-|\s+)the(?:-|\s+)counter|otc)$/i.test(sourceText.trim())) {
           return true;
         }
-        // Match exact standalone keys
-        if (/^(?:over(?:-|\s+)the(?:-|\s+)counter|otc)$/i.test(text.trim())) {
+        // Match when OTC appears alongside medical/pharmaceutical context anywhere in key or source text
+        if (/\b(?:over(?:-|\s+)the(?:-|\s+)counter|otc)\b/i.test(combined) &&
+            /\b(?:drugs?|medicines?|medications?|pharmaceuticals?|products?|pain\s+relief|painkillers?|pills?|tablets?|syrup|capsules?|remed(?:y|ies)|treatment|prescription|pharmacy|clinic|dosage)\b/i.test(combined)) {
           return true;
         }
         return false;
       },
     },
     badVal: /\bdi\s+atas\s+meja(?:\s+kasir)?\b/i,
-    fix: 'Obat bebas / Obat tanpa resep',
+    fix: 'Obat tanpa resep',
   },
 ];
 
