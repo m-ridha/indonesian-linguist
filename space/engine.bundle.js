@@ -73,12 +73,42 @@ function hasPhysicalFurnitureInSource(sourceText) {
  * @param {string} sourceText
  */
 function isCounterItemDescribedAsOTC(sourceText) {
+  const strippedSource = sourceText.replace(/\bover(?:-|\s+)the(?:-|\s+)counter\b/gi, '');
+  const hasFurniture = /\b(?:tables?|desks?|countertops?|counters?)\b/i.test(strippedSource);
+  if (!hasFurniture) return false;
+
+  // If OTC item is explicitly placed in another location (e.g. "OTC medicines in the cabinet")
+  // while the counter holds regular non-OTC medicine (e.g. "place the medicines on the counter")
+  const otcInOtherLocation = new RegExp(`${OTC_RE.source}(?:\\s+[a-z-]+){0,4}\\s+(?:in|into|inside|at|on)\\s+(?:the\\s+)?(?:cabinets?|drawers?|shelves|shelf|storage|refrigerators?|fridges?|cupboards?|closets?|boxes|box|ward|room)`, 'i');
+  const nonOtcOnCounter = /\b(?:the\s+)?(?:drugs?|medicines?|medications?|pharmaceuticals?|products?|items?)\s+(?:available\s+)?(?:on|at|onto|upon)\s+(?:the\s+)?(?:tables?|desks?|countertops?|counters?)\b/i;
+
+  if (otcInOtherLocation.test(sourceText) && nonOtcOnCounter.test(sourceText)) {
+    return false;
+  }
+
+  // 1. Direct association: "OTC medicines ... on the counter/table"
+  if (new RegExp(`${OTC_RE.source}(?:\\s+[a-z-]+){0,6}\\s+(?:available\\s+)?(?:on|at|onto|upon)\\s+(?:the\\s+)?(?:tables?|desks?|countertops?|counters?)\\b`, 'i').test(sourceText)) {
+    return true;
+  }
+
+  // 2. Action verb: "place [the] OTC [item] on the counter/table"
+  if (new RegExp(`(?:place|put|leave|keep|display|set|lay|store)\\s+(?:the\\s+)?${OTC_RE.source}(?:\\s+[a-z-]+){0,6}\\s+(?:available\\s+)?(?:on|at|onto|upon)\\s+(?:the\\s+)?(?:tables?|desks?|countertops?|counters?)\\b`, 'i').test(sourceText)) {
+    return true;
+  }
+
+  // 3. Reverse: "on the counter are [the] OTC [items]"
+  if (new RegExp(`(?:on|at|onto|upon)\\s+(?:the\\s+)?(?:tables?|desks?|countertops?|counters?)[^.?!;:]*?${OTC_RE.source}`, 'i').test(sourceText)) {
+    return true;
+  }
+
+  // 4. Clause/sentence segment check for punctuation-separated sentences
   const segments = sourceText.split(/[:;.]+/);
   for (const segment of segments) {
     if (OTC_RE.test(segment) && hasPhysicalFurnitureInSource(segment)) {
       return true;
     }
   }
+
   return false;
 }
 

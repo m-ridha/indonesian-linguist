@@ -1352,9 +1352,15 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
   // Physical counter exemption when OTC medicine is in cabinet and counter medicine is separate:
   const cabinetAndCounterCatalog = {
     'meds.storage.placement': 'Obat tanpa resep ada di dalam lemari; letakkan obat di atas meja kasir',
+    'meds.counter.cabinet': 'Letakkan obat di atas meja kasir dan obat tanpa resep di lemari',
+    'meds.cabinet.counter': 'Letakkan obat tanpa resep di lemari dan obat di atas meja kasir',
   };
   const cabinetAndCounterFindings = auditDictionary(cabinetAndCounterCatalog, {
-    source: { 'meds.storage.placement': 'OTC medicine is in the cabinet; place medicine on the counter' },
+    source: {
+      'meds.storage.placement': 'OTC medicine is in the cabinet; place medicine on the counter',
+      'meds.counter.cabinet': 'Place the medicines on the counter and OTC medicines in the cabinet',
+      'meds.cabinet.counter': 'Place OTC medicines in the cabinet and the medicines on the counter',
+    },
   });
   assert.deepEqual(cabinetAndCounterFindings, []);
 
