@@ -165,7 +165,7 @@ Interactive controls on patient booking, telemedicine consultations, and laborat
 - `Doctor is typing` $\rightarrow$ **`Dokter sedang mengetik…`**
 - `Prescription issued` $\rightarrow$ **`Resep dokter terbit`**
 - `Medicine prepared` $\rightarrow$ **`Obat selesai disiapkan`**
-- `Delivered` $\rightarrow$ **`Pesanan diterima`** (or **`Terkirim`**)
+- `Delivered` $\rightarrow$ **`Pesanan diterima`**
 - `Completed` $\rightarrow$ **`Selesai`**
 - `Cancelled by patient` $\rightarrow$ **`Dibatalkan oleh pasien`**
 - `Follow-up required` $\rightarrow$ **`Perlu kontrol lanjutan`**
