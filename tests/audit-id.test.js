@@ -1364,6 +1364,15 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
   });
   assert.deepEqual(cabinetAndCounterFindings, []);
 
+  // When counter medicine itself is OTC (even if another OTC medicine is also in the cabinet), calque is flagged:
+  const counterAndCabinetOTCCatalog = {
+    'meds.both.otc': 'Letakkan obat di atas meja kasir dan obat tanpa resep di lemari',
+  };
+  const counterAndCabinetOTCFindings = auditDictionary(counterAndCabinetOTCCatalog, {
+    source: { 'meds.both.otc': 'Place OTC medicines on the counter and OTC medicines in the cabinet' },
+  });
+  assert.equal(counterAndCabinetOTCFindings.filter((f) => f.rule === 'polysemy-calque').length, 1);
+
   // Pharmaceutical OTC market with "in stock" and "available in the OTC market":
   const pharmaOTCCatalog = {
     'OTC market for medicines currently in stock': 'Obat di atas meja kasir tersedia',

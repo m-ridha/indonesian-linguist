@@ -77,31 +77,29 @@ function isCounterItemDescribedAsOTC(sourceText) {
   const hasFurniture = /\b(?:tables?|desks?|countertops?|counters?)\b/i.test(strippedSource);
   if (!hasFurniture) return false;
 
-  // If OTC item is explicitly placed in another location (e.g. "OTC medicines in the cabinet")
-  // while the counter holds regular non-OTC medicine (e.g. "place the medicines on the counter")
-  const otcInOtherLocation = new RegExp(`${OTC_RE.source}(?:\\s+[a-z-]+){0,4}\\s+(?:in|into|inside|at|on)\\s+(?:the\\s+)?(?:cabinets?|drawers?|shelves|shelf|storage|refrigerators?|fridges?|cupboards?|closets?|boxes|box|ward|room)`, 'i');
-  const nonOtcOnCounter = /\b(?:the\s+)?(?:drugs?|medicines?|medications?|pharmaceuticals?|products?|items?)\s+(?:available\s+)?(?:on|at|onto|upon)\s+(?:the\s+)?(?:tables?|desks?|countertops?|counters?)\b/i;
+  // Check if counter item is specifically described as OTC
+  const isCounterOTC =
+    // 1. Direct: "OTC medicines ... on the counter/table"
+    new RegExp(`${OTC_RE.source}(?:\\s+[a-z-]+){0,4}\\s+(?:drugs?|medicines?|medications?|pharmaceuticals?|products?|items?|pills?|tablets?|syrups?|capsules?|remed(?:y|ies)|treatments?|painkillers?|aspirin|paracetamol|ibuprofen)?\\s*(?:available\\s+)?(?:on|at|onto|upon)\\s+(?:the\\s+)?(?:tables?|desks?|countertops?|counters?)\\b`, 'i').test(sourceText) ||
+    // 2. Action verb: "place [the] OTC [item] on the counter/table"
+    new RegExp(`(?:place|put|leave|keep|display|set|lay|store)\\s+(?:the\\s+)?${OTC_RE.source}(?:\\s+[a-z-]+){0,4}\\s+(?:drugs?|medicines?|medications?|pharmaceuticals?|products?|items?|pills?|tablets?|syrups?|capsules?|remed(?:y|ies)|treatments?|painkillers?|aspirin|paracetamol|ibuprofen)?\\s*(?:available\\s+)?(?:on|at|onto|upon)\\s+(?:the\\s+)?(?:tables?|desks?|countertops?|counters?)\\b`, 'i').test(sourceText) ||
+    // 3. Linking verb: "OTC [items] (and non-prescription products) are on the counter/table"
+    new RegExp(`${OTC_RE.source}(?:\\s+[a-z-]+){0,6}\\s+(?:are|is|were|was)\\s+(?:available\\s+)?(?:on|at|onto|upon)\\s+(?:the\\s+)?(?:tables?|desks?|countertops?|counters?)\\b`, 'i').test(sourceText) ||
+    // 4. Reverse: "on the counter are [the] OTC [items]"
+    new RegExp(`(?:on|at|onto|upon)\\s+(?:the\\s+)?(?:tables?|desks?|countertops?|counters?)\\s+(?:are|is|were|was|there\\s+are|there\\s+is|sits?|lies|stands?)\\s+(?:[a-z-]+\\s+){0,4}${OTC_RE.source}\\b`, 'i').test(sourceText);
 
-  if (otcInOtherLocation.test(sourceText) && nonOtcOnCounter.test(sourceText)) {
+  // If OTC item is explicitly placed in another location (e.g. "OTC medicines in the cabinet")
+  // and the counter item itself is NOT described as OTC, exempt the counter item
+  const otcInOtherLocation = new RegExp(`${OTC_RE.source}(?:\\s+[a-z-]+){0,4}\\s+(?:in|into|inside|at|on)\\s+(?:the\\s+)?(?:cabinets?|drawers?|shelves|shelf|storage|refrigerators?|fridges?|cupboards?|closets?|boxes|box|ward|room)`, 'i');
+  if (otcInOtherLocation.test(sourceText) && !isCounterOTC) {
     return false;
   }
 
-  // 1. Direct association: "OTC medicines ... on the counter/table"
-  if (new RegExp(`${OTC_RE.source}(?:\\s+[a-z-]+){0,6}\\s+(?:available\\s+)?(?:on|at|onto|upon)\\s+(?:the\\s+)?(?:tables?|desks?|countertops?|counters?)\\b`, 'i').test(sourceText)) {
+  if (isCounterOTC) {
     return true;
   }
 
-  // 2. Action verb: "place [the] OTC [item] on the counter/table"
-  if (new RegExp(`(?:place|put|leave|keep|display|set|lay|store)\\s+(?:the\\s+)?${OTC_RE.source}(?:\\s+[a-z-]+){0,6}\\s+(?:available\\s+)?(?:on|at|onto|upon)\\s+(?:the\\s+)?(?:tables?|desks?|countertops?|counters?)\\b`, 'i').test(sourceText)) {
-    return true;
-  }
-
-  // 3. Reverse: "on the counter are [the] OTC [items]"
-  if (new RegExp(`(?:on|at|onto|upon)\\s+(?:the\\s+)?(?:tables?|desks?|countertops?|counters?)[^.?!;:]*?${OTC_RE.source}`, 'i').test(sourceText)) {
-    return true;
-  }
-
-  // 4. Clause/sentence segment check for punctuation-separated sentences
+  // Clause/sentence segment check for punctuation-separated sentences
   const segments = sourceText.split(/[:;.]+/);
   for (const segment of segments) {
     if (OTC_RE.test(segment) && hasPhysicalFurnitureInSource(segment)) {
