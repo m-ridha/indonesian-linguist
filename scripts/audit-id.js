@@ -185,8 +185,8 @@ function hasOtcCounterCalque(val, key, sourceVal, calqueRe, nounSource) {
       while ((match = globalCalqueRe.exec(val)) !== null) {
         const noun = new RegExp(`^(?:${nounSource})`, 'i').exec(match[0]);
         if (!noun) return true;
-        const qualified = new RegExp(`\\b${noun[0].replace(/\\s+/g, '\\\\s+')}\\s+${NON_RX_RE.source}`, 'i').exec(val);
-        if (!(qualified && qualified.index < match.index)) {
+        const qualified = new RegExp(`\\b${noun[0].replace(/\s+/g, '\\s+')}\\s+${NON_RX_RE.source}`, 'i').exec(val);
+        if (!(qualified && qualified.index <= match.index)) {
           return true;
         }
       }

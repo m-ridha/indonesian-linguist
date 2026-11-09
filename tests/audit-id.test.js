@@ -1347,6 +1347,8 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
   // An earlier qualified product on the counter must not exempt a later unqualified medicine on the counter
   assert.equal(rx('r.o', 'Beli aspirin tanpa resep; aspirin di atas meja kasir dan ibuprofen di atas meja kasir', 'Buy OTC ibuprofen and non-prescription aspirin; the aspirin is on the counter'), 1);
   assert.equal(rx('r.p', 'Beli aspirin tanpa resep dan ibuprofen tanpa resep; aspirin di atas meja kasir dan ibuprofen di atas meja kasir', 'Buy OTC ibuprofen and non-prescription aspirin; the aspirin is on the counter'), 0);
+  assert.equal(rx('r.q', 'Beli obat tanpa resep yang ada di atas meja kasir.', 'Buy OTC medicine. The medicine is on the counter.'), 0);
+  assert.equal(rx('r.r', 'Beli pereda  nyeri tanpa resep yang ada di atas meja kasir.', 'Buy OTC pain relief. The pain relief is on the counter.'), 0);
   // The same product qualified first, with the receipt on the counter, stays accepted
   assert.equal(rx('r.k', 'Beli obat tanpa resep; letakkan struk di atas meja kasir', 'Buy OTC medicine; put the receipt on the counter'), 0);
   assert.equal(rx('r.l', 'Beli produk kesehatan tanpa resep; letakkan struk di atas meja kasir', 'Buy OTC healthcare products; put the receipt on the counter'), 0);
