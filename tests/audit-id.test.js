@@ -1311,6 +1311,8 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
     'Place OTC healthcare products on the counter: limited free product': 'Letakkan produk kesehatan bebas terbatas di atas meja kasir',
     'Place OTC medicines on the counter: newly bought modifier': 'Letakkan obat tanpa resep yang baru dibeli di atas meja kasir',
     'Place OTC medicines on the counter: postposed qualification': 'Letakkan obat di atas meja kasir tanpa resep dokter',
+    'Place OTC medicines on the counter: postposed yang dapat dibeli': 'Letakkan obat di atas meja kasir yang dapat dibeli tanpa resep',
+    'Place OTC healthcare products on the counter: postposed yang dapat dibeli': 'Letakkan produk kesehatan di atas meja kasir yang dapat dibeli tanpa resep',
   };
   const physicalCounterFindings = auditDictionary(physicalCounterCatalog);
   assert.deepEqual(physicalCounterFindings, []);
@@ -1318,10 +1320,12 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
   // Calque test when non-prescription wording only describes a separate product:
   const separateProductCatalog = {
     'OTC medicines and non-prescription products are on the counter': 'Obat di atas meja kasir dan produk tanpa resep ada di atas meja kasir',
+    'OTC painkillers and non-prescription vitamins are on the counter': 'Pereda nyeri yang dijual di atas meja kasir dan vitamin tanpa resep di atas meja kasir',
+    'OTC healthcare products and non-prescription vitamins are on the counter': 'Produk kesehatan yang dijual di atas meja kasir dan vitamin tanpa resep di atas meja kasir',
   };
   const separateProductFindings = auditDictionary(separateProductCatalog);
   const separatePolysemy = separateProductFindings.filter((f) => f.rule === 'polysemy-calque');
-  assert.equal(separatePolysemy.length, 1);
+  assert.equal(separatePolysemy.length, 3);
 
   // Source-only regression test: opaque translation keys with matching source establishing table meaning
   const sourceOnlyTableCatalog = {

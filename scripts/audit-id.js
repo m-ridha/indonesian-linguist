@@ -115,7 +115,23 @@ function isCounterItemDescribedAsOTC(sourceText) {
   return false;
 }
 
-const NON_RX_RE = /(?:(?:(?:yang\s+dijual|dapat\s+dibeli)\s+)?tanpa\s+(?:perlu\s+)?resep(?:\s+dokter)?|(?:obat\s+|produk(?:\s+kesehatan)?\s+)?bebas(?:\s+terbatas)?)/;
+const NON_RX_RE = /(?:(?:(?:(?:yang\s+)?dapat\s+dibeli|yang\s+dijual)\s+)?tanpa\s+(?:perlu\s+)?resep(?:\s+dokter)?|(?:obat\s+|produk(?:\s+kesehatan)?\s+)?bebas(?:\s+terbatas)?)/;
+
+/**
+ * Strips valid non-prescription counter phrases from the translation.
+ * @param {string} val
+ */
+function stripValidCounterPhrases(val) {
+  const preposed = new RegExp(
+    `\\b(?:obat|produk(?:\\s+kesehatan)?|aspirin|paracetamol|ibuprofen|pereda\\s+nyeri|[a-z-]+)?\\s*${NON_RX_RE.source}(?:\\s+(?:yang(?:\\s+[a-z-]+){1,3}|tersebut|ini|itu)){0,3}\\s+(?:ada\\s+)?di\\s+atas\\s+meja(?:\\s+kasir)?\\b`,
+    'gi'
+  );
+  const postposed = new RegExp(
+    `\\b(?:obat|produk(?:\\s+kesehatan)?|aspirin|paracetamol|ibuprofen|pereda\\s+nyeri|[a-z-]+)\\s+(?:ada\\s+)?(?:di\\s+atas\\s+meja\\s+kasir|di\\s+atas\\s+meja)(?:\\s*[,:]?\\s*|\\s+)(?:yang\\s+)?(?:\\()?\\s*${NON_RX_RE.source}\\s*(?:\\))?\\b`,
+    'gi'
+  );
+  return val.replace(postposed, ' ').replace(preposed, ' ');
+}
 
 /**
  * Checks whether the counter phrase and the non-prescription phrase refer to the same product
@@ -123,9 +139,8 @@ const NON_RX_RE = /(?:(?:(?:yang\s+dijual|dapat\s+dibeli)\s+)?tanpa\s+(?:perlu\s
  * @param {string} val
  */
 function isCounterPhraseSameAsNonPrescription(val) {
-  return new RegExp(`\\b(?:obat|produk(?:\\s+kesehatan)?|aspirin|paracetamol|ibuprofen|pereda\\s+nyeri)\\s+${NON_RX_RE.source}(?:\\s+(?:yang(?:\\s+[a-z-]+){1,3}|tersebut|ini|itu)){0,3}\\s+(?:ada\\s+)?di\\s+atas\\s+meja(?:\\s+kasir)?\\b`, 'i').test(val) ||
-    new RegExp(`\\b${NON_RX_RE.source}(?:\\s+(?:yang(?:\\s+[a-z-]+){1,3}|tersebut|ini|itu)){0,3}\\s+(?:ada\\s+)?di\\s+atas\\s+meja(?:\\s+kasir)?\\b`, 'i').test(val) ||
-    new RegExp(`\\b(?:obat|produk(?:\\s+kesehatan)?|aspirin|paracetamol|ibuprofen|pereda\\s+nyeri)\\s+(?:ada\\s+)?di\\s+atas\\s+meja(?:\\s+kasir)?(?:\\s*[,:]?\\s*|\\s+)(?:\\()?\\s*${NON_RX_RE.source}\\s*(?:\\))?\\b`, 'i').test(val);
+  return new RegExp(`\\b(?:obat|produk(?:\\s+kesehatan)?|aspirin|paracetamol|ibuprofen|pereda\\s+nyeri|[a-z-]+)?\\s*${NON_RX_RE.source}(?:\\s+(?:yang(?:\\s+[a-z-]+){1,3}|tersebut|ini|itu)){0,3}\\s+(?:ada\\s+)?di\\s+atas\\s+meja(?:\\s+kasir)?\\b`, 'i').test(val) ||
+    new RegExp(`\\b(?:obat|produk(?:\\s+kesehatan)?|aspirin|paracetamol|ibuprofen|pereda\\s+nyeri|[a-z-]+)\\s+(?:ada\\s+)?(?:di\\s+atas\\s+meja\\s+kasir|di\\s+atas\\s+meja)(?:\\s*[,:]?\\s*|\\s+)(?:yang\\s+)?(?:\\()?\\s*${NON_RX_RE.source}\\s*(?:\\))?\\b`, 'i').test(val);
 }
 
 /**
@@ -265,11 +280,9 @@ const KNOWN_CALQUE_TRAPS = [
             }
           }
           if (isCounterPhraseSameAsNonPrescription(val)) {
-            // Check if another ungrounded bare calque exists in the same value
-            const postposed = new RegExp(`\\b(?:produk(?:\\s+kesehatan)?)\\s+(?:ada\\s+)?(?:di\\s+atas\\s+meja\\s+kasir|di\\s+atas\\s+meja)(?:\\s*[,:]?\\s*|\\s+)(?:\\()?\\s*${NON_RX_RE.source}`, 'i');
-            const stripped = val.replace(postposed, '');
-            const hasRemainingBare = /\b(?:produk(?:\s+kesehatan)?)\s+(?:ada\s+)?di\s+atas\s+meja\b/i.test(stripped);
-            if (!hasRemainingBare) {
+            const stripped = stripValidCounterPhrases(val);
+            const hasRemainingCounter = /\bdi\s+atas\s+meja(?:\s+kasir)?\b/i.test(stripped);
+            if (!hasRemainingCounter) {
               return false;
             }
           }
@@ -350,11 +363,9 @@ const KNOWN_CALQUE_TRAPS = [
             }
           }
           if (isCounterPhraseSameAsNonPrescription(val)) {
-            // Check if another ungrounded bare calque exists in the same value
-            const postposed = new RegExp(`\\b(?:obat|aspirin|paracetamol|ibuprofen|pereda\\s+nyeri)\\s+(?:ada\\s+)?(?:di\\s+atas\\s+meja\\s+kasir|di\\s+atas\\s+meja)(?:\\s*[,:]?\\s*|\\s+)(?:\\()?\\s*${NON_RX_RE.source}`, 'i');
-            const stripped = val.replace(postposed, '');
-            const hasRemainingBare = /\b(?:obat|aspirin|paracetamol|ibuprofen|pereda\s+nyeri)\s+(?:ada\s+)?di\s+atas\s+meja\b/i.test(stripped);
-            if (!hasRemainingBare) {
+            const stripped = stripValidCounterPhrases(val);
+            const hasRemainingCounter = /\bdi\s+atas\s+meja(?:\s+kasir)?\b/i.test(stripped);
+            if (!hasRemainingCounter) {
               return false;
             }
           }
