@@ -1230,12 +1230,14 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
     'Buy OTC aspirin': 'Beli aspirin di atas meja',
     'OTC cough syrup': 'Sirup obat batuk di atas meja kasir',
     'OTC market for cold medicines': 'Pasar obat di atas meja kasir untuk obat flu',
+    'OTC stock of medicines': 'Stok obat di atas meja kasir',
+    'Tablets available OTC': 'Tablet obat di atas meja kasir',
     'Over-the-counter healthcare products': 'Produk kesehatan di atas meja',
     OTC: 'Di atas meja',
   };
   const badFindings = auditDictionary(badMedicalCatalog);
   const polysemyFindings = badFindings.filter((f) => f.rule === 'polysemy-calque');
-  assert.equal(polysemyFindings.length, 20);
+  assert.equal(polysemyFindings.length, 22);
   const healthcareProdFinding = polysemyFindings.find((f) => f.key === 'Over-the-counter healthcare products');
   assert.ok(healthcareProdFinding);
   assert.ok(healthcareProdFinding.message.includes('Produk kesehatan tanpa resep / Produk bebas'));
@@ -1282,10 +1284,20 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
   // Source-aware physical counter test: physical counters exempt valid non-prescription translations
   const physicalCounterCatalog = {
     'Place OTC medicines on the counter': 'Letakkan obat tanpa resep di atas meja kasir',
+    'Place OTC medicines on the counter: buy without prescription': 'Letakkan obat yang dapat dibeli tanpa perlu resep di atas meja kasir',
     'Place OTC healthcare products on the checkout counter': 'Letakkan produk kesehatan tanpa resep di atas meja kasir',
+    'Place OTC healthcare products on the counter: buy without prescription': 'Letakkan produk kesehatan yang dapat dibeli tanpa perlu resep di atas meja kasir',
   };
   const physicalCounterFindings = auditDictionary(physicalCounterCatalog);
   assert.deepEqual(physicalCounterFindings, []);
+
+  // Calque test when non-prescription wording only describes a separate product:
+  const separateProductCatalog = {
+    'OTC medicines and non-prescription products are on the counter': 'Obat di atas meja kasir dan produk tanpa resep ada di atas meja kasir',
+  };
+  const separateProductFindings = auditDictionary(separateProductCatalog);
+  const separatePolysemy = separateProductFindings.filter((f) => f.rule === 'polysemy-calque');
+  assert.equal(separatePolysemy.length, 1);
 
   // Source-only regression test: opaque translation keys with matching source establishing table meaning
   const sourceOnlyTableCatalog = {
@@ -1306,6 +1318,15 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
   const signsOutPolysemy = signsOutFindings.filter((f) => f.rule === 'polysemy-calque');
   assert.equal(signsOutPolysemy.length, 1);
   assert.ok(signsOutPolysemy[0].message.includes('mengeluarkan'));
+
+  // Clinical vital signs phrasing ("signs ... out of danger") must NOT be flagged as a signs-out calque:
+  const clinicalSignsCatalog = {
+    'vital.signs.evaluation': 'Tanda-tanda vital menandakan pasien di luar bahaya',
+  };
+  const clinicalSignsFindings = auditDictionary(clinicalSignsCatalog, {
+    source: { 'vital.signs.evaluation': 'Vital signs indicate the patient is out of danger' },
+  });
+  assert.deepEqual(clinicalSignsFindings, []);
 
   // Source-aware discharge test: ambiguous source 'Discharge' with patient key context
   const sourceAwareCatalog = {
