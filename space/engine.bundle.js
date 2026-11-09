@@ -68,14 +68,28 @@ function hasPhysicalFurnitureInSource(sourceText) {
 }
 
 /**
- * Checks whether a literal calque is separated from the non-prescription product in the translation
- * (e.g. "Obat di atas meja kasir dan produk tanpa resep" where the calque affects the target product).
- * @param {string} val
- * @param {RegExp} productRegex
+ * Checks whether the source text specifically describes the item on the counter/table as OTC,
+ * rather than OTC applying to a separate item located elsewhere (e.g. in a cabinet).
+ * @param {string} sourceText
  */
-function isCalqueSeparatedFromProduct(val, productRegex) {
-  return productRegex.test(val) &&
-    /\b(?:obat|produk(?:\s+kesehatan)?)\s+di\s+atas\s+meja(?:\s+kasir)?\b[^.?!;:]*?\b(?:produk|item|barang|vitamin|suplemen|obat)\s+(?:tanpa\s+(?:perlu\s+)?resep|dapat\s+dibeli\s+tanpa\s+perlu\s+resep|bebas)\b/i.test(val);
+function isCounterItemDescribedAsOTC(sourceText) {
+  const segments = sourceText.split(/[:;.]+/);
+  for (const segment of segments) {
+    if (OTC_RE.test(segment) && hasPhysicalFurnitureInSource(segment)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Checks whether the counter phrase and the non-prescription phrase refer to the same product
+ * in the Indonesian translation (e.g. "obat tanpa resep di atas meja kasir").
+ * @param {string} val
+ */
+function isCounterPhraseSameAsNonPrescription(val) {
+  return /\b(?:obat|produk(?:\s+kesehatan)?|aspirin|paracetamol|ibuprofen|pereda\s+nyeri)\s+(?:tanpa\s+(?:perlu\s+)?resep|dapat\s+dibeli\s+tanpa\s+perlu\s+resep|bebas)\s+(?:ada\s+)?di\s+atas\s+meja(?:\s+kasir)?\b/i.test(val) ||
+    /\b(?:tanpa\s+(?:perlu\s+)?resep|dapat\s+dibeli\s+tanpa\s+perlu\s+resep|obat\s+bebas|produk\s+bebas)\s+di\s+atas\s+meja(?:\s+kasir)?\b/i.test(val);
 }
 
 /**
@@ -98,9 +112,18 @@ const KNOWN_CALQUE_TRAPS = [
       /** @param {string} key @param {unknown} [sourceVal] */
       test(key, sourceVal) {
         const matchesKey = (candidate) => {
-          if (/\b(?:vital|clinical|neurological|physical)\s+signs?\b/i.test(candidate)) return false;
-          const idx = String(candidate || '').search(/\bsigns\b/i);
-          return idx !== -1 && /\bouts?\b/i.test(String(candidate || '').slice(idx + 5));
+          const raw = String(candidate || '');
+          // Strip clinical sign phrases so they don't reject logout phrasing present in the same source
+          const stripped = raw.replace(/\b(?:vital|clinical|neurological|physical)\s+signs?\b/gi, '');
+          if (!/\bsigns\b/i.test(stripped)) return false;
+          // If non-logout indicative phrasing exists ("signs indicate...", "signs show..."),
+          // only match if an explicit logout action is also present
+          if (/\bsigns\s+(?:indicate|indicates|show|shows|mean|means|suggest|suggests|reveal|reveals|point|points|warn|warns|are|is|were|was)\b/i.test(stripped)) {
+            const withoutIndicative = stripped.replace(/\bsigns\s+(?:indicate|indicates|show|shows|mean|means|suggest|suggests|reveal|reveals|point|points|warn|warns|are|is|were|was)\b[^.]*/gi, '');
+            return /\bsigns\b(?:\s+outs?\b|\s+(?:(?:the|all)\s+)?(?:current\s+|inactive\s+)?[a-z0-9_{}-]+\s+outs?\b|_outs?\b|-outs?\b)/i.test(withoutIndicative);
+          }
+          // Restrict to logout phrasing: "signs out", "signs [target] out", "signs_out", "signs-out"
+          return /\bsigns\b(?:\s+outs?\b|\s+(?:(?:the|all)\s+)?(?:current\s+|inactive\s+)?[a-z0-9_{}-]+\s+outs?\b|_outs?\b|-outs?\b)/i.test(stripped);
         };
         return matchesKey(key) || (typeof sourceVal === 'string' && matchesKey(sourceVal));
       },
@@ -171,7 +194,7 @@ const KNOWN_CALQUE_TRAPS = [
         return /\b(?:patient\s+discharge|discharge\s+summary|discharge\s+(?:plan(?:ning)?|instructions?|date|order|status)|hospital\s+discharge)\b/i.test(combined);
       },
     },
-    badVal: /\b(?:pemecatan|pelepasan\s+muatan)\b/i,
+    badVal: /\b(?:pemecatan|pelepasan\s+muatan|ringkasan\s+(?:pelepasan|muatan))\b/i,
     fix: 'Pemulangan pasien / Pasien pulang / Ringkasan pulang',
   },
   {
@@ -190,10 +213,14 @@ const KNOWN_CALQUE_TRAPS = [
       /** @param {string} val @param {string} [key] @param {unknown} [sourceVal] */
       test(val, key, sourceVal) {
         const sourceText = (String(key || '') + ' ' + (typeof sourceVal === 'string' ? sourceVal : '')).trim();
-        const nonPrescriptionRegex = /\b(?:tanpa\s+(?:perlu\s+)?resep|dapat\s+dibeli\s+tanpa\s+perlu\s+resep|obat\s+bebas|produk\s+bebas)\b/i;
-        const productCalqueRegex = /\b(?:produk(?:\s+kesehatan)?)\s+di\s+atas\s+meja(?:\s+kasir)?\b/i;
-        if (hasPhysicalFurnitureInSource(sourceText) && nonPrescriptionRegex.test(val) && !isCalqueSeparatedFromProduct(val, productCalqueRegex)) {
-          return false;
+        if (hasPhysicalFurnitureInSource(sourceText)) {
+          if (!isCounterItemDescribedAsOTC(sourceText)) {
+            return false;
+          }
+          const hasBareCalque = /\b(?:produk(?:\s+kesehatan)?)\s+di\s+atas\s+meja(?:\s+kasir)?\b/i.test(val);
+          if (!hasBareCalque && isCounterPhraseSameAsNonPrescription(val)) {
+            return false;
+          }
         }
         if (/\bdi\s+atas\s+meja\s+kasir\b/i.test(val)) return true;
         if (/\b(?:produk(?:\s+kesehatan)?)\s+di\s+atas\s+meja\b/i.test(val)) return true;
@@ -210,13 +237,21 @@ const KNOWN_CALQUE_TRAPS = [
         const sourceText = typeof sourceVal === 'string' ? sourceVal : '';
         const combined = (keyText + ' ' + sourceText).trim();
 
-        // 1. Strict financial exclusion FIRST: if OTC directly qualifies financial terms or vice-versa,
-        // or OTC market is tied to securities/stocks/shares/trading/derivatives/finance
+        // 1. Strict financial exclusion FIRST:
+        // - Financial listings ("listed OTC", "traded OTC", "quoted OTC")
+        if (new RegExp(`\\b(?:listed|traded|quotes?|quoted)\\s+(?:on\\s+(?:the\\s+)?)?${OTC_RE.source}\\b`, 'i').test(combined)) {
+          return false;
+        }
+
+        // - Check OTC market: exclude financial markets while recognizing pharmaceutical OTC market phrases
+        // (including "market for medicines currently in stock" and "medicines available in the OTC market")
         if (new RegExp(`(?:(?:on|in|at|for|from)\\s+(?:the\\s+)?${OTC_RE.source}\\s+market|${OTC_RE.source}\\s+market)`, 'i').test(combined)) {
-          // Pharmaceutical OTC market without shares/stocks/securities -> not financial
-          if (new RegExp(`${OTC_RE.source}\\s+market\\s+for\\s+(?:[a-z-]+\\s+){0,2}(?:drugs?|medicines?|medications?|pharmaceuticals?)`, 'i').test(combined) && !/\b(?:shares?|stocks?|securities|company)\b/i.test(combined)) {
-            // Keep eligible for medical OTC check below
-          } else {
+          const isPharmaMarket = (
+            new RegExp(`${OTC_RE.source}\\s+market\\s+for\\s+(?:[a-z-]+\\s+){0,4}(?:drugs?|medicines?|medications?|pharmaceuticals?)`, 'i').test(combined) ||
+            new RegExp(`(?:drugs?|medicines?|medications?|pharmaceuticals?)(?:\\s+[a-z-]+){0,4}\\s+(?:available\\s+)?(?:on|in|at|from)\\s+(?:the\\s+)?${OTC_RE.source}\\s+market`, 'i').test(combined)
+          ) && !/\b(?:shares?|securities|company\s+shares?|equity|derivatives?)\b/i.test(combined.replace(/\b(?:in|of)\s+stock\b/gi, ''));
+
+          if (!isPharmaMarket) {
             return false;
           }
         }
@@ -250,10 +285,14 @@ const KNOWN_CALQUE_TRAPS = [
       /** @param {string} val @param {string} [key] @param {unknown} [sourceVal] */
       test(val, key, sourceVal) {
         const sourceText = (String(key || '') + ' ' + (typeof sourceVal === 'string' ? sourceVal : '')).trim();
-        const nonPrescriptionRegex = /\b(?:tanpa\s+(?:perlu\s+)?resep|dapat\s+dibeli\s+tanpa\s+perlu\s+resep|obat\s+bebas)\b/i;
-        const medCalqueRegex = /\b(?:obat|aspirin|paracetamol|ibuprofen|pereda\s+nyeri)\s+di\s+atas\s+meja(?:\s+kasir)?\b/i;
-        if (hasPhysicalFurnitureInSource(sourceText) && nonPrescriptionRegex.test(val) && !isCalqueSeparatedFromProduct(val, medCalqueRegex)) {
-          return false;
+        if (hasPhysicalFurnitureInSource(sourceText)) {
+          if (!isCounterItemDescribedAsOTC(sourceText)) {
+            return false;
+          }
+          const hasBareCalque = /\b(?:obat|aspirin|paracetamol|ibuprofen|pereda\s+nyeri)\s+di\s+atas\s+meja(?:\s+kasir)?\b/i.test(val);
+          if (!hasBareCalque && isCounterPhraseSameAsNonPrescription(val)) {
+            return false;
+          }
         }
         if (/\bdi\s+atas\s+meja\s+kasir\b/i.test(val)) return true;
         if (/\b(?:obat|aspirin|paracetamol|ibuprofen|pereda\s+nyeri)\s+di\s+atas\s+meja\b/i.test(val)) return true;
