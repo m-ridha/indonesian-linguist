@@ -1329,6 +1329,31 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
   const separatePolysemy = separateProductFindings.filter((f) => f.rule === 'polysemy-calque');
   assert.equal(separatePolysemy.length, 5);
 
+  // Review round: counter/receipt association, modifiers, whole-word non-rx terms, pharma recognition
+  const rx = (k, v, src) => auditDictionary({ [k]: v }, src ? { source: { [k]: src } } : undefined).filter((x) => x.rule === 'polysemy-calque').length;
+  // Receipts on the counter (with or without "the") must not be tied to a distant OTC mention
+  assert.equal(rx('r.a', 'Beli obat tanpa resep dan letakkan struk di atas meja kasir', 'Buy OTC medicine and put receipts on counter'), 0);
+  assert.equal(rx('r.b', 'Beli obat tanpa resep dan letakkan struk di atas meja kasir', 'Buy OTC medicine and put receipts on the counter'), 0);
+  // "untuk anak" stays attached to the qualified product
+  assert.equal(rx('Place OTC medicines on the counter', 'Letakkan obat tanpa resep untuk anak di atas meja kasir'), 0);
+  // A non-prescription qualification that comes after a bare medicine on the counter does not exempt it
+  assert.equal(rx('r.c', 'Beli obat di atas meja kasir dan letakkan struk tanpa resep', 'Buy OTC medicine and put the receipt on the counter'), 1);
+  // Aspirin / painkillers count as pharmaceutical context for OTC listings
+  assert.equal(rx('Aspirin listed OTC', 'Aspirin di atas meja kasir'), 1);
+  // "market share" is not a securities share
+  assert.equal(rx('OTC market share for medicines', 'Pangsa obat di atas meja kasir'), 1);
+
+  // Logout calque: comma-separated clause, multiword targets, unrelated "mengeluarkan"
+  assert.equal(rx('r.d', 'Tanda vital menandakan perbaikan, aksi ini menandakan pengguna keluar', 'Signs indicate improvement, action signs the user out'), 1);
+  assert.equal(rx('r.e', 'Aksi ini menandakan semua pengguna lain keluar', 'This signs all other users out'), 1);
+  assert.equal(rx('r.f', 'Aksi ini menandakan pengguna keluar; sistem mengeluarkan laporan', 'Action signs the user out; the system outputs a report'), 1);
+  assert.equal(rx('r.g', 'Tanda vital menandakan perbaikan; aksi ini mengeluarkan semua pengguna', 'Signs indicate improvement; action signs all users out'), 0);
+  assert.equal(rx('r.h', 'Tanda menyingkirkan infeksi', 'Signs of infection rule out'), 0);
+
+  // Discharge already rendered as "pemulangan pasien" does not make "pasien dikeluarkan dari klinik" a calque
+  assert.equal(rx('Patient discharge', 'Pemulangan pasien: pasien dikeluarkan dari klinik karena melanggar tata tertib'), 0);
+  assert.equal(rx('Patient discharge', 'Pasien dikeluarkan dari klinik'), 1);
+
   // Source-only regression test: opaque translation keys with matching source establishing table meaning
   const sourceOnlyTableCatalog = {
     'meds.checkout.action': 'Letakkan obat tanpa resep di atas meja kasir',

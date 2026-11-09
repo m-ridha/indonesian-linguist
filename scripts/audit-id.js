@@ -55,8 +55,17 @@ const SLOP_AND_PLEONASM_PATTERNS = [
   { regex: /—/, reason: 'Stylistic em dash (—) banned; use comma, colon, parentheses, or "sampai"' },
 ];
 
+/** Tokens that must not sit between an OTC mention and the counter (placement verbs start a different clause; coordination with "and" stays allowed) */
+const OTC_GAP_TOKEN = '(?:\\s+(?!(?:then|but|put|puts|place|places|leave|keep|display|set|lay|store)\\b)[a-z-]+)';
+
 /** Common pattern matching "OTC" or spelled-out "over-the-counter" */
 const OTC_RE = /\b(?:over(?:-|\s+)the(?:-|\s+)counter|otc)\b/i;
+
+/** Logout phrasing: "signs out", "signs [the/all] [other] target out", "signs_out"; never clinical "signs rule out" */
+const SIGNS_OUT_RE = /\bsigns(?:(?:\s+[-_]|\s+)(?:(?:the|all)\s+)?(?:(?:all|current|inactive|other|remaining|active)\s+)*(?!rule\b)[a-z0-9_{}-]+\s+outs?\b|[\s_-]+outs?\b)/i;
+
+/** Medicine nouns that mark a pharmaceutical (not financial) OTC context */
+const PHARMA_NOUN = '(?:drugs?|medicines?|medications?|pharmaceuticals?|painkillers?|pain\\s+relief|aspirin|paracetamol|ibuprofen)';
 
 /**
  * Checks whether source text mentions physical furniture (tables, desks, counters),
@@ -68,6 +77,9 @@ function hasPhysicalFurnitureInSource(sourceText) {
   const withoutInfoTables = strippedSource.replace(/\b(?:dosage|dose|dosing|comparison|pricing|price|data|lookup|spec|specification|schedule|summary)\s+tables?\b/gi, '');
   return /\b(?:tables?|desks?|countertops?|counters?)\b/i.test(withoutInfoTables);
 }
+
+/** OTC item explicitly placed somewhere other than the counter (e.g. "OTC medicines are in the cabinet") */
+const OTC_ELSEWHERE_RE = new RegExp(`${OTC_RE.source}(?:\\s+[a-z-]+){0,4}\\s+(?:in|into|inside|at|on)\\s+(?:the\\s+)?(?:cabinets?|drawers?|shelves|shelf|storage|refrigerators?|fridges?|cupboards?|closets?|boxes|box|ward|room)`, 'i');
 
 /**
  * Checks whether the source text specifically describes the item on the counter/table as OTC,
@@ -82,9 +94,9 @@ function isCounterItemDescribedAsOTC(sourceText) {
   // Check if counter item is specifically described as OTC
   const isCounterOTC =
     // 1. Direct: "OTC medicines ... on the counter/table"
-    new RegExp(`${OTC_RE.source}(?:\\s+[a-z-]+){0,4}(?:\\s+(?:drugs?|medicines?|medications?|pharmaceuticals?|products?|items?|pills?|tablets?|syrups?|capsules?|remed(?:y|ies)|treatments?|painkillers?|aspirin|paracetamol|ibuprofen))?\\s*(?:available\\s+)?(?:on|at|onto|upon)\\s+(?:the\\s+)?(?:tables?|desks?|countertops?|counters?)\\b`, 'i').test(sourceText) ||
+    new RegExp(`${OTC_RE.source}${OTC_GAP_TOKEN}{0,4}(?:\\s+(?:drugs?|medicines?|medications?|pharmaceuticals?|products?|items?|pills?|tablets?|syrups?|capsules?|remed(?:y|ies)|treatments?|painkillers?|aspirin|paracetamol|ibuprofen))?\\s*(?:available\\s+)?(?:on|at|onto|upon)\\s+(?:the\\s+)?(?:tables?|desks?|countertops?|counters?)\\b`, 'i').test(sourceText) ||
     // 2. Action verb: "place [the] OTC [item] on the counter/table"
-    new RegExp(`(?:place|put|leave|keep|display|set|lay|store)\\s+(?:the\\s+)?${OTC_RE.source}(?:\\s+[a-z-]+){0,4}(?:\\s+(?:drugs?|medicines?|medications?|pharmaceuticals?|products?|items?|pills?|tablets?|syrups?|capsules?|remed(?:y|ies)|treatments?|painkillers?|aspirin|paracetamol|ibuprofen))?\\s*(?:available\\s+)?(?:on|at|onto|upon)\\s+(?:the\\s+)?(?:tables?|desks?|countertops?|counters?)\\b`, 'i').test(sourceText) ||
+    new RegExp(`(?:place|put|leave|keep|display|set|lay|store)\\s+(?:the\\s+)?${OTC_RE.source}${OTC_GAP_TOKEN}{0,4}(?:\\s+(?:drugs?|medicines?|medications?|pharmaceuticals?|products?|items?|pills?|tablets?|syrups?|capsules?|remed(?:y|ies)|treatments?|painkillers?|aspirin|paracetamol|ibuprofen))?\\s*(?:available\\s+)?(?:on|at|onto|upon)\\s+(?:the\\s+)?(?:tables?|desks?|countertops?|counters?)\\b`, 'i').test(sourceText) ||
     // 3. Linking verb: "OTC [items] (and non-prescription products) are on the counter/table"
     new RegExp(`${OTC_RE.source}(?:\\s+[a-z-]+){0,6}\\s+(?:are|is|were|was)\\s+(?:available\\s+)?(?:on|at|onto|upon)\\s+(?:the\\s+)?(?:tables?|desks?|countertops?|counters?)\\b`, 'i').test(sourceText) ||
     // 4. Reverse: "on the counter are [the] OTC [items]"
@@ -92,8 +104,7 @@ function isCounterItemDescribedAsOTC(sourceText) {
 
   // If OTC item is explicitly placed in another location (e.g. "OTC medicines in the cabinet")
   // and the counter item itself is NOT described as OTC, exempt the counter item
-  const otcInOtherLocation = new RegExp(`${OTC_RE.source}(?:\\s+[a-z-]+){0,4}\\s+(?:in|into|inside|at|on)\\s+(?:the\\s+)?(?:cabinets?|drawers?|shelves|shelf|storage|refrigerators?|fridges?|cupboards?|closets?|boxes|box|ward|room)`, 'i');
-  if (otcInOtherLocation.test(sourceText) && !isCounterOTC) {
+  if (OTC_ELSEWHERE_RE.test(sourceText) && !isCounterOTC) {
     return false;
   }
 
@@ -115,7 +126,10 @@ function isCounterItemDescribedAsOTC(sourceText) {
   return false;
 }
 
-const NON_RX_RE = /(?:(?:(?:(?:yang\s+)?dapat\s+dibeli|yang\s+dijual)\s+)?tanpa\s+(?:perlu\s+)?resep(?:\s+dokter)?|(?:obat\s+|produk(?:\s+kesehatan)?\s+)?bebas(?:\s+terbatas)?)/;
+const NON_RX_RE = /\b(?:(?:(?:(?:yang\s+)?dapat\s+dibeli|yang\s+dijual)\s+)?tanpa\s+(?:perlu\s+)?resep(?:\s+dokter)?|(?:obat\s+|produk(?:\s+kesehatan)?\s+)?bebas(?:\s+terbatas)?)\b/i;
+
+/** Modifiers that stay attached to the qualified product before the counter phrase */
+const NON_RX_MODIFIER = '(?:\\s+(?:yang(?:\\s+[a-z-]+){1,3}|untuk(?:\\s+[a-z-]+){1,2}|tersebut|ini|itu)){0,3}';
 
 /**
  * Strips valid non-prescription counter phrases from the translation.
@@ -123,7 +137,7 @@ const NON_RX_RE = /(?:(?:(?:(?:yang\s+)?dapat\s+dibeli|yang\s+dijual)\s+)?tanpa\
  */
 function stripValidCounterPhrases(val) {
   const preposed = new RegExp(
-    `\\b(?:obat|produk(?:\\s+kesehatan)?|aspirin|paracetamol|ibuprofen|pereda\\s+nyeri|[a-z-]+)?\\s*${NON_RX_RE.source}(?:\\s+(?:yang(?:\\s+[a-z-]+){1,3}|tersebut|ini|itu)){0,3}\\s+(?:ada\\s+)?di\\s+atas\\s+meja(?:\\s+kasir)?\\b`,
+    `\\b(?:obat|produk(?:\\s+kesehatan)?|aspirin|paracetamol|ibuprofen|pereda\\s+nyeri|[a-z-]+)?\\s*${NON_RX_RE.source}${NON_RX_MODIFIER}\\s+(?:ada\\s+)?di\\s+atas\\s+meja(?:\\s+kasir)?\\b`,
     'gi'
   );
   const postposed = new RegExp(
@@ -139,8 +153,44 @@ function stripValidCounterPhrases(val) {
  * @param {string} val
  */
 function isCounterPhraseSameAsNonPrescription(val) {
-  return new RegExp(`\\b(?:obat|produk(?:\\s+kesehatan)?|aspirin|paracetamol|ibuprofen|pereda\\s+nyeri|[a-z-]+)?\\s*${NON_RX_RE.source}(?:\\s+(?:yang(?:\\s+[a-z-]+){1,3}|tersebut|ini|itu)){0,3}\\s+(?:ada\\s+)?di\\s+atas\\s+meja(?:\\s+kasir)?\\b`, 'i').test(val) ||
+  return new RegExp(`\\b(?:obat|produk(?:\\s+kesehatan)?|aspirin|paracetamol|ibuprofen|pereda\\s+nyeri|[a-z-]+)?\\s*${NON_RX_RE.source}${NON_RX_MODIFIER}\\s+(?:ada\\s+)?di\\s+atas\\s+meja(?:\\s+kasir)?\\b`, 'i').test(val) ||
     new RegExp(`\\b(?:obat|produk(?:\\s+kesehatan)?|aspirin|paracetamol|ibuprofen|pereda\\s+nyeri|[a-z-]+)\\s+(?:ada\\s+)?(?:di\\s+atas\\s+meja\\s+kasir|di\\s+atas\\s+meja)(?:\\s*[,:]?\\s*|\\s+)(?:yang\\s+)?(?:\\()?\\s*${NON_RX_RE.source}\\s*(?:\\))?\\b`, 'i').test(val);
+}
+
+/** Gap tokens between a product noun and "di atas meja" that must not start another clause or item */
+const PRODUCT_GAP = '(?:\\s+(?!(?:dan|atau|serta|lalu|kemudian|dengan|struk|nota|kuitansi|tagihan|kartu|kunci|kertas|pena|formulir|letakkan|taruh|simpan)\\b)[a-z-]+){0,3}';
+const MEDICINE_COUNTER_CALQUE_RE = new RegExp(`\\b(?:obat|aspirin|paracetamol|ibuprofen|pereda\\s+nyeri)${PRODUCT_GAP}\\s+(?:ada\\s+)?di\\s+atas\\s+meja\\b`, 'i');
+const PRODUCT_COUNTER_CALQUE_RE = new RegExp(`\\bproduk(?:\\s+kesehatan)?${PRODUCT_GAP}\\s+(?:ada\\s+)?di\\s+atas\\s+meja\\b`, 'i');
+
+/**
+ * Decides whether a translation renders the physical counter as a literal calque for an OTC product.
+ * Counter references for unrelated items (receipts, cards) and qualified non-prescription products are fine.
+ * @param {string} val
+ * @param {string} [key]
+ * @param {unknown} [sourceVal]
+ * @param {RegExp} calqueRe
+ */
+function hasOtcCounterCalque(val, key, sourceVal, calqueRe) {
+  const sourceText = (String(key || '') + ' ' + (typeof sourceVal === 'string' ? sourceVal : '')).trim();
+  if (hasPhysicalFurnitureInSource(sourceText)) {
+    if (!isCounterItemDescribedAsOTC(sourceText)) {
+      // OTC item sits elsewhere, so the counter item is a different product: nothing to report
+      if (OTC_ELSEWHERE_RE.test(sourceText)) return false;
+      // Otherwise the counter item is unrelated (receipt) or an anaphoric mention ("the medicine is on the table").
+      // A bare medicine on the counter is a calque unless a non-prescription qualification precedes it.
+      const calque = calqueRe.exec(val);
+      if (!calque) return false;
+      const qualified = NON_RX_RE.exec(val);
+      return !(qualified && qualified.index < calque.index);
+    }
+    if (isCounterPhraseSameAsNonPrescription(val)) {
+      const stripped = stripValidCounterPhrases(val);
+      return calqueRe.test(stripped) || /^\s*di\s+atas\s+meja\s*$/i.test(stripped.trim());
+    }
+  }
+  if (/\bdi\s+atas\s+meja\s+kasir\b/i.test(val)) return true;
+  if (calqueRe.test(val)) return true;
+  return /^di\s+atas\s+meja$/i.test(val.trim());
 }
 
 /**
@@ -170,11 +220,11 @@ const KNOWN_CALQUE_TRAPS = [
           // If non-logout indicative phrasing exists ("signs indicate...", "signs show..."),
           // only match if an explicit logout action is also present
           if (/\bsigns\s+(?:indicate|indicates|show|shows|mean|means|suggest|suggests|reveal|reveals|point|points|warn|warns|are|is|were|was)\b/i.test(stripped)) {
-            const withoutIndicative = stripped.replace(/\bsigns\s+(?:indicate|indicates|show|shows|mean|means|suggest|suggests|reveal|reveals|point|points|warn|warns|are|is|were|was)\b[^.;:!?]*/gi, '');
-            return /\bsigns(?:(?:\s+[-_]|\s+)(?:(?:the|all)\s+)?(?:current\s+|inactive\s+)?(?!rule\b)[a-z0-9_{}-]+\s+outs?\b|[\s_-]+outs?\b)/i.test(withoutIndicative);
+            const withoutIndicative = stripped.replace(/\bsigns\s+(?:indicate|indicates|show|shows|mean|means|suggest|suggests|reveal|reveals|point|points|warn|warns|are|is|were|was)\b[^.;:!?,]*/gi, '');
+            return SIGNS_OUT_RE.test(withoutIndicative);
           }
           // Restrict to logout phrasing: "signs out", "signs [target] out", "signs_out", "signs-out", excluding clinical "signs rule out"
-          return /\bsigns(?:(?:\s+[-_]|\s+)(?:(?:the|all)\s+)?(?:current\s+|inactive\s+)?(?!rule\b)[a-z0-9_{}-]+\s+outs?\b|[\s_-]+outs?\b)/i.test(stripped);
+          return SIGNS_OUT_RE.test(stripped);
         };
         return matchesKey(key) || (typeof sourceVal === 'string' && matchesKey(sourceVal));
       },
@@ -185,7 +235,7 @@ const KNOWN_CALQUE_TRAPS = [
         if (!/\bmenandakan\b/i.test(val)) return false;
         // If the translation already properly translates the logout action using "mengeluarkan",
         // "menandakan" only translates an indicative phrase (e.g. "signs indicate ...")
-        if (/\bmengeluarkan\b/i.test(val)) return false;
+        if (/\bmengeluarkan(?:mu|nya)?(?:\s+(?:semua|seluruh|para|pengguna|user|akun|sesi|perangkat|lain|anda|kamu|dari|\{)|\s*[.,;:!?]*\s*$)/i.test(val)) return false;
         return true;
       },
     },
@@ -254,7 +304,15 @@ const KNOWN_CALQUE_TRAPS = [
         return /\b(?:patient\s+discharge|discharge\s+summary|discharge\s+(?:plan(?:ning)?|instructions?|date|order|status)|hospital\s+discharge)\b/i.test(combined);
       },
     },
-    badVal: /\b(?:pemecatan|pelepasan\s+muatan|pelepasan\s+pasien|pasien\s+dikeluarkan\s+(?:dari\s+)?(?:rumah\s+sakit|rs|ruang\s+rawat|rawat\s+inap|bangsal|fasilitas|klinik)|ringkasan\s+(?:pelepasan|muatan))\b/i,
+    badVal: {
+      /** @param {string} val */
+      test(val) {
+        if (/\b(?:pemecatan|pelepasan\s+muatan|pelepasan\s+pasien|ringkasan\s+(?:pelepasan|muatan))\b/i.test(val)) return true;
+        // "pasien dikeluarkan dari <fasilitas>" is a calque unless discharge is already rendered correctly elsewhere
+        if (/\b(?:pemulangan\s+pasien|pasien\s+pulang|ringkasan\s+pulang)\b/i.test(val)) return false;
+        return /\bpasien\s+dikeluarkan\s+(?:dari\s+)?(?:rumah\s+sakit|rs|ruang\s+rawat|rawat\s+inap|bangsal|fasilitas|klinik)\b/i.test(val);
+      },
+    },
     fix: 'Pemulangan pasien / Pasien pulang / Ringkasan pulang',
   },
   {
@@ -272,29 +330,7 @@ const KNOWN_CALQUE_TRAPS = [
     badVal: {
       /** @param {string} val @param {string} [key] @param {unknown} [sourceVal] */
       test(val, key, sourceVal) {
-        const sourceText = (String(key || '') + ' ' + (typeof sourceVal === 'string' ? sourceVal : '')).trim();
-        if (hasPhysicalFurnitureInSource(sourceText)) {
-          if (!isCounterItemDescribedAsOTC(sourceText)) {
-            if (NON_RX_RE.test(val)) {
-              return false;
-            }
-          }
-          if (isCounterPhraseSameAsNonPrescription(val)) {
-            const stripped = stripValidCounterPhrases(val);
-            const hasRemainingCounter = /\bdi\s+atas\s+meja(?:\s+kasir)?\b/i.test(stripped);
-            if (!hasRemainingCounter) {
-              return false;
-            }
-            return (
-              /\b(?:produk(?:\s+kesehatan)?)(?:\s+[a-z-]+){0,3}\s+di\s+atas\s+meja(?:\s+kasir)?\b/i.test(stripped) ||
-              /\bdi\s+atas\s+meja\s+kasir\b/i.test(stripped) ||
-              /^\s*di\s+atas\s+meja\s*$/i.test(stripped.trim())
-            );
-          }
-        }
-        if (/\bdi\s+atas\s+meja\s+kasir\b/i.test(val)) return true;
-        if (/\b(?:produk(?:\s+kesehatan)?)(?:\s+[a-z-]+){0,3}\s+di\s+atas\s+meja\b/i.test(val)) return true;
-        return /^di\s+atas\s+meja$/i.test(val.trim());
+        return hasOtcCounterCalque(val, key, sourceVal, PRODUCT_COUNTER_CALQUE_RE);
       },
     },
     fix: 'Produk kesehatan tanpa resep / Produk bebas',
@@ -310,7 +346,7 @@ const KNOWN_CALQUE_TRAPS = [
         // 1. Strict financial exclusion FIRST:
         // - Financial listings ("listed OTC", "traded OTC", "quoted OTC"), distinguishing securities from pharmaceutical products
         if (new RegExp(`\\b(?:listed|traded|quotes?|quoted)\\s+(?:on\\s+(?:the\\s+)?)?${OTC_RE.source}\\b`, 'i').test(combined)) {
-          const isPharmaListing = /\b(?:drugs?|medicines?|medications?|pharmaceuticals?)\b/i.test(combined) &&
+          const isPharmaListing = new RegExp(`\\b${PHARMA_NOUN}\\b`, 'i').test(combined) &&
             !/\b(?:shares?|securities|equity|bonds?|derivatives?|company\s+shares?)\b/i.test(combined);
           if (!isPharmaListing) {
             return false;
@@ -321,10 +357,10 @@ const KNOWN_CALQUE_TRAPS = [
         // (including "market for medicines currently in stock", "OTC market growth for medicines", and "medicines available in the OTC market")
         if (new RegExp(`(?:(?:on|in|at|for|from)\\s+(?:the\\s+)?${OTC_RE.source}\\s+market|${OTC_RE.source}\\s+market)`, 'i').test(combined)) {
           const isPharmaMarket = (
-            new RegExp(`${OTC_RE.source}\\s+market(?:\\s+[a-z-]+){0,2}\\s+for\\s+(?:[a-z-]+\\s+){0,4}(?:drugs?|medicines?|medications?|pharmaceuticals?)`, 'i').test(combined) ||
-            new RegExp(`(?:drugs?|medicines?|medications?|pharmaceuticals?)(?:\\s+[a-z-]+){0,4}\\s+(?:available\\s+)?(?:on|in|at|from)\\s+(?:the\\s+)?${OTC_RE.source}\\s+market`, 'i').test(combined)
+            new RegExp(`${OTC_RE.source}\\s+market(?:\\s+[a-z-]+){0,2}\\s+for\\s+(?:[a-z-]+\\s+){0,4}${PHARMA_NOUN}`, 'i').test(combined) ||
+            new RegExp(`${PHARMA_NOUN}(?:\\s+[a-z-]+){0,4}\\s+(?:available\\s+)?(?:on|in|at|from)\\s+(?:the\\s+)?${OTC_RE.source}\\s+market`, 'i').test(combined)
           ) && !/\b(?:shares?|securities|company\s+shares?|equity|derivatives?)\b/i.test(
-            combined.replace(/\b(?:in|of)\s+stock\b/gi, '').replace(/\bshares\s+(?:similarities|features|characteristics|data|information|insights?|details?)\b/gi, '')
+            combined.replace(/\bmarket\s+shares?\b/gi, '').replace(/\b(?:in|of)\s+stock\b/gi, '').replace(/\bshares\s+(?:similarities|features|characteristics|data|information|insights?|details?)\b/gi, '')
           );
 
           if (!isPharmaMarket) {
@@ -360,29 +396,7 @@ const KNOWN_CALQUE_TRAPS = [
     badVal: {
       /** @param {string} val @param {string} [key] @param {unknown} [sourceVal] */
       test(val, key, sourceVal) {
-        const sourceText = (String(key || '') + ' ' + (typeof sourceVal === 'string' ? sourceVal : '')).trim();
-        if (hasPhysicalFurnitureInSource(sourceText)) {
-          if (!isCounterItemDescribedAsOTC(sourceText)) {
-            if (NON_RX_RE.test(val)) {
-              return false;
-            }
-          }
-          if (isCounterPhraseSameAsNonPrescription(val)) {
-            const stripped = stripValidCounterPhrases(val);
-            const hasRemainingCounter = /\bdi\s+atas\s+meja(?:\s+kasir)?\b/i.test(stripped);
-            if (!hasRemainingCounter) {
-              return false;
-            }
-            return (
-              /\b(?:obat|aspirin|paracetamol|ibuprofen|pereda\s+nyeri)(?:\s+[a-z-]+){0,3}\s+di\s+atas\s+meja(?:\s+kasir)?\b/i.test(stripped) ||
-              /\bdi\s+atas\s+meja\s+kasir\b/i.test(stripped) ||
-              /^\s*di\s+atas\s+meja\s*$/i.test(stripped.trim())
-            );
-          }
-        }
-        if (/\bdi\s+atas\s+meja\s+kasir\b/i.test(val)) return true;
-        if (/\b(?:obat|aspirin|paracetamol|ibuprofen|pereda\s+nyeri)(?:\s+[a-z-]+){0,3}\s+di\s+atas\s+meja\b/i.test(val)) return true;
-        return /^di\s+atas\s+meja$/i.test(val.trim());
+        return hasOtcCounterCalque(val, key, sourceVal, MEDICINE_COUNTER_CALQUE_RE);
       },
     },
     fix: 'Obat tanpa resep',
