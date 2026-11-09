@@ -1322,10 +1322,12 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
     'OTC medicines and non-prescription products are on the counter': 'Obat di atas meja kasir dan produk tanpa resep ada di atas meja kasir',
     'OTC painkillers and non-prescription vitamins are on the counter': 'Pereda nyeri yang dijual di atas meja kasir dan vitamin tanpa resep di atas meja kasir',
     'OTC healthcare products and non-prescription vitamins are on the counter': 'Produk kesehatan yang dijual di atas meja kasir dan vitamin tanpa resep di atas meja kasir',
+    'OTC painkillers and non-prescription vitamins are on the counter: bare meja': 'Pereda nyeri yang dijual di atas meja dan vitamin tanpa resep di atas meja',
+    'OTC healthcare products and non-prescription vitamins are on the counter: bare meja': 'Produk kesehatan yang dijual di atas meja dan vitamin tanpa resep di atas meja',
   };
   const separateProductFindings = auditDictionary(separateProductCatalog);
   const separatePolysemy = separateProductFindings.filter((f) => f.rule === 'polysemy-calque');
-  assert.equal(separatePolysemy.length, 3);
+  assert.equal(separatePolysemy.length, 5);
 
   // Source-only regression test: opaque translation keys with matching source establishing table meaning
   const sourceOnlyTableCatalog = {

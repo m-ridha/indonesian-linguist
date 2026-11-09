@@ -283,10 +283,15 @@ const KNOWN_CALQUE_TRAPS = [
             if (!hasRemainingCounter) {
               return false;
             }
+            return (
+              /\b(?:produk(?:\s+kesehatan)?)(?:\s+[a-z-]+){0,3}\s+di\s+atas\s+meja(?:\s+kasir)?\b/i.test(stripped) ||
+              /\bdi\s+atas\s+meja\s+kasir\b/i.test(stripped) ||
+              /^\s*di\s+atas\s+meja\s*$/i.test(stripped.trim())
+            );
           }
         }
         if (/\bdi\s+atas\s+meja\s+kasir\b/i.test(val)) return true;
-        if (/\b(?:produk(?:\s+kesehatan)?)\s+di\s+atas\s+meja\b/i.test(val)) return true;
+        if (/\b(?:produk(?:\s+kesehatan)?)(?:\s+[a-z-]+){0,3}\s+di\s+atas\s+meja\b/i.test(val)) return true;
         return /^di\s+atas\s+meja$/i.test(val.trim());
       },
     },
@@ -366,10 +371,15 @@ const KNOWN_CALQUE_TRAPS = [
             if (!hasRemainingCounter) {
               return false;
             }
+            return (
+              /\b(?:obat|aspirin|paracetamol|ibuprofen|pereda\s+nyeri)(?:\s+[a-z-]+){0,3}\s+di\s+atas\s+meja(?:\s+kasir)?\b/i.test(stripped) ||
+              /\bdi\s+atas\s+meja\s+kasir\b/i.test(stripped) ||
+              /^\s*di\s+atas\s+meja\s*$/i.test(stripped.trim())
+            );
           }
         }
         if (/\bdi\s+atas\s+meja\s+kasir\b/i.test(val)) return true;
-        if (/\b(?:obat|aspirin|paracetamol|ibuprofen|pereda\s+nyeri)\s+di\s+atas\s+meja\b/i.test(val)) return true;
+        if (/\b(?:obat|aspirin|paracetamol|ibuprofen|pereda\s+nyeri)(?:\s+[a-z-]+){0,3}\s+di\s+atas\s+meja\b/i.test(val)) return true;
         return /^di\s+atas\s+meja$/i.test(val.trim());
       },
     },
