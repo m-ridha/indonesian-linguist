@@ -66,5 +66,5 @@ Every rule, blacklist, and disambiguation in `indonesian-linguist` is grounded i
    - BPOM statutory drug classifications: *Obat Bebas* (green circle), *Obat Bebas Terbatas* (blue circle with cautionary notices P.No.1 to P.No.6), and *Obat Keras / Obat Etis* (red circle with K mark).
 3. **Badan Penyelenggara Jaminan Sosial Kesehatan (BPJS Kesehatan)**:
    - Operational guidelines establishing tiered healthcare facility and referral terminology: *Fasilitas Kesehatan Tingkat Pertama (FKTP)*, *Fasilitas Kesehatan Rujukan Tingkat Lanjutan (FKRTL)*, *Surat Rujukan*, and *Mobile JKN*.
-4. **Standar Nasional Akreditasi Rumah Sakit (SNARS / KARS)**:
+4. **Standar Nasional Akreditasi Rumah Sakit (SNARS)**:
    - Establishes clinical governance and hospital documentation standards: *Dokter Penanggung Jawab Pelayanan (DPJP)*, *Ringkasan Pulang (Discharge Summary)* / *Resume Medis*, and *Persetujuan Tindakan Kedokteran (Informed Consent)*.

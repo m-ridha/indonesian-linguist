@@ -1309,6 +1309,8 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
     'Place OTC medicines on the counter: limited free medicine': 'Letakkan obat bebas terbatas di atas meja kasir',
     'Place OTC medicines on the checkout counter: sold without doctor prescription': 'Letakkan obat yang dijual tanpa resep dokter di atas meja kasir',
     'Place OTC healthcare products on the counter: limited free product': 'Letakkan produk kesehatan bebas terbatas di atas meja kasir',
+    'Place OTC medicines on the counter: newly bought modifier': 'Letakkan obat tanpa resep yang baru dibeli di atas meja kasir',
+    'Place OTC medicines on the counter: postposed qualification': 'Letakkan obat di atas meja kasir tanpa resep dokter',
   };
   const physicalCounterFindings = auditDictionary(physicalCounterCatalog);
   assert.deepEqual(physicalCounterFindings, []);
@@ -1333,23 +1335,26 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
   // Source-aware signs-out test: opaque translation key with source containing "signs ... out" triggers calque finding
   const signsOutCatalog = {
     'auth.action.signout': 'Aksi ini menandakan pengguna',
+    'signs_out': 'Aksi ini menandakan pengguna keluar',
   };
   const signsOutFindings = auditDictionary(signsOutCatalog, {
     source: { 'auth.action.signout': 'This action signs the user out' },
   });
   const signsOutPolysemy = signsOutFindings.filter((f) => f.rule === 'polysemy-calque');
-  assert.equal(signsOutPolysemy.length, 1);
+  assert.equal(signsOutPolysemy.length, 2);
   assert.ok(signsOutPolysemy[0].message.includes('mengeluarkan'));
 
-  // Clinical signs phrasing ("signs indicate the patient is out of danger") must NOT be flagged as a signs-out calque:
+  // Clinical signs phrasing ("signs indicate the patient is out of danger", "signs rule out infection") must NOT be flagged:
   const clinicalSignsCatalog = {
     'vital.signs.evaluation': 'Tanda-tanda vital menandakan pasien di luar bahaya',
     'signs.indicator.status': 'Tanda-tanda menandakan pasien sudah keluar dari bahaya',
+    'signs.clinical.ruleout': 'Tanda-tanda klinis menyingkirkan kemungkinan infeksi',
   };
   const clinicalSignsFindings = auditDictionary(clinicalSignsCatalog, {
     source: {
       'vital.signs.evaluation': 'Vital signs indicate the patient is out of danger',
       'signs.indicator.status': 'Signs indicate the patient is out of danger',
+      'signs.clinical.ruleout': 'Signs rule out infection',
     },
   });
   assert.deepEqual(clinicalSignsFindings, []);
@@ -1357,11 +1362,24 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
   // Source containing both clinical signs and logout action must still flag the logout calque:
   const mixedSignsLogoutCatalog = {
     'auth.vital.signout': 'Aksi ini menandakan pengguna keluar',
+    'auth.semicolon.signout': 'Tanda vital menandakan perbaikan; aksi ini menandakan pengguna keluar',
   };
   const mixedSignsLogoutFindings = auditDictionary(mixedSignsLogoutCatalog, {
-    source: { 'auth.vital.signout': 'Vital signs recorded; action signs the user out of all devices' },
+    source: {
+      'auth.vital.signout': 'Vital signs recorded; action signs the user out of all devices',
+      'auth.semicolon.signout': 'Signs indicate improvement; action signs the user out',
+    },
   });
-  assert.equal(mixedSignsLogoutFindings.filter((f) => f.rule === 'polysemy-calque').length, 1);
+  assert.equal(mixedSignsLogoutFindings.filter((f) => f.rule === 'polysemy-calque').length, 2);
+
+  // Mixed source where logout is properly translated with mengeluarkan must NOT flag menandakan:
+  const mixedSignsProperLogoutCatalog = {
+    'auth.semicolon.ok': 'Tanda vital menandakan perbaikan; aksi ini mengeluarkan pengguna',
+  };
+  const mixedSignsProperLogoutFindings = auditDictionary(mixedSignsProperLogoutCatalog, {
+    source: { 'auth.semicolon.ok': 'Signs indicate improvement; action signs the user out' },
+  });
+  assert.deepEqual(mixedSignsProperLogoutFindings, []);
 
   // Discharge summary calque traps: "Ringkasan pelepasan" and "Ringkasan muatan" must be flagged:
   const dischargeSummaryCatalog = {
@@ -1372,6 +1390,32 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
   };
   const dischargeSummaryFindings = auditDictionary(dischargeSummaryCatalog);
   assert.equal(dischargeSummaryFindings.filter((f) => f.rule === 'polysemy-calque').length, 4);
+
+  // Removal from a monitoring list / cohort must NOT be falsely flagged as hospital discharge calque:
+  const nonDischargeRemovalCatalog = {
+    'patient.monitoring.removal': 'Pasien dikeluarkan dari daftar pemantauan berkala',
+  };
+  const nonDischargeRemovalFindings = auditDictionary(nonDischargeRemovalCatalog, {
+    source: { 'patient.monitoring.removal': 'Patient was removed from the monitoring list' },
+  });
+  assert.deepEqual(nonDischargeRemovalFindings, []);
+
+  // Unrelated counter item (e.g. receipt) in compound OTC source:
+  const receiptOnCounterCatalog = {
+    'meds.receipt.clean': 'Beli obat tanpa resep dan letakkan struk di atas meja kasir',
+  };
+  const receiptOnCounterFindings = auditDictionary(receiptOnCounterCatalog, {
+    source: { 'meds.receipt.clean': 'Buy OTC medicine and put the receipt on the counter' },
+  });
+  assert.deepEqual(receiptOnCounterFindings, []);
+
+  const receiptOnCounterCalqueCatalog = {
+    'meds.receipt.calque': 'Beli obat di atas meja kasir dan letakkan struk di atas meja kasir',
+  };
+  const receiptOnCounterCalqueFindings = auditDictionary(receiptOnCounterCalqueCatalog, {
+    source: { 'meds.receipt.calque': 'Buy OTC medicine and put the receipt on the counter' },
+  });
+  assert.equal(receiptOnCounterCalqueFindings.filter((f) => f.rule === 'polysemy-calque').length, 1);
 
   // Physical counter exemption when OTC medicine is in cabinet and counter medicine is separate:
   const cabinetAndCounterCatalog = {
@@ -1397,13 +1441,16 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
   });
   assert.equal(counterAndCabinetOTCFindings.filter((f) => f.rule === 'polysemy-calque').length, 1);
 
-  // Pharmaceutical OTC market with "in stock" and "available in the OTC market":
+  // Pharmaceutical OTC market with "in stock", growth phrases, and "available in the OTC market":
   const pharmaOTCCatalog = {
     'OTC market for medicines currently in stock': 'Obat di atas meja kasir tersedia',
     'Medicines available in the OTC market': 'Obat di atas meja kasir untuk konsumen',
+    'OTC market growth for medicines': 'Obat di atas meja kasir tumbuh pesat',
+    'OTC market for medicines shares similarities with cosmetics': 'Obat di atas meja kasir memiliki kemiripan',
+    'Medicines listed OTC': 'Obat di atas meja kasir terdaftar resmi',
   };
   const pharmaOTCFindings = auditDictionary(pharmaOTCCatalog);
-  assert.equal(pharmaOTCFindings.filter((f) => f.rule === 'polysemy-calque').length, 2);
+  assert.equal(pharmaOTCFindings.filter((f) => f.rule === 'polysemy-calque').length, 5);
 
   // Source-aware discharge test: ambiguous source 'Discharge' with patient key context
   const sourceAwareCatalog = {
@@ -1449,7 +1496,7 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
     'OTC market for medicine company shares are on the table': 'Pasar OTC untuk saham perusahaan obat ada di atas meja',
     'Over-the-counter market for medicine company shares are on the table': 'Pasar over-the-counter untuk saham perusahaan obat ada di atas meja',
     'Medicine company shares on the OTC market are on the table': 'Saham perusahaan obat di pasar OTC ada di atas meja',
-    'Medicine company shares listed OTC': 'Saham perusahaan obat yang terdaftar di atas meja',
+    'Medicine company shares listed OTC': 'Saham perusahaan obat yang terdaftar di atas meja kasir',
     'Medication reports for the OTC market are on the cashier desk': 'Laporan obat-obatan untuk pasar OTC ada di atas meja kasir',
   };
   const nonMedicalFindings = auditDictionary(nonMedicalCatalog);
