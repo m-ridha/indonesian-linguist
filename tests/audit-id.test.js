@@ -1341,6 +1341,9 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
   // A separately qualified product listed first must not exempt a later bare medicine / healthcare product
   assert.equal(rx('r.i', 'Beli vitamin tanpa resep dan obat di atas meja kasir; letakkan struk di atas meja kasir', 'Buy OTC medicine and non-prescription vitamins; put the receipt on the counter'), 1);
   assert.equal(rx('r.j', 'Beli vitamin tanpa resep dan produk kesehatan di atas meja kasir; letakkan struk di atas meja kasir', 'Buy OTC healthcare products and non-prescription vitamins; put the receipt on the counter'), 1);
+  // A different medicine qualified first must not exempt a later bare medicine
+  assert.equal(rx('r.m', 'Beli aspirin tanpa resep dan ibuprofen di atas meja kasir; letakkan struk di atas meja kasir', 'Buy OTC ibuprofen and non-prescription aspirin; put the receipt on the counter'), 1);
+  assert.equal(rx('r.n', 'Beli pereda nyeri tanpa resep dan obat di atas meja kasir; letakkan struk di atas meja kasir', 'Buy OTC medicine and non-prescription painkillers; put the receipt on the counter'), 1);
   // The same product qualified first, with the receipt on the counter, stays accepted
   assert.equal(rx('r.k', 'Beli obat tanpa resep; letakkan struk di atas meja kasir', 'Buy OTC medicine; put the receipt on the counter'), 0);
   assert.equal(rx('r.l', 'Beli produk kesehatan tanpa resep; letakkan struk di atas meja kasir', 'Buy OTC healthcare products; put the receipt on the counter'), 0);
