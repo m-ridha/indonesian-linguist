@@ -13,7 +13,7 @@ Use this reference module whenever translating, localizing, or editing medical r
 ### A. Register Selection Across 5 Formality Levels
 1. **Beku (Frozen, Statutory & Ritualized)**:
    - *Surfaces*: Statutory informed consent (*Persetujuan Tindakan Kedokteran* / PerMenKes), clinical liability waivers, organ donation pledges, death certificates, hospital bylaws, and statutory confidentiality oaths.
-   - *Tone*: Unchanging, formulaic, highly solemn; enforceability as legally binding depends on the specific document and applicable statutory law (e.g., standard provider-exculpatory clauses may be void under consumer protection laws).
+   - *Tone*: Unchanging, formulaic, highly solemn, and legally binding.
 2. **Resmi (Formal)**:
    - *Surfaces*: Electronic Medical Records (RME), discharge summaries (*resume medis*), hospital admission documents, laboratory & pathology reports, and official BPOM package inserts / drug leaflets.
    - *Tone*: Objective, precise, clinically rigorous, emotionally neutral.
@@ -35,21 +35,22 @@ Use this reference module whenever translating, localizing, or editing medical r
 
 ## 2. Calque Traps, Polysemy & Clinical Disambiguation Table
 
-The following table resolves high-frequency false cognates, machine calques, and polysemous terms in medical localization. Every entry prevents a specific translation error:
+The following table resolves high-frequency false cognates, machine calques, and polysemous terms in medical localization. (Note: entries annotated with `[Enforced by audit-id.js]` have automated detection rules in the CI lint suite, while others serve as editorial guidance for translators and reviewers.) Every entry prevents a specific translation error:
 
 | English Source | Literal Calque Trap (BANNED) | Natural Indonesian / Clinical Standard | Context & Usage Notes |
 | --- | --- | --- | --- |
-| **Discharge / Patient discharge** | `Pelepasan muatan / Pemecatan pasien` | **Pemulangan pasien / Pasien pulang / Pasien rawat inap selesai** | Inpatient stay conclusion; never use *pemecatan* (job firing) or *pelepasan muatan* (cargo unshipping) |
-| **Discharge summary** | `Ringkasan pelepasan / Ringkasan muatan` | **Ringkasan pulang / Resume medis** | Official statutory clinical document required upon hospital discharge |
+| **Discharge / Patient discharge** `[Enforced by audit-id.js]` | `Pelepasan muatan / Pemecatan pasien` | **Pemulangan pasien / Pasien pulang / Pasien rawat inap selesai** | Inpatient stay conclusion; never use *pemecatan* (job firing) or *pelepasan muatan* (cargo unshipping / electrical discharge) |
+| **Discharge (bodily fluid)** | `Pelepasan muatan / Muatan` | **Cairan / Sekret / Keluar cairan** | Vaginal, urethral, wound, or ear discharge (*cairan vagina*, *keluar sekret*); never use *pelepasan muatan* |
+| **Discharge summary** `[Enforced by audit-id.js]` | `Ringkasan pelepasan / Ringkasan muatan` | **Ringkasan pulang / Resume medis** | Official statutory clinical document required upon hospital discharge |
 | **Admission / Hospital admission** | `Pengakuan / Masuk pengakuan` | **Pendaftaran rawat inap / Admisi rawat inap** | Process of admitting a patient to a bed/ward |
 | **Admitted to [hospital/ward]** | `Diakui ke` | **Dirawat di / Menjalani rawat inap di** | Patient inpatient status |
-| **Stool / Stool sample / Stool test** | `Bangku / Sampel bangku / Tes kursi` | **Feses / Tinja / Sampel feses / Pemeriksaan feses** | Clinical laboratory specimen; *feses* is preferred in clinical reports, *tinja* in public health guidance |
-| **Culture / Blood culture / Urine culture** | `Budaya darah / Kebudayaan urine` | **Kultur / Kultur darah / Kultur urine** | Microbiological incubation test to detect pathogens; note standard KBBI spelling **urine** (not `urin`) |
+| **Stool / Stool sample / Stool test** `[Enforced by audit-id.js]` | `Bangku / Sampel bangku / Tes kursi` | **Feses / Tinja / Sampel feses / Pemeriksaan feses** | Clinical laboratory specimen; *feses* is preferred in clinical reports, *tinja* in public health guidance |
+| **Culture / Blood culture / Urine culture** `[Enforced by audit-id.js]` | `Budaya darah / Kebudayaan urine` | **Kultur / Kultur darah / Kultur urine** | Microbiological incubation test to detect pathogens; note standard KBBI spelling **urine** (not `urin`) |
 | **Smear / Pap smear / Blood smear** | `Noda / Coretan darah` | **Apusan / Pap smear / Apusan darah tepi** | Cytological or hematological slide preparation |
 | **Positive / Negative** *(diagnostic test)* | `Bagus / Buruk / Menguntungkan` | **Positif / Negatif (Terdeteksi / Tidak terdeteksi)** | In pathology/virology, *positif* often means disease/pathogen presence; clarify with *Terdeteksi / Reaktif* where ambiguity alarms patients |
 | **Acute** *(onset/duration)* | `Parah sekali / Kritis` | **Akut (terjadi mendadak / jangka pendek)** | In clinical medicine, *akut* denotes sudden onset or short duration, not necessarily severity; contrast with *kronis* |
 | **Chronic** *(duration)* | `Berbahaya / Sangat parah` | **Kronis / Menahun (jangka panjang)** | Denotes persistence over months/years; *menahun* is the natural patient-facing explanation |
-| **Over-the-counter (OTC)** | `Di atas meja kasir / Di atas meja` | **Obat tanpa resep** | General availability term (*obat tanpa resep*); for specific classification, check packaging (e.g. *Obat Bebas* vs. *Obat Bebas Terbatas* with warning labels) |
+| **Over-the-counter (OTC)** `[Enforced by audit-id.js]` | `Di atas meja kasir / Di atas meja` | **Obat tanpa resep** | General availability term (*obat tanpa resep*); for specific classification, check packaging (e.g. *Obat Bebas* vs. *Obat Bebas Terbatas* with warning labels) |
 | **Prescription drug / Ethical drug** | `Obat etis / Obat resep moral` | **Obat keras / Obat resep (dengan resep dokter)** | BPOM red circle (*lingkaran merah bergaris tepi hitam dengan huruf K*) category |
 | **Side effects** | `Efek sampingan` | **Efek samping** | Secondary pharmacological reaction; *efek sampingan* is grammatically non-standard |
 | **Adverse drug reaction (ADR) / Adverse event** | `Peristiwa yang merugikan / Kejadian buruk` | **Kejadian tidak diinginkan (KTD) / Reaksi obat yang tidak diinginkan (ROTD)** | Formal Indonesian pharmacovigilance standard (BPOM / Kemenkes) |
@@ -134,7 +135,7 @@ When presenting pharmaceutical information in telemedicine carts or drug diction
 2. **Obat Bebas Terbatas** (Blue circle with black border, with warning labels P.No. 1 to P.No. 6): Over-the-counter with cautionary instructions.
 3. **Obat Keras** (Red circle with black border and black letter **K**): Prescription-only ethical medication (e.g., antibiotik, obat hipertensi).
 4. **Obat Golongan Narkotika** (White circle with red border and red cross): Strictly controlled substances.
-5. **Obat Golongan Psikotropika** (Red circle with black border and black letter **K**): Strictly controlled psychoactive pharmaceuticals.
+5. **Obat Golongan Psikotropika** (Red circle with black border and black letter **K**): Strictly controlled psychoactive pharmaceuticals (regulated as a specialized, strictly supervised subset of Obat Keras per UU Psikotropika and BPOM regulations).
 
 ### C. Retained Global Medical Loanwords
 Keep these terms intact or in standard bracketed loan form; do not force awkward indigenization:
