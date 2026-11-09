@@ -180,12 +180,17 @@ function hasOtcCounterCalque(val, key, sourceVal, calqueRe, nounSource) {
       // Otherwise the counter item is unrelated (receipt) or an anaphoric mention ("the medicine is on the table").
       // A bare product on the counter is a calque unless that same product noun was qualified as
       // non-prescription earlier ("aspirin tanpa resep" does not qualify a later "ibuprofen").
-      const calque = calqueRe.exec(val);
-      if (!calque) return false;
-      const noun = new RegExp(`^(?:${nounSource})`, 'i').exec(calque[0]);
-      if (!noun) return true;
-      const qualified = new RegExp(`\\b${noun[0].replace(/\\s+/g, '\\\\s+')}\\s+${NON_RX_RE.source}`, 'i').exec(val);
-      return !(qualified && qualified.index < calque.index);
+      const globalCalqueRe = new RegExp(calqueRe.source, 'gi');
+      let match;
+      while ((match = globalCalqueRe.exec(val)) !== null) {
+        const noun = new RegExp(`^(?:${nounSource})`, 'i').exec(match[0]);
+        if (!noun) return true;
+        const qualified = new RegExp(`\\b${noun[0].replace(/\\s+/g, '\\\\s+')}\\s+${NON_RX_RE.source}`, 'i').exec(val);
+        if (!(qualified && qualified.index < match.index)) {
+          return true;
+        }
+      }
+      return false;
     }
     if (isCounterPhraseSameAsNonPrescription(val)) {
       const stripped = stripValidCounterPhrases(val);
