@@ -1338,6 +1338,12 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
   assert.equal(rx('Place OTC medicines on the counter', 'Letakkan obat tanpa resep untuk anak di atas meja kasir'), 0);
   // A non-prescription qualification that comes after a bare medicine on the counter does not exempt it
   assert.equal(rx('r.c', 'Beli obat di atas meja kasir dan letakkan struk tanpa resep', 'Buy OTC medicine and put the receipt on the counter'), 1);
+  // A separately qualified product listed first must not exempt a later bare medicine / healthcare product
+  assert.equal(rx('r.i', 'Beli vitamin tanpa resep dan obat di atas meja kasir; letakkan struk di atas meja kasir', 'Buy OTC medicine and non-prescription vitamins; put the receipt on the counter'), 1);
+  assert.equal(rx('r.j', 'Beli vitamin tanpa resep dan produk kesehatan di atas meja kasir; letakkan struk di atas meja kasir', 'Buy OTC healthcare products and non-prescription vitamins; put the receipt on the counter'), 1);
+  // The same product qualified first, with the receipt on the counter, stays accepted
+  assert.equal(rx('r.k', 'Beli obat tanpa resep; letakkan struk di atas meja kasir', 'Buy OTC medicine; put the receipt on the counter'), 0);
+  assert.equal(rx('r.l', 'Beli produk kesehatan tanpa resep; letakkan struk di atas meja kasir', 'Buy OTC healthcare products; put the receipt on the counter'), 0);
   // Aspirin / painkillers count as pharmaceutical context for OTC listings
   assert.equal(rx('Aspirin listed OTC', 'Aspirin di atas meja kasir'), 1);
   // "market share" is not a securities share
