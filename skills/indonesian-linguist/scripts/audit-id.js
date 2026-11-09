@@ -112,14 +112,16 @@ function isCounterItemDescribedAsOTC(sourceText) {
   return false;
 }
 
+const NON_RX_RE = /(?:(?:(?:yang\s+dijual|dapat\s+dibeli)\s+)?tanpa\s+(?:perlu\s+)?resep(?:\s+dokter)?|(?:obat\s+|produk(?:\s+kesehatan)?\s+)?bebas(?:\s+terbatas)?)/;
+
 /**
  * Checks whether the counter phrase and the non-prescription phrase refer to the same product
  * in the Indonesian translation (e.g. "obat tanpa resep di atas meja kasir").
  * @param {string} val
  */
 function isCounterPhraseSameAsNonPrescription(val) {
-  return /\b(?:obat|produk(?:\s+kesehatan)?|aspirin|paracetamol|ibuprofen|pereda\s+nyeri)\s+(?:tanpa\s+(?:perlu\s+)?resep|dapat\s+dibeli\s+tanpa\s+perlu\s+resep|bebas)\s+(?:ada\s+)?di\s+atas\s+meja(?:\s+kasir)?\b/i.test(val) ||
-    /\b(?:tanpa\s+(?:perlu\s+)?resep|dapat\s+dibeli\s+tanpa\s+perlu\s+resep|obat\s+bebas|produk\s+bebas)\s+di\s+atas\s+meja(?:\s+kasir)?\b/i.test(val);
+  return new RegExp(`\\b(?:obat|produk(?:\\s+kesehatan)?|aspirin|paracetamol|ibuprofen|pereda\\s+nyeri)\\s+${NON_RX_RE.source}\\s+(?:ada\\s+)?di\\s+atas\\s+meja(?:\\s+kasir)?\\b`, 'i').test(val) ||
+    new RegExp(`\\b${NON_RX_RE.source}\\s+(?:ada\\s+)?di\\s+atas\\s+meja(?:\\s+kasir)?\\b`, 'i').test(val);
 }
 
 /**
@@ -224,7 +226,7 @@ const KNOWN_CALQUE_TRAPS = [
         return /\b(?:patient\s+discharge|discharge\s+summary|discharge\s+(?:plan(?:ning)?|instructions?|date|order|status)|hospital\s+discharge)\b/i.test(combined);
       },
     },
-    badVal: /\b(?:pemecatan|pelepasan\s+muatan|ringkasan\s+(?:pelepasan|muatan))\b/i,
+    badVal: /\b(?:pemecatan|pelepasan\s+muatan|pelepasan\s+pasien|pasien\s+dikeluarkan|ringkasan\s+(?:pelepasan|muatan))\b/i,
     fix: 'Pemulangan pasien / Pasien pulang / Ringkasan pulang',
   },
   {

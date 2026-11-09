@@ -30,6 +30,7 @@
     },
     "ignores": [
         ".github/CODEOWNERS",
+        "docs/scribles/**",
         "node_modules/**"
     ]
 }

@@ -1,6 +1,6 @@
 # Domain Glossary: Medical, Healthcare, Telemedicine & Clinical Patient UX
 
-In telemedicine applications (e.g., *Halodoc, Alodokter, SatuSehat, Mobile JKN*), Electronic Medical Records (*Rekam Medis Elektronik* / RME), laboratory result portals, and patient information leaflets, literal machine translation is not merely awkward: it risks alarming patients or compromising medical safety. Automated translation engines frequently generate dangerous or bizarre calques, such as rendering *Patient discharge* as *Pemecatan pasien* or *Pelepasan muatan*, *Stool sample* as *Sampel bangku*, *Blood culture* as *Budaya darah*, *Over-the-counter* as *Di atas meja kasir*, and *Acute condition* as *Kondisi parah*.
+In telemedicine and digital health applications (such as teleconsultation services like *Halodoc* and *Alodokter*, national health platforms like *SatuSehat*, and national health insurance portals like *Mobile JKN*), Electronic Medical Records (*Rekam Medis Elektronik* / RME), laboratory result portals, and patient information leaflets, literal machine translation is not merely awkward: it risks alarming patients or compromising medical safety. Automated translation engines frequently generate dangerous or bizarre calques, such as rendering *Patient discharge* as *Pemecatan pasien* or *Pelepasan muatan*, *Stool sample* as *Sampel bangku*, *Blood culture* as *Budaya darah*, *Over-the-counter* as *Di atas meja kasir*, and *Acute condition* as *Kondisi parah*.
 
 Furthermore, Indonesian clinical documentation and healthcare communication are governed by statutory standards set by **Kementerian Kesehatan RI (Kemenkes)**, **Badan Pengawas Obat dan Makanan (BPOM)**, **BPJS Kesehatan**, and the orthographic standards of **KBBI VI** and **EYD Edisi V**.
 
@@ -35,7 +35,7 @@ Use this reference module whenever translating, localizing, or editing medical r
 
 ## 2. Calque Traps, Polysemy & Clinical Disambiguation Table
 
-The following table resolves high-frequency false cognates, machine calques, and polysemous terms in medical localization. (Note: entries annotated with `[Enforced by audit-id.js]` have automated detection rules tested against fixed test fixtures in CI, rather than actively scanning submitted localization catalogs, while other entries serve as editorial guidance for translators and reviewers.) Every entry prevents a specific translation error:
+The following table resolves high-frequency false cognates, machine calques, and polysemous terms in medical localization. (Note: entries annotated with `[Enforced by audit-id.js]` have automated detection rules in `scripts/audit-id.js` (verified by the test suite in CI), while other entries serve as editorial guidance for translators and reviewers.) Every entry prevents a specific translation error:
 
 | English Source | Literal Calque Trap (BANNED) | Natural Indonesian / Clinical Standard | Context & Usage Notes |
 | --- | --- | --- | --- |
@@ -51,13 +51,13 @@ The following table resolves high-frequency false cognates, machine calques, and
 | **Acute** *(onset/duration)* | `Parah sekali / Kritis` | **Akut (terjadi mendadak / jangka pendek)** | In clinical medicine, *akut* denotes sudden onset or short duration, not necessarily severity; contrast with *kronis* |
 | **Chronic** *(duration)* | `Berbahaya / Sangat parah` | **Kronis / Menahun (jangka panjang)** | Denotes persistence over months/years; *menahun* is the natural patient-facing explanation |
 | **Over-the-counter (OTC)** `[Enforced by audit-id.js]` | `Di atas meja kasir / Di atas meja` | **Obat tanpa resep** | General availability term (*obat tanpa resep*); for non-medicinal OTC products (e.g., *COVID-19 test kit*, medical devices), retain the specific product type (e.g., *alat tes COVID-19 tanpa resep* / *produk bebas*); for specific classification, check packaging (e.g. *Obat Bebas* vs. *Obat Bebas Terbatas* with warning labels) |
-| **Prescription drug / Ethical drug** | `Obat etis / Obat resep moral` | **Obat keras / Obat resep (dengan resep dokter)** | BPOM red circle (*lingkaran merah bergaris tepi hitam dengan huruf K*) category |
+| **Prescription drug / Ethical drug** | `Obat resep moral` | **Obat keras / Obat resep (dengan resep dokter)** | BPOM red circle (*lingkaran merah bergaris tepi hitam dengan huruf K*) category; *obat etis* is an established pharmaceutical industry synonym for prescription drugs (*ethical drugs*), not a banned calque |
 | **Side effects** | `Efek sampingan` | **Efek samping** | Secondary pharmacological reaction; *efek sampingan* is grammatically non-standard |
-| **Adverse drug reaction (ADR) / Adverse event** | `Peristiwa yang merugikan / Kejadian buruk` | **Kejadian tidak diinginkan (KTD) / Reaksi obat yang tidak diinginkan (ROTD)** | Formal Indonesian pharmacovigilance standard (BPOM / Kemenkes) |
+| **Adverse drug reaction (ADR) / Adverse event** | `Peristiwa yang merugikan / Kejadian buruk` | **Kejadian tidak diinginkan (KTD) / Reaksi obat yang tidak dikehendaki (ROTD)** | Formal Indonesian pharmacovigilance standard (BPOM / Kemenkes) |
 | **Outpatient / Outpatient clinic** | `Pasien luar / Klinik luar` | **Rawat jalan / Poliklinik (Poli)** | Ambulatory care without overnight hospital stay |
 | **Inpatient** | `Pasien dalam` | **Rawat inap** | Patient admitted to hospital bed overnight |
 | **General Practitioner (GP)** | `Praktisi umum` | **Dokter umum** | Primary care physician |
-| **Attending physician / Physician in charge** | `Dokter yang hadir / Dokter yang bertugas` | **Dokter Penanggung Jawab Pelayanan (DPJP)** | Official Indonesian hospital accreditation term for the primary managing specialist |
+| **Attending physician / Physician in charge** | `Dokter yang hadir` | **Dokter Penanggung Jawab Pelayanan (DPJP)** | Official Indonesian hospital accreditation term for the primary managing specialist; *dokter yang bertugas / dokter jaga* is standard descriptive Indonesian for on-duty medical staff |
 | **Medical record / Electronic Medical Record (EMR)** | `Catatan riwayat non-medis` | **Rekam medis / Rekam Medis Elektronik (RME)** | Statutory Indonesian terminology per Permenkes No. 24 Tahun 2022 (in patient-facing conversational copy, *catatan medis* is also widely used and accepted alongside *rekam medis*) |
 | **Informed consent** | `Persetujuan yang diinformasikan` | **Persetujuan Tindakan Kedokteran (Informed Consent)** | Legal authorization signed before surgical/invasive procedures |
 | **Referral / Referral letter** | `Surat penyerahan` | **Rujukan / Surat rujukan** | BPJS Kesehatan and hospital referral between primary (FKTP) and secondary/tertiary facilities (FKRTL) |
@@ -72,14 +72,14 @@ The following table resolves high-frequency false cognates, machine calques, and
 | **Prognosis** | `Ramalan penyakit` | **Prognosis** | Medical forecast of disease progression and recovery chances |
 | **Remission** | `Pengurangan / Pengampunan` | **Remisi** | Period where disease signs/symptoms abate or disappear |
 | **Flare-up / Relapse** | `Kobaran api / Terbakar` | **Kekambuhan / Gejala kambuh** | Worsening or resurgence of chronic disease symptoms |
-| **Refill** *(prescription)* | `Isi ulang resep` | **Tebus ulang resep / Penebusan resep lanjutan** | Dispensing recurring medication from an authorized prescription |
+| **Refill** *(prescription)* | `Pengisian ulang botol resep` | **Tebus ulang resep / Penebusan resep lanjutan** | Dispensing recurring medication from an authorized prescription; in consumer telehealth apps, *isi ulang resep* is commonly accepted conversational copy |
 | **Dosage / Dose** | `Ukuran obat` | **Dosis / Takaran obat** | Prescribed quantity of pharmaceutical product |
 | **Route of administration** | `Rute administrasi` | **Rute pemberian obat / Cara penggunaan** | Method of introducing drug into body (oral, intravena, topikal) |
 | **NPO (Nil per os) / Fasting before surgery** | `Nol per mulut` | **Puasa makan dan minum / Pasien dipuasakan** | Clinical pre-operative restriction |
 | **PRN (Pro re nata) / As needed** | `Untuk kelahiran ulang` | **Bila perlu / Jika diperlukan (p.r.n.)** | Dosage instruction when symptoms arise (e.g., fever/pain) |
 | **Overdose** | `Pemberian berlebih yang salah` | **Overdosis / Kelebihan dosis** | Toxic dose administration |
-| **Screening** *(medical)* | `Penyaringan` | **Pemeriksaan dini / Skrining kesehatan** | Proactive population or individual health check |
-| **Check-up / Medical check-up (MCU)** | `Pemeriksaan medis` | **Pemeriksaan kesehatan menyeluruh / Medical check-up (MCU)** | Comprehensive diagnostic wellness evaluation |
+| **Screening** *(medical)* | `Penyaringan mekanis` | **Pemeriksaan dini / Skrining kesehatan** | Proactive population or individual health check; *penyaringan* is grammatically valid in KBBI but ambiguous with physical filtration in clinical contexts |
+| **Check-up / Medical check-up (MCU)** | `Periksa ke atas / Pemeriksaan ke atas` | **Pemeriksaan medis / Pemeriksaan kesehatan menyeluruh / Medical check-up (MCU)** | Comprehensive diagnostic wellness evaluation; *pemeriksaan medis* is formal Indonesian for clinical examination |
 | **Swab test** | `Uji sapu` | **Tes usap / Swab test** | Mucosal specimen collection |
 | **Emergency Room (ER) / Emergency Department (ED)** | `Ruang darurat` | **Instalasi Gawat Darurat (IGD)** | Statutory hospital department |
 | **Intensive Care Unit (ICU)** | `Unit perhatian intensif` | **Unit Perawatan Intensif (ICU)** | Critical care inpatient facility |

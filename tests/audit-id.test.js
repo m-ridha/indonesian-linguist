@@ -164,6 +164,24 @@ test('auditDictionary: flags silent English fallback on long strings (>15 chars)
   );
 });
 
+test('auditDictionary: retained short medical loanwords (USG, MRI, EKG) are not flagged even with minFallbackLength: 3', () => {
+  const shortMedicalCatalog = {
+    USG: 'USG',
+    MRI: 'MRI',
+    EKG: 'EKG',
+    'CT Scan': 'CT Scan',
+    'Pap smear': 'Pap smear',
+    Biopsi: 'Biopsi',
+    Endoskopi: 'Endoskopi',
+    Kolonoskopi: 'Kolonoskopi',
+    Infus: 'Infus',
+    Kateter: 'Kateter',
+    Ventilator: 'Ventilator',
+  };
+  const findings = auditDictionary(shortMedicalCatalog, { minFallbackLength: 3 });
+  assert.deepEqual(findings, []);
+});
+
 test('auditDictionary: flags placeholder mismatches including duplicate counts and printf (%s, %d) tokens', () => {
   const dict = {
     '{0} week streak': 'Minggu beruntun', // Missing {0}
@@ -1287,6 +1305,10 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
     'Place OTC medicines on the counter: buy without prescription': 'Letakkan obat yang dapat dibeli tanpa perlu resep di atas meja kasir',
     'Place OTC healthcare products on the checkout counter': 'Letakkan produk kesehatan tanpa resep di atas meja kasir',
     'Place OTC healthcare products on the counter: buy without prescription': 'Letakkan produk kesehatan yang dapat dibeli tanpa perlu resep di atas meja kasir',
+    'Place OTC medicines on the counter with doctor prescription note': 'Letakkan obat tanpa resep dokter di atas meja kasir',
+    'Place OTC medicines on the counter: limited free medicine': 'Letakkan obat bebas terbatas di atas meja kasir',
+    'Place OTC medicines on the checkout counter: sold without doctor prescription': 'Letakkan obat yang dijual tanpa resep dokter di atas meja kasir',
+    'Place OTC healthcare products on the counter: limited free product': 'Letakkan produk kesehatan bebas terbatas di atas meja kasir',
   };
   const physicalCounterFindings = auditDictionary(physicalCounterCatalog);
   assert.deepEqual(physicalCounterFindings, []);
@@ -1345,9 +1367,11 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
   const dischargeSummaryCatalog = {
     'Discharge summary': 'Ringkasan pelepasan pasien',
     'Patient discharge summary': 'Ringkasan muatan pasien',
+    'Patient discharge': 'Pelepasan pasien',
+    'Hospital discharge': 'Pasien dikeluarkan dari rumah sakit',
   };
   const dischargeSummaryFindings = auditDictionary(dischargeSummaryCatalog);
-  assert.equal(dischargeSummaryFindings.filter((f) => f.rule === 'polysemy-calque').length, 2);
+  assert.equal(dischargeSummaryFindings.filter((f) => f.rule === 'polysemy-calque').length, 4);
 
   // Physical counter exemption when OTC medicine is in cabinet and counter medicine is separate:
   const cabinetAndCounterCatalog = {
