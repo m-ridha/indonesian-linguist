@@ -1,7 +1,7 @@
 {
   "name": "indonesian-linguist",
   "displayName": "Indonesian Linguist",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "Expert Bahasa Indonesia language, writing, translation, and software localization (i18n/UX) skill. Enforces natural Indonesian phrasing, EYD V grammar, UI polysemy resolution, lexical compaction, domain loanwords, and zero AI slop.",
   "logo": "assets/logo.svg",
   "icon": "assets/logo.svg",
