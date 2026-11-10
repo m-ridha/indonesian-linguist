@@ -27,6 +27,6 @@ Please select the track that matches this Pull Request (see [CONTRIBUTING.md](ht
 
 ## Verification Checklist
 
-- [ ] If root `SKILL.md` was modified, synced `skills/indonesian-linguist/SKILL.md` (`cp SKILL.md skills/indonesian-linguist/SKILL.md`)
+- [ ] If root `SKILL.md`, `references/`, or `scripts/` were modified, synced the plugin mirror (`npm run sync`)
 - [ ] If `scripts/audit-id.js` was modified, added both positive and negative unit test cases in `tests/audit-id.test.js`
 - [ ] Executed `npm test` locally and all tests pass (`0 fail`)

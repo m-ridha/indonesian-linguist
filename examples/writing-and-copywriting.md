@@ -8,10 +8,10 @@ These examples compare standard LLM output (without `indonesian-linguist`) again
 
 **Prompt**: *"Translate and adapt this paragraph for our Indonesian documentation: `In today's fast-paced digital landscape, rate limiting is not only an option, but a necessity. When a client exceeds the ceiling, it receives a 429 response where they must wait before retrying.`"*
 
-❌ **Without `indonesian-linguist`** *(6 findings: cliché opener, figurative 'lanskap', negative parallelism, 'tarif' & 'langit-langit' calques, inanimate 'ia/mereka', 'di mana' relative clause)*:
+❌ **Without `indonesian-linguist`** *(6 defects: cliché opener, figurative 'lanskap', negative parallelism, 'tarif' & 'langit-langit' calques, inanimate 'ia/mereka', 'di mana' relative clause)*:
 > Di era lanskap digital yang serba cepat saat ini, pembatasan tarif bukan hanya sekadar pilihan, melainkan sebuah keharusan yang krusial. Ketika klien melampaui langit-langit, ia akan menerima respons 429 di mana mereka harus menunggu sebelum mencoba kembali.
 
-✅ **With `indonesian-linguist`** *(0 findings: direct opening, accurate developer terminology, zero inanimate pronouns, natural connector)*:
+✅ **With `indonesian-linguist`** *(all six defects resolved: direct opening, accurate developer terminology, zero inanimate pronouns, natural connector)*:
 > Pembatasan kuota permintaan (*rate limiting*) melindungi API dari lonjakan trafik berlebih. Saat jumlah permintaan klien melewati batas maksimal, server mengembalikan status `429 Too Many Requests` sehingga klien perlu menunggu sebelum mengirim permintaan ulang.
 
 ---
