@@ -11,6 +11,7 @@ This directory houses modular domain and subculture glossaries for `indonesian-l
 | Domain Module | Scope & Triggers |
 | --- | --- |
 | [fitness-and-gym.md](fitness-and-gym.md) | Strength training, bodybuilding, calisthenics, workout trackers (e.g., openGym, Strava, Hevy), sports anatomy, 1RM estimation, gamification streaks, and coaching personas. |
+| [medical-and-healthcare.md](medical-and-healthcare.md) | Telemedicine, electronic medical records (RME and SatuSehat interoperability), clinical hospital workflows, diagnostic lab specimens, BPOM drug classifications, and patient-facing consultations. |
 | [tech-and-developer.md](tech-and-developer.md) | Software engineering, APIs, cloud infrastructure, authentication/security, official Apple iOS & Google Android Indonesian system strings, and consumer SaaS settings. |
 
 ---
@@ -28,7 +29,7 @@ This directory houses modular domain and subculture glossaries for `indonesian-l
 
 ## How to Add a New Domain Module
 
-To expand `indonesian-linguist` for a new industry or subculture (e.g., `fintech-and-banking.md`, `gaming-and-esports.md`, `ecommerce-and-logistics.md`, `medical-and-health.md`):
+To expand `indonesian-linguist` for a new industry or subculture (e.g., `fintech-and-banking.md`, `gaming-and-esports.md`, `ecommerce-and-logistics.md`, `medical-and-healthcare.md`):
 
 1. Create `references/domains/<domain-name>.md`.
 2. Structure the file with:

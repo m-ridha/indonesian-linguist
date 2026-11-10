@@ -11,7 +11,7 @@ Houses the progressive-disclosure linguistic reference modules loaded on demand 
 - [`anti-slop-and-calques.md`](anti-slop-and-calques.md): Ten zero-tolerance AI-slop bans, bureaucratic nominalization repairs (`dikarenakan`, `dalam rangka untuk`, `melakukan pengecekan`), and English-to-Indonesian syntactic calque fixes.
 - [`core-grammar-and-eyd.md`](core-grammar-and-eyd.md): EYD Edisi V rules, 60+ `Kata Baku` vs. `Tidak Baku` pairs, `di-` vs. `di`, `meN-` assimilation, code-mixing hyphenation (`di-deploy`, `commit-nya`), `Hukum D-M`, and pragmatic particle calibration (`sih, dong, deh, kan, kok`).
 - [`writing-ux-marketing-seo-academic.md`](writing-ux-marketing-seo-academic.md): Ivan Lanin's 5 formality registers, marketing copywriting, website copy, SEO `<title>` optimization, and academic IMRaD standards.
-- [`domains/`](domains/README.md): Extensible domain and subculture glossaries ([`fitness-and-gym.md`](domains/fitness-and-gym.md), [`tech-and-developer.md`](domains/tech-and-developer.md)).
+- [`domains/`](domains/README.md): Extensible domain and subculture glossaries ([`fitness-and-gym.md`](domains/fitness-and-gym.md), [`medical-and-healthcare.md`](domains/medical-and-healthcare.md), [`tech-and-developer.md`](domains/tech-and-developer.md)).
 
 ## Verification
 

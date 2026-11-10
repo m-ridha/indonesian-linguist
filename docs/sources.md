@@ -53,3 +53,18 @@ Every rule, blacklist, and disambiguation in `indonesian-linguist` is grounded i
    - Empirical corpus built across 2,575 UI strings and 5,632 exercise definitions, cross-referenced with Indonesian commercial gym and coaching platforms (*latihanfisik.id, fitlink.id, ftlgym.com, primafit.com, naturalfarm.id*).
 4. **Etika Pariwara Indonesia (EPI, Dewan Periklanan Indonesia)**:
    - Advertising self-regulatory standard prohibiting unverified superlative claims (*terbaik, nomor 1, paling murah*).
+
+---
+
+## 5. Indonesian Healthcare, Clinical & Pharmaceutical Regulatory Authorities
+
+1. **Kementerian Kesehatan Republik Indonesia (Kemenkes RI)**:
+   - *Peraturan Menteri Kesehatan Republik Indonesia No. 24 Tahun 2022 tentang Rekam Medis*: Establishes statutory terminology and standards for *Rekam Medis Elektronik (RME)* and electronic health record systems.
+   - *Platform SatuSehat*: National health data exchange and semantic interoperability platform connecting healthcare facilities and clinical documentation across Indonesia.
+2. **Badan Pengawas Obat dan Makanan (BPOM RI)**:
+   - *Peraturan Badan Pengawas Obat dan Makanan No. 15 Tahun 2022 tentang Penerapan Farmakovigilans*: Establishes official Indonesian pharmacovigilance terminology, distinguishing *Kejadian Tidak Diinginkan (KTD)* (Adverse Event) from *Reaksi Obat yang Tidak Dikehendaki (ROTD)* (Adverse Drug Reaction).
+   - BPOM statutory drug classifications: *Obat Bebas* (green circle), *Obat Bebas Terbatas* (blue circle with cautionary notices P.No.1 to P.No.6), and *Obat Keras / Obat Etis* (red circle with K mark).
+3. **Badan Penyelenggara Jaminan Sosial Kesehatan (BPJS Kesehatan)**:
+   - Operational guidelines establishing tiered healthcare facility and referral terminology: *Fasilitas Kesehatan Tingkat Pertama (FKTP)*, *Fasilitas Kesehatan Rujukan Tingkat Lanjutan (FKRTL)*, *Surat Rujukan*, and *Mobile JKN*.
+4. **Standar Nasional Akreditasi Rumah Sakit (SNARS)**:
+   - Establishes clinical governance and hospital documentation standards: *Dokter Penanggung Jawab Pelayanan (DPJP)*, *Ringkasan Pulang (Discharge Summary)* / *Resume Medis*, and *Persetujuan Tindakan Kedokteran (Informed Consent)*.

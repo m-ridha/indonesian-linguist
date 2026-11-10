@@ -164,6 +164,24 @@ test('auditDictionary: flags silent English fallback on long strings (>15 chars)
   );
 });
 
+test('auditDictionary: retained short medical loanwords (USG, MRI, EKG) are not flagged even with minFallbackLength: 3', () => {
+  const shortMedicalCatalog = {
+    USG: 'USG',
+    MRI: 'MRI',
+    EKG: 'EKG',
+    'CT Scan': 'CT Scan',
+    'Pap smear': 'Pap smear',
+    Biopsi: 'Biopsi',
+    Endoskopi: 'Endoskopi',
+    Kolonoskopi: 'Kolonoskopi',
+    Infus: 'Infus',
+    Kateter: 'Kateter',
+    Ventilator: 'Ventilator',
+  };
+  const findings = auditDictionary(shortMedicalCatalog, { minFallbackLength: 3 });
+  assert.deepEqual(findings, []);
+});
+
 test('auditDictionary: flags placeholder mismatches including duplicate counts and printf (%s, %d) tokens', () => {
   const dict = {
     '{0} week streak': 'Minggu beruntun', // Missing {0}
@@ -1207,6 +1225,285 @@ test('auditDictionary: flags weight plates (piringan beban), plate loading (pemu
     'Working weight': 'Beban utama',
   };
   const goodFindings = auditDictionary(goodFitnessCatalog);
+  assert.deepEqual(goodFindings, []);
+});
+
+test('auditDictionary: flags medical calque traps (patient discharge, stool sample, blood culture, OTC)', () => {
+  const badMedicalCatalog = {
+    'Patient discharge': 'Pemecatan pasien',
+    'Discharge summary': 'Ringkasan pelepasan muatan',
+    'Discharge instructions': 'Instruksi pemecatan',
+    'Current patient discharge status': 'Status pemecatan pasien saat ini',
+    'Discharge summary: current medications': 'Ringkasan pemecatan: obat saat ini',
+    'Stool sample': 'Sampel bangku',
+    'Stool test': 'Tes kursi',
+    'Blood culture': 'Budaya darah',
+    'Urine culture': 'Kebudayaan urine',
+    'Over-the-counter': 'Di atas meja kasir',
+    'Over the counter medicine': 'Obat di atas meja kasir',
+    'This medicine is available over the counter': 'Obat ini tersedia di atas meja kasir',
+    'Over the counter pain relief': 'Pereda nyeri di atas meja kasir',
+    'Over-the-counter medicines in stock': 'Obat di atas meja kasir tersedia',
+    'Stock market impact on OTC medicines': 'Dampak pasar saham terhadap obat di atas meja kasir',
+    'Buy OTC aspirin': 'Beli aspirin di atas meja',
+    'OTC cough syrup': 'Sirup obat batuk di atas meja kasir',
+    'OTC market for cold medicines': 'Pasar obat di atas meja kasir untuk obat flu',
+    'OTC stock of medicines': 'Stok obat di atas meja kasir',
+    'Tablets available OTC': 'Tablet obat di atas meja kasir',
+    'Over-the-counter healthcare products': 'Produk kesehatan di atas meja',
+    OTC: 'Di atas meja',
+  };
+  const badFindings = auditDictionary(badMedicalCatalog);
+  const polysemyFindings = badFindings.filter((f) => f.rule === 'polysemy-calque');
+  assert.equal(polysemyFindings.length, 22);
+  const healthcareProdFinding = polysemyFindings.find((f) => f.key === 'Over-the-counter healthcare products');
+  assert.ok(healthcareProdFinding);
+  assert.ok(healthcareProdFinding.message.includes('Produk kesehatan tanpa resep / Produk bebas'));
+
+  const goodMedicalCatalog = {
+    'Patient discharge': 'Pemulangan pasien',
+    'Discharge summary': 'Ringkasan pulang',
+    'Discharge instructions': 'Petunjuk kepulangan',
+    'Current patient discharge status': 'Status kepulangan pasien saat ini',
+    'Discharge summary: current medications': 'Ringkasan pulang: obat saat ini',
+    'Stool sample': 'Sampel feses',
+    'Stool test': 'Pemeriksaan tinja',
+    'Blood culture': 'Kultur darah',
+    'Urine culture': 'Kultur urine',
+    'Over-the-counter': 'Obat bebas',
+    'Over the counter medicine': 'Obat tanpa resep',
+    'This medicine is available over the counter': 'Obat ini tersedia tanpa resep dokter',
+    'Over the counter pain relief': 'Pereda nyeri tanpa resep',
+    'Over-the-counter medicines in stock': 'Obat bebas tersedia',
+    'Stock market impact on OTC medicines': 'Dampak pasar saham terhadap obat tanpa resep',
+    'Buy OTC aspirin': 'Beli aspirin tanpa resep',
+    'OTC cough syrup': 'Sirup obat batuk tanpa resep',
+    'Over-the-counter healthcare products': 'Produk kesehatan tanpa resep',
+    'Buy OTC aspirin without prescription: tablets are on the table': 'Beli aspirin tanpa resep: tabletnya ada di atas meja',
+    'Buy OTC medicine without prescription: the medicine is on the table': 'Beli obat tanpa resep: obat di atas meja',
+    'Buy healthcare products without prescription: products are on the table': 'Beli produk kesehatan tanpa resep: produk di atas meja',
+    OTC: 'Obat bebas (tanpa resep dokter)',
+  };
+  const goodFindings = auditDictionary(goodMedicalCatalog);
+  assert.deepEqual(goodFindings, []);
+
+  // Source-aware table test: valid non-prescription rendering does NOT suppress literal "di atas meja"
+  // when source does NOT describe a physical table
+  const ungroundedTableCatalog = {
+    'Buy OTC medicine': 'Beli obat tanpa resep, obat di atas meja kasir',
+    'Buy OTC healthcare products': 'Beli produk kesehatan tanpa resep, produk di atas meja kasir',
+    'OTC medicine: consult the dosage table': 'Beli obat tanpa resep, obat di atas meja kasir',
+    'OTC healthcare products: consult the dosage table': 'Beli produk kesehatan tanpa resep, produk di atas meja kasir',
+  };
+  const ungroundedTableFindings = auditDictionary(ungroundedTableCatalog);
+  const ungroundedPolysemy = ungroundedTableFindings.filter((f) => f.rule === 'polysemy-calque');
+  assert.equal(ungroundedPolysemy.length, 4);
+
+  // Source-aware physical counter test: physical counters exempt valid non-prescription translations
+  const physicalCounterCatalog = {
+    'Place OTC medicines on the counter': 'Letakkan obat tanpa resep di atas meja kasir',
+    'Place OTC medicines on the counter: buy without prescription': 'Letakkan obat yang dapat dibeli tanpa perlu resep di atas meja kasir',
+    'Place OTC healthcare products on the checkout counter': 'Letakkan produk kesehatan tanpa resep di atas meja kasir',
+    'Place OTC healthcare products on the counter: buy without prescription': 'Letakkan produk kesehatan yang dapat dibeli tanpa perlu resep di atas meja kasir',
+    'Place OTC medicines on the counter with doctor prescription note': 'Letakkan obat tanpa resep dokter di atas meja kasir',
+    'Place OTC medicines on the counter: limited free medicine': 'Letakkan obat bebas terbatas di atas meja kasir',
+    'Place OTC medicines on the checkout counter: sold without doctor prescription': 'Letakkan obat yang dijual tanpa resep dokter di atas meja kasir',
+    'Place OTC healthcare products on the counter: limited free product': 'Letakkan produk kesehatan bebas terbatas di atas meja kasir',
+    'Place OTC medicines on the counter: newly bought modifier': 'Letakkan obat tanpa resep yang baru dibeli di atas meja kasir',
+    'Place OTC medicines on the counter: postposed qualification': 'Letakkan obat di atas meja kasir tanpa resep dokter',
+    'Place OTC medicines on the counter: postposed yang dapat dibeli': 'Letakkan obat di atas meja kasir yang dapat dibeli tanpa resep',
+    'Place OTC healthcare products on the counter: postposed yang dapat dibeli': 'Letakkan produk kesehatan di atas meja kasir yang dapat dibeli tanpa resep',
+  };
+  const physicalCounterFindings = auditDictionary(physicalCounterCatalog);
+  assert.deepEqual(physicalCounterFindings, []);
+
+  // Calque test when non-prescription wording only describes a separate product:
+  const separateProductCatalog = {
+    'OTC medicines and non-prescription products are on the counter': 'Obat di atas meja kasir dan produk tanpa resep ada di atas meja kasir',
+    'OTC painkillers and non-prescription vitamins are on the counter': 'Pereda nyeri yang dijual di atas meja kasir dan vitamin tanpa resep di atas meja kasir',
+    'OTC healthcare products and non-prescription vitamins are on the counter': 'Produk kesehatan yang dijual di atas meja kasir dan vitamin tanpa resep di atas meja kasir',
+    'OTC painkillers and non-prescription vitamins are on the counter: bare meja': 'Pereda nyeri yang dijual di atas meja dan vitamin tanpa resep di atas meja',
+    'OTC healthcare products and non-prescription vitamins are on the counter: bare meja': 'Produk kesehatan yang dijual di atas meja dan vitamin tanpa resep di atas meja',
+  };
+  const separateProductFindings = auditDictionary(separateProductCatalog);
+  const separatePolysemy = separateProductFindings.filter((f) => f.rule === 'polysemy-calque');
+  assert.equal(separatePolysemy.length, 5);
+
+  // Review round: counter/receipt association, modifiers, whole-word non-rx terms, pharma recognition
+  const rx = (k, v, src) => auditDictionary({ [k]: v }, src ? { source: { [k]: src } } : undefined).filter((x) => x.rule === 'polysemy-calque').length;
+  // Receipts on the counter (with or without "the") must not be tied to a distant OTC mention
+  assert.equal(rx('r.a', 'Beli obat tanpa resep dan letakkan struk di atas meja kasir', 'Buy OTC medicine and put receipts on counter'), 0);
+  assert.equal(rx('r.b', 'Beli obat tanpa resep dan letakkan struk di atas meja kasir', 'Buy OTC medicine and put receipts on the counter'), 0);
+  // "untuk anak" stays attached to the qualified product
+  assert.equal(rx('Place OTC medicines on the counter', 'Letakkan obat tanpa resep untuk anak di atas meja kasir'), 0);
+  // A non-prescription qualification that comes after a bare medicine on the counter does not exempt it
+  assert.equal(rx('r.c', 'Beli obat di atas meja kasir dan letakkan struk tanpa resep', 'Buy OTC medicine and put the receipt on the counter'), 1);
+  // A separately qualified product listed first must not exempt a later bare medicine / healthcare product
+  assert.equal(rx('r.i', 'Beli vitamin tanpa resep dan obat di atas meja kasir; letakkan struk di atas meja kasir', 'Buy OTC medicine and non-prescription vitamins; put the receipt on the counter'), 1);
+  assert.equal(rx('r.j', 'Beli vitamin tanpa resep dan produk kesehatan di atas meja kasir; letakkan struk di atas meja kasir', 'Buy OTC healthcare products and non-prescription vitamins; put the receipt on the counter'), 1);
+  // A different medicine qualified first must not exempt a later bare medicine
+  assert.equal(rx('r.m', 'Beli aspirin tanpa resep dan ibuprofen di atas meja kasir; letakkan struk di atas meja kasir', 'Buy OTC ibuprofen and non-prescription aspirin; put the receipt on the counter'), 1);
+  assert.equal(rx('r.n', 'Beli pereda nyeri tanpa resep dan obat di atas meja kasir; letakkan struk di atas meja kasir', 'Buy OTC medicine and non-prescription painkillers; put the receipt on the counter'), 1);
+  // An earlier qualified product on the counter must not exempt a later unqualified medicine on the counter
+  assert.equal(rx('r.o', 'Beli aspirin tanpa resep; aspirin di atas meja kasir dan ibuprofen di atas meja kasir', 'Buy OTC ibuprofen and non-prescription aspirin; the aspirin is on the counter'), 1);
+  assert.equal(rx('r.p', 'Beli aspirin tanpa resep dan ibuprofen tanpa resep; aspirin di atas meja kasir dan ibuprofen di atas meja kasir', 'Buy OTC ibuprofen and non-prescription aspirin; the aspirin is on the counter'), 0);
+  assert.equal(rx('r.q', 'Beli obat tanpa resep yang ada di atas meja kasir.', 'Buy OTC medicine. The medicine is on the counter.'), 0);
+  assert.equal(rx('r.r', 'Beli pereda  nyeri tanpa resep yang ada di atas meja kasir.', 'Buy OTC pain relief. The pain relief is on the counter.'), 0);
+  // The same product qualified first, with the receipt on the counter, stays accepted
+  assert.equal(rx('r.k', 'Beli obat tanpa resep; letakkan struk di atas meja kasir', 'Buy OTC medicine; put the receipt on the counter'), 0);
+  assert.equal(rx('r.l', 'Beli produk kesehatan tanpa resep; letakkan struk di atas meja kasir', 'Buy OTC healthcare products; put the receipt on the counter'), 0);
+  // Aspirin / painkillers count as pharmaceutical context for OTC listings
+  assert.equal(rx('Aspirin listed OTC', 'Aspirin di atas meja kasir'), 1);
+  // "market share" is not a securities share
+  assert.equal(rx('OTC market share for medicines', 'Pangsa obat di atas meja kasir'), 1);
+
+  // Discharge already rendered as "pemulangan pasien" does not make "pasien dikeluarkan dari klinik" a calque
+  assert.equal(rx('Patient discharge', 'Pemulangan pasien: pasien dikeluarkan dari klinik karena melanggar tata tertib'), 0);
+  assert.equal(rx('Patient discharge', 'Pasien dikeluarkan dari klinik'), 1);
+
+  // Source-only regression test: opaque translation keys with matching source establishing table meaning
+  const sourceOnlyTableCatalog = {
+    'meds.checkout.action': 'Letakkan obat tanpa resep di atas meja kasir',
+  };
+  const sourceOnlyTableFindings = auditDictionary(sourceOnlyTableCatalog, {
+    source: { 'meds.checkout.action': 'Place OTC medicines on the checkout table' },
+  });
+  assert.deepEqual(sourceOnlyTableFindings, []);
+
+  // Discharge summary calque traps: "Ringkasan pelepasan" and "Ringkasan muatan" must be flagged:
+  const dischargeSummaryCatalog = {
+    'Discharge summary': 'Ringkasan pelepasan pasien',
+    'Patient discharge summary': 'Ringkasan muatan pasien',
+    'Patient discharge': 'Pelepasan pasien',
+    'Hospital discharge': 'Pasien dikeluarkan dari rumah sakit',
+  };
+  const dischargeSummaryFindings = auditDictionary(dischargeSummaryCatalog);
+  assert.equal(dischargeSummaryFindings.filter((f) => f.rule === 'polysemy-calque').length, 4);
+
+  // Removal from a monitoring list / cohort must NOT be falsely flagged as hospital discharge calque:
+  const nonDischargeRemovalCatalog = {
+    'patient.monitoring.removal': 'Pasien dikeluarkan dari daftar pemantauan berkala',
+  };
+  const nonDischargeRemovalFindings = auditDictionary(nonDischargeRemovalCatalog, {
+    source: { 'patient.monitoring.removal': 'Patient was removed from the monitoring list' },
+  });
+  assert.deepEqual(nonDischargeRemovalFindings, []);
+
+  // Unrelated counter item (e.g. receipt) in compound OTC source:
+  const receiptOnCounterCatalog = {
+    'meds.receipt.clean': 'Beli obat tanpa resep dan letakkan struk di atas meja kasir',
+  };
+  const receiptOnCounterFindings = auditDictionary(receiptOnCounterCatalog, {
+    source: { 'meds.receipt.clean': 'Buy OTC medicine and put the receipt on the counter' },
+  });
+  assert.deepEqual(receiptOnCounterFindings, []);
+
+  const receiptOnCounterCalqueCatalog = {
+    'meds.receipt.calque': 'Beli obat di atas meja kasir dan letakkan struk di atas meja kasir',
+  };
+  const receiptOnCounterCalqueFindings = auditDictionary(receiptOnCounterCalqueCatalog, {
+    source: { 'meds.receipt.calque': 'Buy OTC medicine and put the receipt on the counter' },
+  });
+  assert.equal(receiptOnCounterCalqueFindings.filter((f) => f.rule === 'polysemy-calque').length, 1);
+
+  // Physical counter exemption when OTC medicine is in cabinet and counter medicine is separate:
+  const cabinetAndCounterCatalog = {
+    'meds.storage.placement': 'Obat tanpa resep ada di dalam lemari; letakkan obat di atas meja kasir',
+    'meds.counter.cabinet': 'Letakkan obat di atas meja kasir dan obat tanpa resep di lemari',
+    'meds.cabinet.counter': 'Letakkan obat tanpa resep di lemari dan obat di atas meja kasir',
+  };
+  const cabinetAndCounterFindings = auditDictionary(cabinetAndCounterCatalog, {
+    source: {
+      'meds.storage.placement': 'OTC medicine is in the cabinet; place medicine on the counter',
+      'meds.counter.cabinet': 'Place the medicines on the counter and OTC medicines in the cabinet',
+      'meds.cabinet.counter': 'Place OTC medicines in the cabinet and the medicines on the counter',
+    },
+  });
+  assert.deepEqual(cabinetAndCounterFindings, []);
+
+  // When counter medicine itself is OTC (even if another OTC medicine is also in the cabinet), calque is flagged:
+  const counterAndCabinetOTCCatalog = {
+    'meds.both.otc': 'Letakkan obat di atas meja kasir dan obat tanpa resep di lemari',
+  };
+  const counterAndCabinetOTCFindings = auditDictionary(counterAndCabinetOTCCatalog, {
+    source: { 'meds.both.otc': 'Place OTC medicines on the counter and OTC medicines in the cabinet' },
+  });
+  assert.equal(counterAndCabinetOTCFindings.filter((f) => f.rule === 'polysemy-calque').length, 1);
+
+  // Pharmaceutical OTC market with "in stock", growth phrases, and "available in the OTC market":
+  const pharmaOTCCatalog = {
+    'OTC market for medicines currently in stock': 'Obat di atas meja kasir tersedia',
+    'Medicines available in the OTC market': 'Obat di atas meja kasir untuk konsumen',
+    'OTC market growth for medicines': 'Obat di atas meja kasir tumbuh pesat',
+    'OTC market for medicines shares similarities with cosmetics': 'Obat di atas meja kasir memiliki kemiripan',
+    'Medicines listed OTC': 'Obat di atas meja kasir terdaftar resmi',
+  };
+  const pharmaOTCFindings = auditDictionary(pharmaOTCCatalog);
+  assert.equal(pharmaOTCFindings.filter((f) => f.rule === 'polysemy-calque').length, 5);
+
+  // Source-aware discharge test: ambiguous source 'Discharge' with patient key context
+  const sourceAwareCatalog = {
+    'Patient discharge': 'Pemecatan pasien',
+  };
+  const sourceAwareFindings = auditDictionary(sourceAwareCatalog, {
+    source: { 'Patient discharge': 'Discharge' },
+  });
+  const sourceAwarePolysemy = sourceAwareFindings.filter((f) => f.rule === 'polysemy-calque');
+  assert.equal(sourceAwarePolysemy.length, 1);
+  assert.ok(sourceAwarePolysemy[0].message.includes('Pemulangan pasien / Pasien pulang / Ringkasan pulang'));
+
+  // Source-aware electrical test: ambiguous source 'Discharge status' with battery key context must NOT be flagged
+  const sourceAwareElectricalCatalog = {
+    'Battery discharge status': 'Status pelepasan muatan baterai',
+  };
+  const sourceAwareElectricalFindings = auditDictionary(sourceAwareElectricalCatalog, {
+    source: { 'Battery discharge status': 'Discharge status' },
+  });
+  assert.deepEqual(sourceAwareElectricalFindings, []);
+
+  // Source-aware electrical test: electrical context in source value while key has medical context must NOT be flagged
+  const sourceAwareElectricalInSource = {
+    'Patient discharge status': 'Arus pelepasan muatan baterai',
+  };
+  const sourceAwareElectricalInSourceFindings = auditDictionary(sourceAwareElectricalInSource, {
+    source: { 'Patient discharge status': 'Battery discharge current' },
+  });
+  assert.deepEqual(sourceAwareElectricalInSourceFindings, []);
+
+  // Non-medical contexts (electrical discharge, battery discharge status, furniture stool, OTC financial trading) must not be falsely flagged
+  const nonMedicalCatalog = {
+    'Discharge current': 'Arus pelepasan muatan listrik',
+    'Battery discharge': 'Pelepasan muatan baterai',
+    'Battery discharge status': 'Status pelepasan muatan baterai',
+    'Capacitor discharge rate': 'Laju pelepasan muatan kapasitor',
+    'Electrostatic discharge': 'Pelepasan muatan elektrostatik',
+    'Wooden stool': 'Bangku kayu',
+    Stool: 'Kursi',
+    'The OTC trading documents are on the table': 'Dokumen perdagangan OTC ada di atas meja',
+    'OTC derivative products are on the table': 'Produk derivatif OTC ada di atas meja',
+    'OTC market reports for pharmacy stocks are on the table': 'Laporan pasar OTC untuk saham farmasi ada di atas meja',
+    'OTC market for medicine company shares are on the table': 'Pasar OTC untuk saham perusahaan obat ada di atas meja',
+    'Over-the-counter market for medicine company shares are on the table': 'Pasar over-the-counter untuk saham perusahaan obat ada di atas meja',
+    'Medicine company shares on the OTC market are on the table': 'Saham perusahaan obat di pasar OTC ada di atas meja',
+    'Medicine company shares listed OTC': 'Saham perusahaan obat yang terdaftar di atas meja kasir',
+    'Medication reports for the OTC market are on the cashier desk': 'Laporan obat-obatan untuk pasar OTC ada di atas meja kasir',
+  };
+  const nonMedicalFindings = auditDictionary(nonMedicalCatalog);
+  assert.deepEqual(nonMedicalFindings, []);
+});
+
+test('auditText / auditDictionary: flags high-frequency medical kata tidak baku (diagnosa, apotik, nafas, cidera)', () => {
+  const badText = 'Pasien mengalami cidera dan sesak nafas setelah datang ke apotik untuk diagnosa.';
+  const findings = auditText(badText);
+  const spellingFindings = findings.filter((f) => f.rule === 'kata-tidak-baku');
+  assert.equal(spellingFindings.length, 4);
+  assert.ok(spellingFindings.some((f) => f.message.includes('diagnosa') && f.message.includes('diagnosis')));
+  assert.ok(spellingFindings.some((f) => f.message.includes('apotik') && f.message.includes('apotek')));
+  assert.ok(spellingFindings.some((f) => f.message.includes('nafas') && f.message.includes('napas')));
+  assert.ok(spellingFindings.some((f) => f.message.includes('cidera') && f.message.includes('cedera')));
+
+  const goodText = 'Pasien mengalami cedera dan sesak napas setelah datang ke apotek untuk diagnosis.';
+  const goodFindings = auditText(goodText);
   assert.deepEqual(goodFindings, []);
 });
 
