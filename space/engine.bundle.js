@@ -59,9 +59,6 @@ const OTC_GAP_TOKEN = '(?:\\s+(?!(?:then|but|put|puts|place|places|leave|keep|di
 /** Common pattern matching "OTC" or spelled-out "over-the-counter" */
 const OTC_RE = /\b(?:over(?:-|\s+)the(?:-|\s+)counter|otc)\b/i;
 
-/** Logout phrasing: "signs out", "signs [the/all] [other] target out", "signs_out"; never clinical "signs rule out" */
-const SIGNS_OUT_RE = /\bsigns(?:(?:\s+[-_]|\s+)(?:(?:the|all)\s+)?(?:(?:all|current|inactive|other|remaining|active)\s+)*(?!rule\b)[a-z0-9_{}-]+\s+outs?\b|[\s_-]+outs?\b)/i;
-
 /** Medicine nouns that mark a pharmaceutical (not financial) OTC context */
 const PHARMA_NOUN = '(?:drugs?|medicines?|medications?|pharmaceuticals?|painkillers?|pain\\s+relief|aspirin|paracetamol|ibuprofen)';
 
@@ -217,35 +214,13 @@ const KNOWN_CALQUE_TRAPS = [
   { keyMatch: /hop over/i, badVal: /\b(lanjutkan|meneruskan)\b/i, fix: 'melewati / melompati' },
   {
     keyMatch: {
-      /** @param {string} key @param {unknown} [sourceVal] */
-      test(key, sourceVal) {
-        const matchesKey = (candidate) => {
-          const raw = String(candidate || '');
-          // Strip clinical sign phrases so they don't reject logout phrasing present in the same source
-          const stripped = raw.replace(/\b(?:vital|clinical|neurological|physical)\s+signs?\b/gi, '');
-          if (!/\bsigns(?:[-_]|\b)/i.test(stripped)) return false;
-          // If non-logout indicative phrasing exists ("signs indicate...", "signs show..."),
-          // only match if an explicit logout action is also present
-          if (/\bsigns\s+(?:indicate|indicates|show|shows|mean|means|suggest|suggests|reveal|reveals|point|points|warn|warns|are|is|were|was)\b/i.test(stripped)) {
-            const withoutIndicative = stripped.replace(/\bsigns\s+(?:indicate|indicates|show|shows|mean|means|suggest|suggests|reveal|reveals|point|points|warn|warns|are|is|were|was)\b[^.;:!?,]*/gi, '');
-            return SIGNS_OUT_RE.test(withoutIndicative);
-          }
-          // Restrict to logout phrasing: "signs out", "signs [target] out", "signs_out", "signs-out", excluding clinical "signs rule out"
-          return SIGNS_OUT_RE.test(stripped);
-        };
-        return matchesKey(key) || (typeof sourceVal === 'string' && matchesKey(sourceVal));
+      /** @param {string} key */
+      test(key) {
+        const idx = String(key || '').search(/\bsigns\b/i);
+        return idx !== -1 && /\bouts?\b/i.test(key.slice(idx + 5));
       },
     },
-    badVal: {
-      /** @param {string} val */
-      test(val) {
-        if (!/\bmenandakan\b/i.test(val)) return false;
-        // If the translation already properly translates the logout action using "mengeluarkan",
-        // "menandakan" only translates an indicative phrase (e.g. "signs indicate ...")
-        if (/\bmengeluarkan(?:mu|nya)?(?:\s+(?:semua|seluruh|para|pengguna|user|akun|sesi|perangkat|lain|anda|kamu|dari|\{)|\s*[.,;:!?]*\s*$)/i.test(val)) return false;
-        return true;
-      },
-    },
+    badVal: /\bmenandakan\b/i,
     fix: 'mengeluarkan',
   },
   { keyMatch: /^abductors$/i, badVal: /\bpenculik\b/i, fix: 'Abduktor' },

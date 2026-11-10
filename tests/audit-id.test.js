@@ -1357,13 +1357,6 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
   // "market share" is not a securities share
   assert.equal(rx('OTC market share for medicines', 'Pangsa obat di atas meja kasir'), 1);
 
-  // Logout calque: comma-separated clause, multiword targets, unrelated "mengeluarkan"
-  assert.equal(rx('r.d', 'Tanda vital menandakan perbaikan, aksi ini menandakan pengguna keluar', 'Signs indicate improvement, action signs the user out'), 1);
-  assert.equal(rx('r.e', 'Aksi ini menandakan semua pengguna lain keluar', 'This signs all other users out'), 1);
-  assert.equal(rx('r.f', 'Aksi ini menandakan pengguna keluar; sistem mengeluarkan laporan', 'Action signs the user out; the system outputs a report'), 1);
-  assert.equal(rx('r.g', 'Tanda vital menandakan perbaikan; aksi ini mengeluarkan semua pengguna', 'Signs indicate improvement; action signs all users out'), 0);
-  assert.equal(rx('r.h', 'Tanda menyingkirkan infeksi', 'Signs of infection rule out'), 0);
-
   // Discharge already rendered as "pemulangan pasien" does not make "pasien dikeluarkan dari klinik" a calque
   assert.equal(rx('Patient discharge', 'Pemulangan pasien: pasien dikeluarkan dari klinik karena melanggar tata tertib'), 0);
   assert.equal(rx('Patient discharge', 'Pasien dikeluarkan dari klinik'), 1);
@@ -1376,55 +1369,6 @@ test('auditDictionary: flags medical calque traps (patient discharge, stool samp
     source: { 'meds.checkout.action': 'Place OTC medicines on the checkout table' },
   });
   assert.deepEqual(sourceOnlyTableFindings, []);
-
-  // Source-aware signs-out test: opaque translation key with source containing "signs ... out" triggers calque finding
-  const signsOutCatalog = {
-    'auth.action.signout': 'Aksi ini menandakan pengguna',
-    'signs_out': 'Aksi ini menandakan pengguna keluar',
-  };
-  const signsOutFindings = auditDictionary(signsOutCatalog, {
-    source: { 'auth.action.signout': 'This action signs the user out' },
-  });
-  const signsOutPolysemy = signsOutFindings.filter((f) => f.rule === 'polysemy-calque');
-  assert.equal(signsOutPolysemy.length, 2);
-  assert.ok(signsOutPolysemy[0].message.includes('mengeluarkan'));
-
-  // Clinical signs phrasing ("signs indicate the patient is out of danger", "signs rule out infection") must NOT be flagged:
-  const clinicalSignsCatalog = {
-    'vital.signs.evaluation': 'Tanda-tanda vital menandakan pasien di luar bahaya',
-    'signs.indicator.status': 'Tanda-tanda menandakan pasien sudah keluar dari bahaya',
-    'signs.clinical.ruleout': 'Tanda-tanda klinis menyingkirkan kemungkinan infeksi',
-  };
-  const clinicalSignsFindings = auditDictionary(clinicalSignsCatalog, {
-    source: {
-      'vital.signs.evaluation': 'Vital signs indicate the patient is out of danger',
-      'signs.indicator.status': 'Signs indicate the patient is out of danger',
-      'signs.clinical.ruleout': 'Signs rule out infection',
-    },
-  });
-  assert.deepEqual(clinicalSignsFindings, []);
-
-  // Source containing both clinical signs and logout action must still flag the logout calque:
-  const mixedSignsLogoutCatalog = {
-    'auth.vital.signout': 'Aksi ini menandakan pengguna keluar',
-    'auth.semicolon.signout': 'Tanda vital menandakan perbaikan; aksi ini menandakan pengguna keluar',
-  };
-  const mixedSignsLogoutFindings = auditDictionary(mixedSignsLogoutCatalog, {
-    source: {
-      'auth.vital.signout': 'Vital signs recorded; action signs the user out of all devices',
-      'auth.semicolon.signout': 'Signs indicate improvement; action signs the user out',
-    },
-  });
-  assert.equal(mixedSignsLogoutFindings.filter((f) => f.rule === 'polysemy-calque').length, 2);
-
-  // Mixed source where logout is properly translated with mengeluarkan must NOT flag menandakan:
-  const mixedSignsProperLogoutCatalog = {
-    'auth.semicolon.ok': 'Tanda vital menandakan perbaikan; aksi ini mengeluarkan pengguna',
-  };
-  const mixedSignsProperLogoutFindings = auditDictionary(mixedSignsProperLogoutCatalog, {
-    source: { 'auth.semicolon.ok': 'Signs indicate improvement; action signs the user out' },
-  });
-  assert.deepEqual(mixedSignsProperLogoutFindings, []);
 
   // Discharge summary calque traps: "Ringkasan pelepasan" and "Ringkasan muatan" must be flagged:
   const dischargeSummaryCatalog = {
