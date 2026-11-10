@@ -1,6 +1,6 @@
 # Test Plan: `indonesian-linguist`
 
-Offline manifest, link integrity, skill load limit, and deterministic audit checks run via `npm test` (see [`tests/manifests.test.js`](../../tests/manifests.test.js) and [`tests/audit-id.test.js`](../../tests/audit-id.test.js)).
+Offline manifest, link integrity, skill load limit, Space engine parity, and deterministic audit checks run via `npm test` (see [`tests/manifests.test.js`](../../tests/manifests.test.js), [`tests/audit-id.test.js`](../../tests/audit-id.test.js), and [`tests/space-engine.test.js`](../../tests/space-engine.test.js)).
 
 ## Interactive Behavioral Verification Checklist
 

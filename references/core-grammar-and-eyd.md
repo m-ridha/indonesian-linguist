@@ -8,7 +8,7 @@ Even in casual or conversational registers (*ragam santai*), spelling words corr
 
 ## 1. High-Frequency `Kata Baku` vs. `Tidak Baku` (KBBI VI)
 
-Memorize and enforce these 60 most frequently misspelled words in Indonesian digital content:
+Memorize and enforce these 80+ most frequently misspelled words in Indonesian digital content:
 
 | ✅ Baku (Correct) | ❌ Tidak Baku (Wrong) | ✅ Baku (Correct) | ❌ Tidak Baku (Wrong) |
 | --- | --- | --- | --- |

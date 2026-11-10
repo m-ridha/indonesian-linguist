@@ -31,7 +31,7 @@ You can open a **Pull Request directly** (without a prior issue) for:
 ### Track 2: New Domain Glossary, Core Invariant, or Architectural Change (`> 100` Lines or `>= 3` Core Files)
 If you want to:
 - Add a **brand-new domain or subculture glossary** under `references/domains/<domain-name>.md` (e.g., `fintech-and-banking.md`, `gaming-and-esports.md`, `ecommerce-and-logistics.md`),
-- Modify the 10 non-negotiable linguistic invariants in [`SKILL.md`](SKILL.md) and [`AGENTS.md`](AGENTS.md), or
+- Modify the non-negotiable linguistic invariants in [`SKILL.md`](SKILL.md) or the always-on ruleset in [`AGENTS.md`](AGENTS.md), or
 - Change multi-agent plugin manifests or CLI behavior,
 
 please follow our two-stage alignment workflow:

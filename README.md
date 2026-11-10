@@ -146,15 +146,15 @@ When activated, [`SKILL.md`](SKILL.md) enforces the core invariants and loads **
 | --- | --- |
 | [`SKILL.md`](SKILL.md) | Canonical single skill (`/indonesian-linguist`): core rules, fast routing table, and verification checklist. |
 | [`AGENTS.md`](AGENTS.md) | Compact always-on ruleset for agents that auto-load project rules from the repo root. |
-| [`references/ui-localization-and-polysemy.md`](references/ui-localization-and-polysemy.md) | 75+ isolated UI verb/noun polysemy resolutions, button imperatives, form antecedents, and inanimate pronoun bans. |
+| [`references/ui-localization-and-polysemy.md`](references/ui-localization-and-polysemy.md) | 58 isolated UI verb/noun polysemy resolutions, button imperatives, form antecedents, and inanimate pronoun bans. |
 | [`references/ui-compaction-and-microcopy.md`](references/ui-compaction-and-microcopy.md) | Segmented pill lexical compaction, banned SMS slang (`yg`, `dgn`, `utk`), error states, empty states, and modals. |
 | [`references/domains/fitness-and-gym.md`](references/domains/fitness-and-gym.md) | Comprehensive strength training & fitness subculture glossary (loanwords, calque blacklists, `Body weight` vs. `Bodyweight` vs. `Beban`, 1RM, streaks, coaching personas). |
 | [`references/domains/medical-and-healthcare.md`](references/domains/medical-and-healthcare.md) | Telemedicine, electronic medical records (RME and SatuSehat interoperability), clinical hospital workflows, diagnostic lab specimens, BPOM drug classifications, and patient-facing consultations. |
 | [`references/domains/tech-and-developer.md`](references/domains/tech-and-developer.md) | Developer loanwords (`API key`, `endpoint`, `reverse proxy`), brand retention, and official Android/iOS `id-ID` system strings. |
 | [`references/anti-slop-and-calques.md`](references/anti-slop-and-calques.md) | Ten zero-tolerance AI-slop bans (*hiruk pikuk*, negative parallelisms, em dashes) and syntactic calque repairs. |
-| [`references/core-grammar-and-eyd.md`](references/core-grammar-and-eyd.md) | EYD Edisi V rules, 60+ `Kata Baku` pairs, `di-` vs. `di`, `meN-` assimilation, D-M word order, and punctuation. |
+| [`references/core-grammar-and-eyd.md`](references/core-grammar-and-eyd.md) | EYD Edisi V rules, 80+ `Kata Baku` pairs, `di-` vs. `di`, `meN-` assimilation, D-M word order, and punctuation. |
 | [`references/writing-ux-marketing-seo-academic.md`](references/writing-ux-marketing-seo-academic.md) | Ivan Lanin's 5 registers, social/marketing copy, landing pages, SEO `<title>` rules, and academic IMRaD standards. |
-| [`scripts/audit-id.js`](scripts/audit-id.js) | Zero-dependency CLI auditor for scanning `.json`/`.js`/`.mjs`, Android `.xml`, and iOS `.strings` locale dictionaries and `.md` prose for defects. |
+| [`scripts/audit-id.js`](scripts/audit-id.js) | Zero-dependency CLI auditor for scanning `.json`/`.js`/`.mjs`, Android `.xml`, and iOS `.strings` locale dictionaries and `.md`/`.txt` prose for defects. |
 
 ---
 
@@ -223,10 +223,10 @@ Copy [`AGENTS.md`](AGENTS.md) alongside [`SKILL.md`](SKILL.md) and [`references/
 
 ## Deterministic Localization & Prose Auditor (`scripts/audit-id.js`)
 
-This repository includes a zero-dependency Node.js CLI auditor that checks `.json`/`.js`/`.mjs`, Android `.xml`, and iOS `.strings` i18n locale files and `.md` prose for:
+This repository includes a zero-dependency Node.js CLI auditor that checks `.json`/`.js`/`.mjs`, Android `.xml`, and iOS `.strings` i18n locale files and `.md`/`.txt` prose for:
 - Silent English identity fallbacks (`key === value` on strings $\ge 16$ characters)
 - Placeholder mismatches (`{0}`, `{1}`, `{name}`)
-- Banned chat/SMS abbreviations (`yg`, `dgn`, `utk`, `krn`, `tdk`, `bgt`)
+- Banned chat/SMS abbreviations (`yg`, `dgn`, `utk`, `krn`, `tdk`, `bgt`, `dlm`, `spt`)
 - Non-standard spellings (*silahkan, sekedar, resiko, praktek, analisa, merubah, mempengaruhi*)
 - Known UI/domain polysemy calques (*Punggung* for `Back`, *Penculik* for `Abductors`, *Ranjau darat* for `Landmine`, *lanjutkan* for `hop over`, *mesin bantuan* for `assistance machine`, *akhir tahanan* for `end of a hold`, *panjang dalam* for `lengths in`, *toko app* for `app stores`, etc.)
 - Indonesian AI-slop phrases (*hiruk pikuk*, *di era digital*, *adalah merupakan*, stylistic em dashes `—`)
