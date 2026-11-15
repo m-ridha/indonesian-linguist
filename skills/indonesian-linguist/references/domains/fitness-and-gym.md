@@ -142,10 +142,11 @@ In exercise names, templates, and instructions, always use **`tiap`** (never mix
 ## 5. Gamification, Streaks & Celebration Microcopy
 
 Align consistency and celebration metrics with established Indonesian fitness app conventions (Strava Indonesia):
-- **`Week streak`**: **`Minggu beruntun`** (never *Streak mingguan* or *Runtun mingguan*).
-- **`{0} week streak`**: **`{0} minggu beruntun`** (never *Rentetan {0} minggu*).
+- **`Week streak`**: **`Minggu beruntun`** (never *Streak mingguan* or *Runtun mingguan*). In prose or watch complications where the compact loanword is preferred, retain **`streak`** / **`streak-mu`** (never *runtutan*, *runtun*, or *rentetan*).
+- **`{0} week streak`**: **`{0} minggu beruntun`** (never *Rentetan {0} minggu* or *Runtutan {0} minggu*).
 - **`Most days in a row`**: **`Hari beruntun terbanyak`** (avoid pleonasm *Streak hari terbanyak berturut-turut*).
 - **`Active days`**: **`Hari aktif`** (never *Hari-hari aktif*).
+- **`Coach` consistency**: When localizing the AI coaching feature as **`Pelatih`**, use **`Pelatih`** consistently across every string in the catalog instead of leaving mixed occurrences of English **`Coach`**.
 - **`[Goal] reached!`**: **`Tercapai!`** (perfective/inchoative `ter-`, never dangling passive *dicapai!*).
 - **`Nice!`** *(workout complete celebration button 🏆)*: **`Mantap!`** (energetic and natural, superior to flat *Bagus!*).
 - **`Tough session`**: **`Sesi berat`** (physical training intensity, not *Sesi yang sulit* like an exam).

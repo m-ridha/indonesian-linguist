@@ -70,6 +70,8 @@ Always translate isolated UI keys according to their **interactive role on scree
 | **Feel free to leave, it keeps going** | Jangan ragu untuk pergi, ini terus berlanjut | **Kamu boleh tinggalkan halaman ini, proses tetap berjalan** | Background job reassurance copy |
 | **Hold** *(isometric timer / audio cue)* | Tahanan *(prisoner)* / Penahanan | **Durasi tahan** / **Waktu tahan** | Isometric movement duration (e.g., plank, dead hang); qualify with *durasi* or *waktu* |
 | **End of a hold** *(timer / audio cue)* | Akhir tahanan *(prison release / electrical ohm!)* | **Akhir durasi tahan** / **Waktu tahan selesai** | Audio chime or timer milestone signaling completion of an isometric hold. Never use bare *tahanan* (which predominantly means prison detainee/custody in KBBI VI) |
+| **Take it or leave it** *(suggestion / offer)* | Ambil atau lepaskan | **Terima atau abaikan** / **Terima atau tolak** | Accepting or dismissing a coach/trainer suggestion in a notification or card |
+| **Your sharing changed** *(privacy notice)* | Berbagimu berubah *(unnatural `ber-` + `-mu`)* | **Yang kamu bagikan berubah** / **Pengaturan berbagi berubah** | Push notification or banner when shared data permissions change |
 
 ---
 
@@ -116,17 +118,20 @@ In UI forms, helper captions beneath an input field often use English neutral pr
 
 ---
 
-## 4. Inanimate Pronoun Prohibition (`ia` / `mereka`)
+## 4. Inanimate Pronoun Prohibition (`ia` / `mereka`) & Singular `they` Resolution (`dia`)
 
-In standard Indonesian grammar (EYD V / Tata Bahasa Baku Bahasa Indonesia), third-person pronouns **`ia`**, **`dia`**, and **`mereka`** are restricted to **human beings (insan)** or personified living creatures.
-- **Trap**: English uses *it* and *they/them* for everything (servers, browsers, changes, workout sets, files). Translating these literally into *ia* or *mereka* is one of the most jarring translation calques in software localization.
-- **Examples**:
+In standard Indonesian grammar (EYD V / Tata Bahasa Baku Bahasa Indonesia), third-person pronouns **`ia`**, **`dia`**, and **`mereka`** are restricted to **human beings (insan)** or personified living creatures, with **`mereka`** strictly plural.
+- **Inanimate Trap**: English uses *it* and *they/them* for everything (servers, browsers, changes, workout sets, files). Translating these literally into *ia* or *mereka* is one of the most jarring translation calques in software localization.
   - *Source*: `"First it checks whether the server has every change... then you choose what happens to them. Merge them."`
   - ❌ **Calque**: *"Pertama ia memeriksa apakah server memiliki setiap perubahan... kamulah yang memilih apa yang akan terjadi pada mereka. Gabungkan mereka."*
   - ✅ **Natural Indonesian**: **"Sistem akan memeriksa terlebih dahulu apakah server memiliki semua perubahan... kamu bisa memilih tindakan untuk perubahan tersebut. Gabungkan perubahan."**
   - *Source*: `"They all go on the day below."` (referring to routines/exercises)
   - ❌ **Calque**: *"Mereka semua pergi pada hari di bawah."*
   - ✅ **Natural Indonesian**: **"Semuanya akan dijadwalkan pada hari di bawah ini."**
+- **Singular `they` Trap (Single Named Person `{0}`)**: When English uses gender-neutral singular *they/them* to refer to one named human person or singular role (e.g., a trainer or sender `{0}`), translate with gender-neutral singular **`dia`** or repeat the role noun (**`Trainer`**, **`Pelatih`**) instead of plural *mereka*:
+  - *Source*: `"{0} is now your trainer. They see what you shared, nothing more."`
+  - ❌ **Plural Calque**: *"{0} sekarang trainer-mu. **Mereka** melihat apa yang kamu bagikan, tidak lebih."*
+  - ✅ **Natural Indonesian**: **"{0} sekarang trainer-mu. Dia melihat apa yang kamu bagikan, tidak lebih."**
 
 ---
 

@@ -1883,3 +1883,129 @@ test('auditDictionary: bounds per-value findings to MAX_DICTIONARY_FINDINGS and 
   assert.equal(findings[5000].rule, 'findings-limit-exceeded');
   assert.equal(findings.filter((f) => f.rule === 'kata-tidak-baku').length, 5000);
 });
+
+test('auditDictionary: exempts clock duration, outer-label units, and named layout modifiers from inverted-quantitative-placeholder', () => {
+  const cleanDict = {
+    '{0} left on the clock': 'sisa {0} di jam',
+    '{0} remaining in queue': 'sisa {0} di antrean',
+    '{0} wk streak': 'Streak {0} mgg',
+    '{0} day streak': 'Streak {0} hari',
+    '{0} layout on.': 'Preset {0} aktif.',
+    '{{0}} theme selected': 'Tema {{0}} dipilih',
+  };
+  assert.deepEqual(auditDictionary(cleanDict), []);
+
+  // Genuine inverted count placeholders must still be flagged
+  const stillInverted = auditDictionary({
+    '{0} sets left': 'Set {0} tersisa',
+    '{0} wk': 'Minggu {0} lagi',
+  });
+  assert.equal(stillInverted.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 2);
+});
+
+test('auditDictionary: flags translated Apple/Google proper nouns, OS settings calques, and permits retained watch terms and Crown icon', () => {
+  const badOsDict = {
+    'Open Apple Health': 'Buka Kesehatan Apple',
+    'Write to Apple Health': 'Simpan ke Apple Kesehatan',
+    'From Health Connect': 'Dari Kesehatan Terhubung',
+    'Download on Google Play': 'Unduh di Google Bermain',
+    'Save to iCloud Keychain': 'Simpan ke Rantai Kunci iCloud',
+    'Unlock with Face ID': 'Buka dengan ID Wajah',
+    'Tap Apple Watch': 'Ketuk Jam Tangan Apple',
+    'Turn the Digital Crown': 'Putar Mahkota Digital',
+    crown_hint: 'Putar mahkota untuk mengubahnya.',
+    'Press the Action button': 'Tekan tombol Action',
+    'Press the Side button': 'Tekan tombol sisi',
+    'Live Activities on iOS': 'Kegiatan Langsung di iOS',
+    'Under Accessibility › Motion, turn on Auto-Play Animated Images.':
+      'Di Aksesibilitas › Gerakan, aktifkan putar otomatis gambar animasi.',
+  };
+  const badFindings = auditDictionary(badOsDict);
+  assert.equal(badFindings.filter((f) => f.rule === 'polysemy-calque').length, 13);
+
+  const cleanOsDict = {
+    'Apple Health': 'Apple Health',
+    'Health Connect': 'Health Connect',
+    'Google Play Store': 'Google Play Store',
+    'Digital Crown': 'Digital Crown',
+    'Dynamic Island': 'Dynamic Island',
+    'Open Apple Health': 'Buka Apple Health',
+    'From Health Connect': 'Dari Health Connect',
+    'Turn the Digital Crown': 'Putar Digital Crown',
+    crown_hint: 'Putar tombol crown untuk mengubahnya.',
+    Crown: 'Mahkota',
+    'Press the Action button': 'Tekan tombol Tindakan',
+    'Press the Side button': 'Tekan tombol samping',
+    'Live Activities on iOS': 'Aktivitas Langsung di iOS',
+    'Under Accessibility › Motion, turn on Auto-Play Animated Images.':
+      'Di Aksesibilitas › Gerakan, aktifkan Putar Otomatis Animasi Gambar.',
+  };
+  assert.deepEqual(auditDictionary(cleanOsDict), []);
+});
+
+test('auditDictionary: flags hold custody calques, streak runtutan, push-copy idioms, singular they, and Coach/Pelatih mixing', () => {
+  const badDomainDict = {
+    'Auto holds off': 'Tahanan otomatis nonaktif',
+    'Hold duration': 'Waktu tahanan',
+    'Through rests and holds': 'Saat istirahat dan tahanan',
+    hold_timer: 'Pengatur waktu penahanan',
+    'Sport counts for the streak': 'Olahraga dihitung untuk runtutan',
+    complication_desc: 'Set kamu sejauh ini, atau rentetanmu.',
+    tile_desc: 'Rentetanmu dan rencana hari ini.',
+    'Take it or leave it in Trainer & gym.': 'Ambil atau lepaskan di Trainer & gym.',
+    'Your sharing changed': 'Berbagimu berubah',
+    'They see what you shared, nothing more.': 'Mereka melihat apa yang kamu bagikan, tidak lebih.',
+  };
+  assert.equal(auditDictionary(badDomainDict).filter((f) => f.rule === 'polysemy-calque').length, 10);
+
+  // Legal/prison custody context is exempt from athletic hold rule; non-hold legal/electronic meanings are unaffected
+  const exemptHoldDict = {
+    'Legal hold status': 'Status penahanan hukum aktif',
+    'On hold for review': 'Dalam penahanan sementara untuk peninjauan',
+    'Detainee custody record': 'Catatan tahanan kasus ini',
+  };
+  assert.deepEqual(auditDictionary(exemptHoldDict), []);
+
+  // Consistent all-Coach dictionary is permitted
+  const allCoachDict = {
+    'Ask the Coach': 'Tanya Coach',
+    'What the Coach sees': 'Yang dilihat Coach',
+    'Coach programme': 'Program Coach',
+  };
+  assert.deepEqual(auditDictionary(allCoachDict), []);
+
+  // Mixed Pelatih (>=2) and stray Coach triggers consistency finding on stray Coach entries (including nested)
+  const mixedCoachDict = {
+    'Ask the Coach': 'Tanya Pelatih',
+    'What the Coach sees': 'Yang dilihat Pelatih',
+    nested: {
+      'Coach programme': 'Program Coach',
+      'The Coach needs these': 'Coach butuh ini',
+    },
+  };
+  const mixedFindings = auditDictionary(mixedCoachDict).filter((f) => f.rule === 'polysemy-calque');
+  assert.equal(mixedFindings.length, 2);
+  assert.deepEqual(
+    mixedFindings.map((f) => f.key).sort(),
+    ['nested.Coach programme', 'nested.The Coach needs these'],
+  );
+});
+
+test('auditText & auditDictionary: flag unhyphenated foreign clitics/prefixes and provide high-confidence fixes while exempting KBBI assimilated words', () => {
+  const proseFindings = auditText('Buka gymmu, hubungi trainermu, cek commitnya, lalu dideploy ke servermu.');
+  const cliticFindings = proseFindings.filter((f) => f.rule === 'kata-tidak-baku');
+  assert.equal(cliticFindings.length, 4);
+  assert.deepEqual(
+    cliticFindings.map((f) => ({ original: f.original, replacement: f.replacement, confidence: f.confidence })),
+    [
+      { original: 'gymmu', replacement: 'gym-mu', confidence: 'high' },
+      { original: 'trainermu', replacement: 'trainer-mu', confidence: 'high' },
+      { original: 'commitnya', replacement: 'commit-nya', confidence: 'high' },
+      { original: 'dideploy', replacement: 'di-deploy', confidence: 'high' },
+    ],
+  );
+
+  // Exempts KBBI-assimilated servermu/emailmu and hyphenated forms, plus non-matching English words
+  const cleanProse = 'Buka gym-mu, hubungi trainer-mu, cek servermu atau emailmu, lalu di-deploy apple dan file-nya.';
+  assert.deepEqual(auditText(cleanProse), []);
+});

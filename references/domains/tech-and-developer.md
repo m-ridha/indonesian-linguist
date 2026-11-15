@@ -42,7 +42,9 @@ Per **PUPI §6.4**, official product names, biometric features, and password man
 | **Health Connect** | Koneksi Kesehatan | **Health Connect** |
 | **Apple Health** | Kesehatan Apple | **Apple Health** |
 | **Apple Watch** | Jam Tangan Apple / Aplikasi Tonton | **Apple Watch** (*Aplikasi Apple Watch*) |
-| **Google Play / Google Play Store** | Toko Google Play | **Google Play / Google Play Store** |
+| **Digital Crown** | Mahkota Digital / digital mahkota | **Digital Crown** *(or **tombol crown** for generic smartwatches; never bare **mahkota**)* |
+| **Dynamic Island** | Pulau Dinamis | **Dynamic Island** |
+| **Google Play / Google Play Store** | Google Bermain / Toko Google Play | **Google Play / Google Play Store** |
 | **App Store** *(Apple trademark)* | Toko Aplikasi Apple / Toko Aplikasi | **App Store** (Apple's marketplace proper noun; distinct from generic *toko aplikasi*) |
 
 ---
@@ -64,6 +66,13 @@ When an app instructs a user to open their phone's system settings (e.g., enabli
 | **One tap away** | Satu ketukan jauhnya | **Hanya berjarak satu ketukan** | Idiomatic mobile UX phrasing |
 | **Signed in** *(connected device status)* | Masuk *(verb command)* | **Terhubung** / **Sudah masuk** | Device sync & session status list |
 | **Light / Dark** *(system theme)* | Lampu / Ringan | **Terang / Gelap** | System appearance settings |
+| **Turn the Digital Crown** | Putar Mahkota Digital / Putar mahkota | **Putar Digital Crown** *(Apple Watch)* / **Putar tombol crown** *(generic Wear OS)* | Apple Support ID & Wear OS hardware cue |
+| **Press and hold / Double-click the Digital Crown** | Tekan dan tahan Mahkota Digital | **Tekan dan tahan Digital Crown** / **Klik dua kali Digital Crown** | Apple Watch button & crown guide (`support.apple.com/id-id`) |
+| **Side button** *(Apple Watch / iPhone)* | Tombol sisi | **tombol samping** | Official Apple Indonesia hardware button name |
+| **Action button** *(Apple Watch Ultra / iPhone)* | tombol Action / tombol Aksi | **tombol Tindakan** | Official Apple Indonesia hardware button name |
+| **Live Activities** *(iOS)* | Kegiatan Langsung | **Aktivitas Langsung** | Official Apple Indonesia Lock Screen & Dynamic Island feature |
+| **Allow Access When Locked** | Izinkan akses saat dikunci | **Izinkan Akses Saat Terkunci** | iOS Face ID / Passcode settings toggle |
+| **Auto-Play Animated Images** *(Accessibility › Motion)* | putar otomatis gambar animasi *(lowercase/inverted)* | **Putar Otomatis Animasi Gambar** *(under **Pengaturan › Aksesibilitas › Gerakan**)* | Official iOS Indonesian accessibility setting |
 
 ---
 
@@ -84,3 +93,11 @@ When an app instructs a user to open their phone's system settings (e.g., enabli
 4. **App-Level Geofence & Location Event Microcopy**:
    - `Gym spotted / Venue spotted` *(geofence arrival event)* $\rightarrow$ **`Lokasi gym terdeteksi`** (app-level event notification, not an OS setting; avoids literal *Gym terlihat*).
    - `Uses where your phone is` *(explainer)* $\rightarrow$ **`Menggunakan lokasi ponselmu`** (clear conversational microcopy avoiding the banned relative *di mana*).
+
+---
+
+## 5. Android & Wear OS Dual Indonesian Resource Qualifiers (`values-in` + `values-id`)
+
+Legacy Java `Locale` and older Android OS versions map Indonesian (`id`) to the deprecated ISO 639-1 code **`in`** (`res/values-in/strings.xml`), whereas newer Android releases and tooling expect **`id`** (`res/values-id/strings.xml`).
+
+- **Build Pipeline Rule**: Output identical Indonesian `strings.xml` resources to both `res/values-in/strings.xml` and `res/values-id/strings.xml` (and audit both directories when running CI checks) so Android and Wear OS devices across all OS API levels resolve the Indonesian localization reliably, per [Android alternative resources documentation](https://developer.android.com/guide/topics/resources/providing-resources#AlternativeResources).

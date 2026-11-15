@@ -146,7 +146,7 @@ When activated, [`SKILL.md`](SKILL.md) enforces the core invariants and loads **
 | --- | --- |
 | [`SKILL.md`](SKILL.md) | Canonical single skill (`/indonesian-linguist`): core rules, fast routing table, and verification checklist. |
 | [`AGENTS.md`](AGENTS.md) | Compact always-on ruleset for agents that auto-load project rules from the repo root. |
-| [`references/ui-localization-and-polysemy.md`](references/ui-localization-and-polysemy.md) | 58 isolated UI verb/noun polysemy resolutions, button imperatives, form antecedents, and inanimate pronoun bans. |
+| [`references/ui-localization-and-polysemy.md`](references/ui-localization-and-polysemy.md) | 60 isolated UI verb/noun polysemy resolutions, button imperatives, form antecedents, inanimate pronoun bans, and singular `they` resolution. |
 | [`references/ui-compaction-and-microcopy.md`](references/ui-compaction-and-microcopy.md) | Segmented pill lexical compaction, banned SMS slang (`yg`, `dgn`, `utk`), error states, empty states, and modals. |
 | [`references/domains/fitness-and-gym.md`](references/domains/fitness-and-gym.md) | Comprehensive strength training & fitness subculture glossary (loanwords, calque blacklists, `Body weight` vs. `Bodyweight` vs. `Beban`, 1RM, streaks, coaching personas). |
 | [`references/domains/medical-and-healthcare.md`](references/domains/medical-and-healthcare.md) | Telemedicine, electronic medical records (RME and SatuSehat interoperability), clinical hospital workflows, diagnostic lab specimens, BPOM drug classifications, and patient-facing consultations. |
