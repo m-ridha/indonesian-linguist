@@ -47,7 +47,7 @@ Every rule, blacklist, and disambiguation in `indonesian-linguist` is grounded i
 
 1. **Apple Support Indonesia, Google Android Help Indonesia, & AOSP `id-ID` Locale Pack**:
    - Reference baseline for native mobile OS settings strings (`Aktif / Nonaktif`, `Selalu izinkan`, `Tak terbatas`, `Fungsi Geser`, `Layar tetap menyala`, `Ciutkan`, `tombol samping`, `tombol Tindakan`, `Aktivitas Langsung`, `Izinkan Akses Saat Terkunci`, `Putar Otomatis Animasi Gambar`) and retained hardware terms (`Digital Crown`, `Dynamic Island`).
-   - Apple Support (ID): [Jika Digital Crown tidak berfungsi di Apple Watch](https://support.apple.com/id-id/108352) and [Menggunakan tombol dan gerakan untuk berinteraksi dengan Apple Watch](https://support.apple.com/id-id/guide/watch-app/apd704c7b8c0/watchos).
+   - Apple Support (ID): [Jika Digital Crown tidak berfungsi di Apple Watch](https://support.apple.com/id-id/108352), [Menggunakan tombol dan gerakan untuk berinteraksi dengan Apple Watch](https://support.apple.com/id-id/guide/watch-app/apd704c7b8c0/watchos), and [Menyesuaikan gerakan pada layar di iPhone](https://support.apple.com/id-id/guide/iphone/iph0b691d3ed/ios).
    - Android Developers: [Providing alternative resources](https://developer.android.com/guide/topics/resources/providing-resources#AlternativeResources) (legacy `values-in` vs. modern `values-id` Indonesian resource qualifiers).
 2. **Indonesian Tech UX Writing Practice (Gojek, Tokopedia, tiket.com, Strava Indonesia)**:
    - Source for consumer pronoun conventions (`kamu / -mu` vs. `Anda`), the 4-pillar UX writing hierarchy (*Jelas, Ringkas, Konsisten, Berguna*), streak terminology (*minggu beruntun*), and actionable error/empty-state microcopy patterns.

@@ -72,7 +72,7 @@ When an app instructs a user to open their phone's system settings (e.g., enabli
 | **Action button** *(Apple Watch Ultra / iPhone)* | tombol Action / tombol Aksi | **tombol Tindakan** | Official Apple Indonesia hardware button name |
 | **Live Activities** *(iOS)* | Kegiatan Langsung | **Aktivitas Langsung** | Official Apple Indonesia Lock Screen & Dynamic Island feature |
 | **Allow Access When Locked** | Izinkan akses saat dikunci | **Izinkan Akses Saat Terkunci** | iOS Face ID / Passcode settings toggle |
-| **Auto-Play Animated Images** *(Accessibility › Motion)* | putar otomatis gambar animasi *(lowercase/inverted)* | **Putar Otomatis Animasi Gambar** *(under **Pengaturan › Aksesibilitas › Gerakan**)* | Official iOS Indonesian accessibility setting |
+| **Auto-Play Animated Images** *(Accessibility › Motion)* | putar otomatis gambar animasi *(lowercase)* | **Putar Otomatis Animasi Gambar** *(under **Pengaturan › Aksesibilitas › Gerakan**)* | Official iOS Indonesian accessibility setting (`support.apple.com/id-id/guide/iphone/iph0b691d3ed/ios`) |
 
 ---
 

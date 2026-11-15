@@ -1899,8 +1899,10 @@ test('auditDictionary: exempts clock duration, outer-label units, and named layo
   const stillInverted = auditDictionary({
     '{0} sets left': 'Set {0} tersisa',
     '{0} wk': 'Minggu {0} lagi',
+    '{0} photos today': 'Foto {0} hari ini',
+    '{0} plan(s) available': 'Paket {0} tersedia',
   });
-  assert.equal(stillInverted.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 2);
+  assert.equal(stillInverted.filter((f) => f.rule === 'inverted-quantitative-placeholder').length, 4);
 });
 
 test('auditDictionary: flags translated Apple/Google proper nouns, OS settings calques, and permits retained watch terms and Crown icon', () => {
@@ -1954,9 +1956,18 @@ test('auditDictionary: flags hold custody calques, streak runtutan, push-copy id
     tile_desc: 'Rentetanmu dan rencana hari ini.',
     'Take it or leave it in Trainer & gym.': 'Ambil atau lepaskan di Trainer & gym.',
     'Your sharing changed': 'Berbagimu berubah',
-    'They see what you shared, nothing more.': 'Mereka melihat apa yang kamu bagikan, tidak lebih.',
+    'They see what you shared, nothing more. Change it any time in Trainer & gym.':
+      'Mereka melihat apa yang kamu bagikan, tidak lebih. Ubah kapan saja di Trainer & gym.',
   };
   assert.equal(auditDictionary(badDomainDict).filter((f) => f.rule === 'polysemy-calque').length, 10);
+
+  // Generic plural "They see what you shared" without singular Trainer/Coach context is not flagged
+  assert.deepEqual(
+    auditDictionary({
+      'They see what you shared, nothing more.': 'Mereka melihat apa yang kamu bagikan, tidak lebih.',
+    }),
+    [],
+  );
 
   // Legal/prison custody context is exempt from athletic hold rule; non-hold legal/electronic meanings are unaffected
   const exemptHoldDict = {
@@ -1974,20 +1985,21 @@ test('auditDictionary: flags hold custody calques, streak runtutan, push-copy id
   };
   assert.deepEqual(auditDictionary(allCoachDict), []);
 
-  // Mixed Pelatih (>=2) and stray Coach triggers consistency finding on stray Coach entries (including nested)
+  // Mixed Pelatih (>=2) and stray Coach triggers consistency finding on stray Coach entries (including nested & retained Coach)
   const mixedCoachDict = {
     'Ask the Coach': 'Tanya Pelatih',
     'What the Coach sees': 'Yang dilihat Pelatih',
     nested: {
+      Coach: 'Coach',
       'Coach programme': 'Program Coach',
       'The Coach needs these': 'Coach butuh ini',
     },
   };
   const mixedFindings = auditDictionary(mixedCoachDict).filter((f) => f.rule === 'polysemy-calque');
-  assert.equal(mixedFindings.length, 2);
+  assert.equal(mixedFindings.length, 3);
   assert.deepEqual(
     mixedFindings.map((f) => f.key).sort(),
-    ['nested.Coach programme', 'nested.The Coach needs these'],
+    ['nested.Coach', 'nested.Coach programme', 'nested.The Coach needs these'],
   );
 });
 

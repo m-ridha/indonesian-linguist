@@ -432,9 +432,9 @@ const KNOWN_CALQUE_TRAPS = [
     fix: 'Yang kamu bagikan berubah',
   },
   {
-    keyMatch: /^They see what you shared, nothing more\b/i,
+    keyMatch: /^They see what you shared, nothing more\b[\s\S]*\b(?:trainer|coach)\b|\{[0-9a-zA-Z_.-]+\}\s+is\s+(?:now\s+)?your\s+(?:trainer|coach)\b[\s\S]*\bthey\s+see\b/i,
     badVal: /\bMereka\s+melihat\b/i,
-    fix: 'Dia melihat',
+    fix: 'Dia melihat / Trainer melihat',
   },
 ];
 
@@ -1212,17 +1212,35 @@ function auditDictionary(dict, options = {}) {
           Boolean(eponymousNounPairs[enNoun] && eponymousNounPairs[enNoun].test(invertedMatch[1]));
 
         // Allow outer label prefixes when {n} still precedes a measurement/time/count unit ("Streak {0} mgg")
+        // and the English source also places a unit before an outer label ("{0} wk streak", "{0} day streak").
+        const enUnitBeforeLabelRx =
+          /^(?:sec|secs|second|seconds|min|mins|minute|minutes|hr|hrs|hour|hours|day|days|wk|wks|week|weeks|mo|mos|month|months|yr|yrs|year|years|kg|g|gr|mg|lb|lbs|oz|km|m|cm|mm|ml|l|ltr|liter|liters|kal|kkal|kcal|cal|set|sets|rep|reps|step|steps|pt|pts|point|points|pct|percent|bit|bits|byte|bytes|kb|mb|gb|tb)$/i;
         const unitAfterPlaceholderRx =
           /^(?:dtk|detik|mnt|menit|jam|hr|hari|mgg|minggu|bln|bulan|thn|tahun|kg|g|gr|mg|lb|lbs|oz|km|m|cm|mm|ml|l|ltr|liter|kal|kkal|kcal|set|rep|reps|repetisi|sesi|kali|langkah|poin|persen|bit|byte|kb|mb|gb|tb)$/i;
+        const postUnitWordMatch = value.match(
+          new RegExp(`${escapedPh}\\s+[A-Za-z\\u00C0-\\u024F-]+\\s+([A-Za-z\\u00C0-\\u024F-]+)`, 'i'),
+        );
+        const postUnitWord = postUnitWordMatch !== null ? postUnitWordMatch[1].toLowerCase() : null;
+        const isDemonstrativeTimePhrase = /^(?:ini|lalu|depan|kemarin|besok)$/i.test(postUnitWord || '');
+        const hasEnOuterLabel = /^[A-Za-z-]+/.test(
+          sourceTemplate.slice(quantMatch[0].length).trim(),
+        );
         const hasUnitAfterPlaceholder =
+          enUnitBeforeLabelRx.test(enNoun) &&
+          hasEnOuterLabel &&
           followingWord !== null &&
           unitAfterPlaceholderRx.test(followingWord) &&
+          !isDemonstrativeTimePhrase &&
           leadingPhrase !== followingWord;
 
         // Skip named configuration/preset placeholders ("{0} layout on." -> "Preset {0} aktif.")
+        const hasPluralSuffixInSource = /^\s*(?:\(\s*e?s\s*\)|\/s\b)/i.test(
+          sourceTemplate.slice(quantMatch[0].length),
+        );
         const isNamedConfigModifier =
           /^(?:\{0\}|\{\{0\}\})$/.test(ph) &&
-          /^(?:layout|preset|theme|mode|view|style|format|scheme|profile|tier|plan|split|sound|voice|language|locale)$/.test(enNoun);
+          !hasPluralSuffixInSource &&
+          /^(?:layout|preset|theme|mode|view|style|format|scheme|profile|tier|split|sound|voice|language|locale)$/.test(enNoun);
 
         if (!isPermittedQuantifier && !isLeadingVerbWithObject && !isEponymousPhrase && !hasUnitAfterPlaceholder && !isNamedConfigModifier) {
           if (!pushFinding({
@@ -1235,7 +1253,7 @@ function auditDictionary(dict, options = {}) {
       }
     }
 
-    if (/\bCoach\b/.test(sourceTemplate) && !isUntranslated) {
+    if (/\bCoach\b/.test(sourceTemplate)) {
       if (/\bPelatih\b/i.test(value)) {
         coachState.pelatihCount++;
       } else if (/\bCoach\b/.test(value)) {
