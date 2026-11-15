@@ -1213,8 +1213,8 @@ function auditDictionary(dict, options = {}) {
           /^(?:\{\{[0-9a-zA-Z_.-]+\}\}|\{[0-9a-zA-Z_.-]+\}|%(?:\d+\$)?[sdif])\s+(?:formula|law|theorem|equation|principle)(?!\s*\(\s*e?s\s*\))(?:$|\s*[:;,.\(\[\-\u2013\u2014\/])/i.test(sourceTemplate.trim()) &&
           Boolean(eponymousNounPairs[enNoun] && eponymousNounPairs[enNoun].test(invertedMatch[1]));
 
-        // Allow outer label prefixes when {n} still precedes a measurement/time/count unit ("Streak {0} mgg")
-        // and the English source also places a unit before an outer label ("{0} wk streak", "{0} day streak").
+        // Allow outer label prefixes when {n} still precedes a measurement/time/count unit
+        // ("Streak {0} mgg", "Durasi {0} menit") matching an English source unit.
         const enUnitBeforeLabelRx =
           /^(?:sec|secs|second|seconds|min|mins|minute|minutes|hr|hrs|hour|hours|day|days|wk|wks|week|weeks|mo|mos|month|months|yr|yrs|year|years|kg|g|gr|mg|lb|lbs|oz|km|m|cm|mm|ml|l|ltr|liter|liters|kal|kkal|kcal|cal|set|sets|rep|reps|step|steps|pt|pts|point|points|pct|percent|bit|bits|byte|bytes|kb|mb|gb|tb)$/i;
         const unitAfterPlaceholderRx =
@@ -1224,12 +1224,8 @@ function auditDictionary(dict, options = {}) {
         );
         const postUnitWord = postUnitWordMatch !== null ? postUnitWordMatch[1].toLowerCase() : null;
         const isDemonstrativeTimePhrase = /^(?:ini|lalu|depan|kemarin|besok)$/i.test(postUnitWord || '');
-        const hasEnOuterLabel = /^[A-Za-z-]+/.test(
-          sourceTemplate.slice(quantMatch[0].length).trim(),
-        );
         const hasUnitAfterPlaceholder =
           enUnitBeforeLabelRx.test(enNoun) &&
-          hasEnOuterLabel &&
           followingWord !== null &&
           unitAfterPlaceholderRx.test(followingWord) &&
           !isDemonstrativeTimePhrase &&
@@ -1255,10 +1251,14 @@ function auditDictionary(dict, options = {}) {
       }
     }
 
-    if (/\bCoach\b/.test(sourceTemplate)) {
-      if (/\bPelatih\b/i.test(value)) {
+    const sourceOutsidePlaceholders = sourceTemplate.replace(
+      /\{\{[0-9a-zA-Z_.-]+\}\}|\{[0-9a-zA-Z_.-]+\}|%(?:\d+\$)?[sdif]/g,
+      '',
+    );
+    if (/\bCoach\b/.test(sourceOutsidePlaceholders)) {
+      if (/\bPelatih\b/i.test(textOutsidePlaceholders)) {
         coachState.pelatihCount++;
-      } else if (/\bCoach\b/.test(value)) {
+      } else if (/\bCoach\b/.test(textOutsidePlaceholders)) {
         coachState.coachEntries.push({ key: fullKey, value });
       }
     }

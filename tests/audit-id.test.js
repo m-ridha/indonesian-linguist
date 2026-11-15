@@ -1890,6 +1890,7 @@ test('auditDictionary: exempts clock duration, outer-label units, and named layo
     '{0} remaining in queue': 'sisa {0} di antrean',
     '{0} wk streak': 'Streak {0} mgg',
     '{0} day streak': 'Streak {0} hari',
+    '{0} minutes': 'Durasi {0} menit',
     '{0} layout on.': 'Preset {0} aktif.',
     '{{0}} theme selected': 'Tema {{0}} dipilih',
   };
@@ -1985,10 +1986,11 @@ test('auditDictionary: flags hold custody calques, streak runtutan, push-copy id
   };
   assert.deepEqual(auditDictionary(allCoachDict), []);
 
-  // Mixed Pelatih (>=2) and stray Coach triggers consistency finding on stray Coach entries (including nested & retained Coach)
+  // Mixed Pelatih (>=2) and stray Coach triggers consistency finding on stray Coach entries (including nested & retained Coach, excluding {Coach} placeholders)
   const mixedCoachDict = {
     'Ask the Coach': 'Tanya Pelatih',
     'What the Coach sees': 'Yang dilihat Pelatih',
+    '{Coach}': '{Coach}',
     nested: {
       Coach: 'Coach',
       'Coach programme': 'Program Coach',
