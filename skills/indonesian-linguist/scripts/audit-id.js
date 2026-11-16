@@ -41,6 +41,8 @@ const NON_STANDARD_WORDS = [
   { regex: /\bapotik\b/i, fix: 'apotek' },
   { regex: /\bnafas\b/i, fix: 'napas' },
   { regex: /\bcidera\b/i, fix: 'cedera' },
+  { regex: /\b(gym|coach|trainer|streak|workout|endpoint|webhook|commit|passkey|link|app|file)(ku|mu|nya)\b/i, fix: 'hyphenated foreign clitic (e.g. gym-mu, trainer-mu, commit-nya)' },
+  { regex: /\b(di)(deploy|build|render)\b/i, fix: 'di-deploy / di-build / di-render' },
 ];
 
 const SLOP_AND_PLEONASM_PATTERNS = [
@@ -260,6 +262,21 @@ const KNOWN_CALQUE_TRAPS = [
   { keyMatch: /^distance in\s*:?$/i, badVal: /^jarak dalam\s*:?$/i, fix: 'Satuan jarak' },
   { keyMatch: /end of a hold/i, badVal: /\b(akhir|ujung)\s+tahanan\b/i, fix: 'Akhir durasi tahan / Waktu tahan selesai' },
   {
+    keyMatch: {
+      /** @param {string} key @param {unknown} [sourceVal] */
+      test(key, sourceVal) {
+        const combined = (String(key || '') + ' ' + (typeof sourceVal === 'string' ? sourceVal : '')).trim();
+        if (/end of a hold/i.test(combined)) return false;
+        if (/\b(?:legal\s+hold|on\s+hold|hold\s+harmless|custody|prison(?:er)?s?|detain(?:ee|ed)?|detention|arrest|police|criminal|court|suspect|warrant|ohm|resistor|electrical|impedance)\b/i.test(combined)) {
+          return false;
+        }
+        return /(?:^|[^a-z])holds?(?:$|[^a-z])/i.test(combined);
+      },
+    },
+    badVal: /\b(?:tahanan|penahanan)\b/i,
+    fix: 'durasi tahan / waktu tahan / tahan',
+  },
+  {
     keyMatch: /\b(?:weight\s+plates?|plate[- ]loaded|plate\s+racks?|(?:add|load|put|remove|rack|stack)\s+plates?)\b|^plates?$/i,
     badVal: /\bpiringan(?:\s+beban)?\b/i,
     fix: 'Plat / Plat beban',
@@ -385,6 +402,42 @@ const KNOWN_CALQUE_TRAPS = [
     },
     fix: 'Obat tanpa resep',
   },
+  { keyMatch: /\bApple\s+Health\b/i, badVal: /\b(?:Apple\s+Kesehatan|Kesehatan\s+Apple)\b/i, fix: 'Apple Health' },
+  { keyMatch: /\bHealth\s+Connect\b/i, badVal: /\b(?:Kesehatan\s+Terhubung|Koneksi\s+Kesehatan|Hubungkan\s+Kesehatan)\b/i, fix: 'Health Connect' },
+  { keyMatch: /\bGoogle\s+Play\b/i, badVal: /\b(?:Google\s+Bermain|Bermain\s+Google|Toko\s+Google\s+Play)\b/i, fix: 'Google Play / Google Play Store' },
+  { keyMatch: /\biCloud\s+Keychain\b/i, badVal: /\bRantai\s+Kunci\s+iCloud\b/i, fix: 'iCloud Keychain' },
+  { keyMatch: /\b(?:Face\s+ID|Touch\s+ID)\b/i, badVal: /\b(?:ID\s+Wajah|Wajah\s+ID|ID\s+Sentuh|Sentuh\s+ID)\b/i, fix: 'Face ID / Touch ID' },
+  { keyMatch: /\bApple\s+Watch\b/i, badVal: /\b(?:Jam\s+Tangan\s+Apple|Apple\s+Jam\s+Tangan|Aplikasi\s+Tonton)\b/i, fix: 'Apple Watch' },
+  { keyMatch: /\bDigital\s+Crown\b/i, badVal: /\b(?:mahkota(?:\s+digital)?|digital\s+mahkota)\b/i, fix: 'Digital Crown' },
+  {
+    keyMatch: /\b(?:turn|rotate|spin|press|click|use|using)\s+(?:the\s+)?crown\b|\bcrown[_ ](?:button|hint|dial|wheel)\b|\b(?:watch|side|rotating)\s+crown\b/i,
+    badVal: /\bmahkota\b/i,
+    fix: 'Digital Crown / tombol crown',
+  },
+  { keyMatch: /\bAction\s+button\b/i, badVal: /\btombol\s+(?:action|aksi)\b/i, fix: 'tombol Tindakan' },
+  { keyMatch: /\bSide\s+button\b/i, badVal: /\btombol\s+sisi\b/i, fix: 'tombol samping' },
+  { keyMatch: /\bLive\s+Activities\b/i, badVal: /\b(?:kegiatan\s+langsung|aktivitas\s+hidup)\b/i, fix: 'Aktivitas Langsung' },
+  { keyMatch: /\bAuto-Play\s+Animated\s+Images\b/i, badVal: /\bputar\s+otomatis\s+gambar\s+animasi\b/i, fix: 'Putar Otomatis Animasi Gambar' },
+  {
+    keyMatch: /\bstreaks?\b|(?:complication|tile)_desc/i,
+    badVal: /\b(?:runtutan|runtun|rentetan(?:mu|nya|ku)?)\b/i,
+    fix: 'streak / minggu beruntun / hari beruntun',
+  },
+  {
+    keyMatch: /\btake\s+it\s+or\s+leave\s+it\b/i,
+    badVal: /\bambil\s+atau\s+(?:lepaskan|tinggalkan)\b/i,
+    fix: 'Terima atau abaikan / Terima atau tolak',
+  },
+  {
+    keyMatch: /\byour\s+sharing\s+changed\b/i,
+    badVal: /\bberbagimu\s+berubah\b/i,
+    fix: 'Yang kamu bagikan berubah',
+  },
+  {
+    keyMatch: /^They see what you shared, nothing more\b[\s\S]*\b(?:trainer|coach)\b|\{[0-9a-zA-Z_.-]+\}\s+is\s+(?:now\s+)?your\s+(?:trainer|coach)\b[\s\S]*\bthey\s+see\b/i,
+    badVal: /\bMereka\s+melihat\b/i,
+    fix: 'Dia melihat / Trainer melihat',
+  },
 ];
 
 // Full-string anchored patterns for complete retained loanwords, exercise names, Latin muscle names,
@@ -393,7 +446,7 @@ const RETAINED_LOANWORD_PATTERNS = [
   /^(?:Drop-set\s*\/\s*rest-pause|Drop-set|Superset(?:\s+\{[0-9]+\}(?:\s*\/\s*\{[0-9]+\}|\s*:\s*\{[0-9]+\}\s*\(\{[0-9]+\}\))?)?|Rest-pause|Deload|Bodyweight|Thibaudeau\s*\(Powerlifting\))$/i,
   /^(?:(?:(?:single|one|two)-(?:leg|arm)|(?:reverse|close|wide|neutral|narrow|overhand|underhand|hammer|snatch)-grip|incline|decline|flat|barbell|dumbbell|ez-bar|cable|smith machine|seated|standing|close-grip|wide-grip|romanian|sumo|conventional|deficit|pause|paused|single-arm|one-arm|high-bar|low-bar|safety-bar|zercher|hack|belt|box|bulgarian)\s+){0,3}(?:bench press|barbell curl|back squat|front squat|split squat|squat|deadlift|overhead press|leverage machine)(?:\s*\([A-Za-z0-9 -]+\))?$/i,
   /^(?:serratus anterior|latissimus dorsi|sternocleidomastoid|pectoralis(?:\s+major|\s+minor)?|gluteus(?:\s+maximus|\s+medius)?|gastrocnemius)$/i,
-  /^(?:Face ID(?:\s*\/\s*Touch ID)?|Touch ID|iCloud Keychain|Google Password Manager|Health Connect|Apple Health|Apple Watch|Google Play(?:\s+Store)?|App Store|Cloudflare Access|SatuSehat|Mobile JKN)$/i,
+  /^(?:Face ID(?:\s*\/\s*Touch ID)?|Touch ID|iCloud Keychain|Google Password Manager|Health Connect|Apple Health|Apple Watch|Digital Crown|Dynamic Island|Google Play(?:\s+Store)?|App Store|Cloudflare Access|SatuSehat|Mobile JKN)$/i,
   /^(?:USG|CT Scan|MRI|EKG|Pap smear|Biopsi|Endoskopi|Kolonoskopi|Infus|Kateter|Ventilator)$/i,
   /^(?:API key|endpoint|reverse proxy|source code|webhook)$/i,
   /^(?:Bahasa Indonesia(?:\s*\([A-Za-z0-9_-]+\))?|Bahasa Melayu(?:\s*\([A-Za-z0-9_-]+\))?|English(?:\s*\([A-Za-z0-9_-]+\))?|[a-z]{2}(?:[-_][A-Z]{2,4})?)$/i,
@@ -804,6 +857,10 @@ function auditText(text, options = {}) {
         const lower = original.toLowerCase();
         const rep = lower.endsWith('an') ? 'imbauan' : 'imbau';
         replacement = preserveCase(original, rep);
+      } else if (item.regex.source.includes('(ku|mu|nya)')) {
+        replacement = `${m[1]}-${m[2]}`;
+      } else if (item.regex.source.includes('(deploy|build|render)')) {
+        replacement = `${m[1]}-${m[2]}`;
       } else {
         confidence = 'contextual';
       }
@@ -904,7 +961,7 @@ const MAX_CLI_DIAGNOSTIC_BYTES = 64_000;
  * Tracks visited object references to prevent exponential work on compact shared-reference graphs,
  * and tracks active ancestors to immediately break cycles.
  * @param {Record<string, unknown>} dict
- * @param {{ minFallbackLength?: number, allowlistKeys?: Set<string>, prefix?: string, depth?: number, accumulator?: Array<{key: string, rule: string, category?: string, message: string}>, visited?: Map<object, number>, activeStack?: Set<object>, counter?: { entries: number }, source?: unknown, pronoun?: string|null, ignoreKeys?: Set<string>|Array<string>|string|null }} [options]
+ * @param {{ minFallbackLength?: number, allowlistKeys?: Set<string>, prefix?: string, depth?: number, accumulator?: Array<{key: string, rule: string, category?: string, message: string}>, visited?: Map<object, number>, activeStack?: Set<object>, counter?: { entries: number }, source?: unknown, pronoun?: string|null, ignoreKeys?: Set<string>|Array<string>|string|null, coachState?: { pelatihCount: number, coachEntries: Array<{ key: string, value: string }> } }} [options]
  * @returns {Array<{key: string, rule: string, category?: string, message: string}>}
  */
 function auditDictionary(dict, options = {}) {
@@ -918,6 +975,7 @@ function auditDictionary(dict, options = {}) {
   const counter = options.counter ?? { entries: 0 };
   const source = options.source ?? null;
   const pronoun = options.pronoun ?? null;
+  const coachState = options.coachState ?? { pelatihCount: 0, coachEntries: [] };
 
   const isObject = dict && typeof dict === 'object';
   if (isObject && activeStack.has(dict)) {
@@ -1019,6 +1077,7 @@ function auditDictionary(dict, options = {}) {
         activeStack,
         counter,
         ignoreKeys: options.ignoreKeys,
+        coachState,
       });
       if (
         findings[findings.length - 1]?.rule === 'findings-limit-exceeded' ||
@@ -1099,7 +1158,7 @@ function auditDictionary(dict, options = {}) {
     // but Indonesian translation flips it to ordinal format after the noun (e.g., "Set {0} belum dicentang", "Foto {0}").
     const sourceTemplate = typeof sourceValue === 'string' ? sourceValue : key;
     const quantMatch = sourceTemplate.match(/^(\{(?:\d+|n|count|total)\}|\{\{(?:\d+|n|count|total)\}\}|%(?:\d+\$)?d)\s+([A-Za-z-]+)/i);
-    const isCopulaFollowing = quantMatch && /^(?:is|are|was|were|has|have)$/i.test(quantMatch[2]);
+    const isCopulaFollowing = quantMatch && /^(?:is|are|was|were|has|have|left|remaining)$/i.test(quantMatch[2]);
     if (quantMatch && !isCopulaFollowing) {
       const ph = quantMatch[1];
       const escapedPh = ph.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -1114,7 +1173,7 @@ function auditDictionary(dict, options = {}) {
         const leadingWords = leadingPhrase.split(/\s+/);
         const firstLeading = leadingWords[0];
 
-        const permittedQuantifierWord = /^(sebanyak|total|sekitar|hanya|ada|masih|tersisa|kurang)$/i;
+        const permittedQuantifierWord = /^(sebanyak|total|sekitar|hanya|ada|masih|tersisa|sisa|kurang)$/i;
         const isPermittedQuantifier =
           /^(kurang dari|lebih dari|masih ada|masih kurang)$/i.test(leadingPhrase) ||
           leadingWords.every((word) => permittedQuantifierWord.test(word));
@@ -1154,7 +1213,34 @@ function auditDictionary(dict, options = {}) {
           /^(?:\{\{[0-9a-zA-Z_.-]+\}\}|\{[0-9a-zA-Z_.-]+\}|%(?:\d+\$)?[sdif])\s+(?:formula|law|theorem|equation|principle)(?!\s*\(\s*e?s\s*\))(?:$|\s*[:;,.\(\[\-\u2013\u2014\/])/i.test(sourceTemplate.trim()) &&
           Boolean(eponymousNounPairs[enNoun] && eponymousNounPairs[enNoun].test(invertedMatch[1]));
 
-        if (!isPermittedQuantifier && !isLeadingVerbWithObject && !isEponymousPhrase) {
+        // Allow outer label prefixes when {n} still precedes a measurement/time/count unit
+        // ("Streak {0} mgg", "Durasi {0} menit") matching an English source unit.
+        const enUnitBeforeLabelRx =
+          /^(?:sec|secs|second|seconds|min|mins|minute|minutes|hr|hrs|hour|hours|day|days|wk|wks|week|weeks|mo|mos|month|months|yr|yrs|year|years|kg|g|gr|mg|lb|lbs|oz|km|m|cm|mm|ml|l|ltr|liter|liters|kal|kkal|kcal|cal|set|sets|rep|reps|step|steps|pt|pts|point|points|pct|percent|bit|bits|byte|bytes|kb|mb|gb|tb)$/i;
+        const unitAfterPlaceholderRx =
+          /^(?:dtk|detik|mnt|menit|jam|hr|hari|mgg|minggu|bln|bulan|thn|tahun|kg|g|gr|mg|lb|lbs|oz|km|m|cm|mm|ml|l|ltr|liter|kal|kkal|kcal|set|rep|reps|repetisi|sesi|kali|langkah|poin|persen|bit|byte|kb|mb|gb|tb)$/i;
+        const postUnitWordMatch = value.match(
+          new RegExp(`${escapedPh}\\s+[A-Za-z\\u00C0-\\u024F-]+\\s+([A-Za-z\\u00C0-\\u024F-]+)`, 'i'),
+        );
+        const postUnitWord = postUnitWordMatch !== null ? postUnitWordMatch[1].toLowerCase() : null;
+        const isDemonstrativeTimePhrase = /^(?:ini|lalu|depan|kemarin|besok)$/i.test(postUnitWord || '');
+        const hasUnitAfterPlaceholder =
+          enUnitBeforeLabelRx.test(enNoun) &&
+          followingWord !== null &&
+          unitAfterPlaceholderRx.test(followingWord) &&
+          !isDemonstrativeTimePhrase &&
+          leadingPhrase !== followingWord;
+
+        // Skip named configuration/preset placeholders ("{0} layout on." -> "Preset {0} aktif.")
+        const hasPluralSuffixInSource = /^\s*(?:\(\s*e?s\s*\)|\/s\b)/i.test(
+          sourceTemplate.slice(quantMatch[0].length),
+        );
+        const isNamedConfigModifier =
+          /^(?:\{0\}|\{\{0\}\})$/.test(ph) &&
+          !hasPluralSuffixInSource &&
+          /^(?:layout|preset|theme|mode|view|style|format|scheme|profile|tier|split|sound|voice|language|locale)$/.test(enNoun);
+
+        if (!isPermittedQuantifier && !isLeadingVerbWithObject && !isEponymousPhrase && !hasUnitAfterPlaceholder && !isNamedConfigModifier) {
           if (!pushFinding({
             key: fullKey,
             rule: 'inverted-quantitative-placeholder',
@@ -1162,6 +1248,19 @@ function auditDictionary(dict, options = {}) {
             message: `Quantitative placeholder inverted: "${sourceTemplate}" (${ph} count) translated with placeholder placed after noun ("${value}"); in Indonesian, quantity must precede the noun (${ph} ${invertedMatch[1]}).`,
           })) break;
         }
+      }
+    }
+
+    const sourceOutsidePlaceholders = sourceTemplate.replace(
+      /\{\{[0-9a-zA-Z_.-]+\}\}|\{[0-9a-zA-Z_.-]+\}|%(?:\d+\$)?[sdif]/g,
+      '',
+    );
+    if (/\bcoach\b/i.test(sourceOutsidePlaceholders)) {
+      if (/\bpelatih\b/i.test(textOutsidePlaceholders)) {
+        coachState.pelatihCount++;
+      }
+      if (/\bcoach\b/i.test(textOutsidePlaceholders)) {
+        coachState.coachEntries.push({ key: fullKey, value });
       }
     }
 
@@ -1222,6 +1321,19 @@ function auditDictionary(dict, options = {}) {
 
   if (isObject) {
     activeStack.delete(dict);
+  }
+
+  if (currentDepth === 0 && coachState.pelatihCount >= 2 && coachState.coachEntries.length > 0) {
+    for (const entry of coachState.coachEntries) {
+      if (!pushFinding({
+        key: entry.key,
+        rule: 'polysemy-calque',
+        category: getRuleCategory('polysemy-calque'),
+        message: `Literal calque or inconsistent "Coach" retention in "${entry.value}"; use "Pelatih" consistently across the dictionary.`,
+      })) {
+        break;
+      }
+    }
   }
 
   return findings;
