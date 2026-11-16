@@ -1255,10 +1255,11 @@ function auditDictionary(dict, options = {}) {
       /\{\{[0-9a-zA-Z_.-]+\}\}|\{[0-9a-zA-Z_.-]+\}|%(?:\d+\$)?[sdif]/g,
       '',
     );
-    if (/\bCoach\b/.test(sourceOutsidePlaceholders)) {
-      if (/\bPelatih\b/i.test(textOutsidePlaceholders)) {
+    if (/\bcoach\b/i.test(sourceOutsidePlaceholders)) {
+      if (/\bpelatih\b/i.test(textOutsidePlaceholders)) {
         coachState.pelatihCount++;
-      } else if (/\bCoach\b/.test(textOutsidePlaceholders)) {
+      }
+      if (/\bcoach\b/i.test(textOutsidePlaceholders)) {
         coachState.coachEntries.push({ key: fullKey, value });
       }
     }

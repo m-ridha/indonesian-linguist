@@ -1993,15 +1993,23 @@ test('auditDictionary: flags hold custody calques, streak runtutan, push-copy id
     '{Coach}': '{Coach}',
     nested: {
       Coach: 'Coach',
+      'Coach and assistant Coach': 'Pelatih dan asisten Coach',
       'Coach programme': 'Program Coach',
+      'Contact the Coach': 'Hubungi coach',
       'The Coach needs these': 'Coach butuh ini',
     },
   };
   const mixedFindings = auditDictionary(mixedCoachDict).filter((f) => f.rule === 'polysemy-calque');
-  assert.equal(mixedFindings.length, 3);
+  assert.equal(mixedFindings.length, 5);
   assert.deepEqual(
     mixedFindings.map((f) => f.key).sort(),
-    ['nested.Coach', 'nested.Coach programme', 'nested.The Coach needs these'],
+    [
+      'nested.Coach',
+      'nested.Coach and assistant Coach',
+      'nested.Coach programme',
+      'nested.Contact the Coach',
+      'nested.The Coach needs these',
+    ],
   );
 });
 
