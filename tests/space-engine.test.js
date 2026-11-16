@@ -4,6 +4,91 @@ const fs = require('fs');
 const path = require('path');
 const { pathToFileURL } = require('url');
 const { generateSpaceEngine } = require('../scripts/build-space-engine.js');
+const os = require('node:os');
+const { execFileSync } = require('node:child_process');
+
+test('release build replaces stale Space assets and is idempotent', (t) => {
+  const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'linguist-release-'));
+  t.after(() => fs.rmSync(fixture, { recursive: true, force: true }));
+  const root = path.join(__dirname, '..');
+  for (const directory of ['scripts', 'space']) {
+    fs.mkdirSync(path.join(fixture, directory));
+  }
+  for (const file of ['package.json', 'scripts/build-space-engine.js', 'scripts/audit-id.js']) {
+    fs.copyFileSync(path.join(root, file), path.join(fixture, file));
+  }
+
+  const htmlPath = path.join(fixture, 'space/index.html');
+  const bundlePath = path.join(fixture, 'space/engine.bundle.js');
+  const html = fs.readFileSync(path.join(root, 'space/index.html'), 'utf8');
+  const { version } = require('../package.json');
+  const staleHtml = html.replace(`>v${version}</span>`, '>v0.0.0</span>');
+  assert.notStrictEqual(staleHtml, html, 'fixture must start with a stale release badge');
+  fs.writeFileSync(htmlPath, staleHtml);
+  fs.writeFileSync(bundlePath, "export const VERSION = '0.0.0';\n");
+
+  const build = () => execFileSync(process.execPath, ['scripts/build-space-engine.js'], {
+    cwd: fixture,
+    timeout: 10000,
+    stdio: 'pipe',
+  });
+  build();
+  const bundle = fs.readFileSync(bundlePath, 'utf8');
+  assert.strictEqual(bundle, generateSpaceEngine(), 'build must regenerate the entire current engine');
+  assert.strictEqual(fs.readFileSync(htmlPath, 'utf8'), html, 'build must update the badge and preserve the rest of the page');
+
+  build();
+  assert.strictEqual(fs.readFileSync(bundlePath, 'utf8'), bundle, 'rebuilding must preserve bundle bytes');
+  assert.strictEqual(fs.readFileSync(htmlPath, 'utf8'), html, 'rebuilding must preserve HTML bytes');
+});
+
+// These retained brands are documented in scripts/README.md and its skill copy.
+for (const brand of ['Apple Health', 'Google Play', 'App Store', 'SatuSehat', 'Mobile JKN']) {
+  test(`release bundle retains ${brand} without exempting surrounding English`, async () => {
+    const bundleUrl = pathToFileURL(path.join(__dirname, '..', 'space', 'engine.bundle.js')).href;
+    const engine = await import(bundleUrl);
+
+    // All these labels are below the default fallback threshold (16 characters).
+    // Lower it so this assertion exercises the allowlist rather than the length guard.
+    assert.deepEqual(engine.auditDictionary({ [brand]: brand }, { minFallbackLength: 1 }), []);
+
+    const catalog = {};
+    for (const sentence of [`Connect with ${brand}`, `${brand} connection settings`]) {
+      catalog[sentence] = sentence;
+    }
+    const input = JSON.stringify(catalog, null, 2);
+    const result = engine.analyze(input);
+    assert.strictEqual(result.mode, 'json');
+    assert.strictEqual(result.valid, true);
+    assert.deepEqual(
+      result.findings.map(({ keyPath, rule }) => ({ keyPath, rule })),
+      Object.keys(catalog).map((keyPath) => ({ keyPath, rule: 'silent-fallback' })),
+      'a retained brand must not exempt a full English sentence at either boundary',
+    );
+    assert.strictEqual(result.cleanText, input, 'fallback warnings must not rewrite official brand names');
+  });
+}
+
+test('Space engine exports the package release version without a display prefix', async () => {
+  const { version } = require('../package.json');
+  const bundleUrl = pathToFileURL(path.join(__dirname, '..', 'space', 'engine.bundle.js')).href;
+  const engine = await import(bundleUrl);
+
+  assert.strictEqual(engine.VERSION, version, 'engine VERSION must match the published package version');
+});
+
+test('Space HTML contains exactly one version badge matching the package and engine', async () => {
+  const { version } = require('../package.json');
+  const bundleUrl = pathToFileURL(path.join(__dirname, '..', 'space', 'engine.bundle.js')).href;
+  const engine = await import(bundleUrl);
+  const html = fs.readFileSync(path.join(__dirname, '..', 'space', 'index.html'), 'utf8');
+  const badges = [...html.matchAll(/<span\b[^>]*\bid=["']app-version["'][^>]*>([\s\S]*?)<\/span>/g)];
+
+  assert.strictEqual(badges.length, 1, 'the release badge must exist exactly once');
+  // Check the shipped HTML directly: app.js overwrites this text at runtime and could hide a stale build.
+  assert.strictEqual(badges[0][1].trim(), `v${version}`, 'static badge must show the package release');
+  assert.strictEqual(badges[0][1].trim(), `v${engine.VERSION}`, 'static badge must match the runtime version');
+});
 
 test('space/engine.bundle.js is synchronized with scripts/audit-id.js', () => {
   const expected = generateSpaceEngine();
@@ -11,6 +96,31 @@ test('space/engine.bundle.js is synchronized with scripts/audit-id.js', () => {
   assert.ok(fs.existsSync(bundlePath), 'space/engine.bundle.js must exist');
   const actual = fs.readFileSync(bundlePath, 'utf8');
   assert.strictEqual(actual, expected, 'space/engine.bundle.js must match generator output');
+});
+
+test('bundled engine exports the canonical package version without a display prefix', async () => {
+  const packagePath = path.join(__dirname, '..', 'package.json');
+  const { version } = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+  const bundleUrl = pathToFileURL(path.join(__dirname, '..', 'space', 'engine.bundle.js')).href;
+  const engine = await import(bundleUrl);
+
+  assert.strictEqual(typeof engine.VERSION, 'string', 'VERSION must be a public string export');
+  assert.strictEqual(engine.VERSION, version, 'The browser engine must report the package version');
+});
+
+test('static Space page displays exactly one canonical version badge before JavaScript runs', async () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'space', 'index.html'), 'utf8');
+  const { version } = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
+  const bundleUrl = pathToFileURL(path.join(__dirname, '..', 'space', 'engine.bundle.js')).href;
+  const engine = await import(bundleUrl);
+  // Runtime hydration must not hide a missing, duplicated, or stale release badge.
+  const versionIds = [...html.matchAll(/\bid\s*=\s*(["'])app-version\1/g)];
+  assert.strictEqual(versionIds.length, 1, 'The version badge ID must exist and be unique');
+
+  const badge = html.match(/<span\b[^>]*\bid\s*=\s*(["'])app-version\1[^>]*>([^<]*)<\/span>/);
+  assert.ok(badge, 'The version badge must contain a visible text label');
+  assert.strictEqual(badge[2].trim(), `v${version}`, 'The badge must show the current package version');
+  assert.strictEqual(badge[2].trim(), `v${engine.VERSION}`, 'The badge and engine must agree');
 });
 
 test('engine.analyze: routes JSON vs prose and respects malformed JSON error boundary', async () => {
