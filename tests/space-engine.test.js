@@ -34,6 +34,26 @@ test('space/engine.bundle.js is synchronized with scripts/audit-id.js', () => {
   assert.strictEqual(actual, expected, 'space/engine.bundle.js must match generator output');
 });
 
+test('bundled engine exports the canonical package version without a display prefix', async () => {
+  const packagePath = path.join(__dirname, '..', 'package.json');
+  const { version } = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+  const bundleUrl = pathToFileURL(path.join(__dirname, '..', 'space', 'engine.bundle.js')).href;
+  const engine = await import(bundleUrl);
+
+  assert.strictEqual(engine.VERSION, version, 'Published engine version must match package.json exactly');
+});
+
+test('static Space page displays exactly one canonical version badge before JavaScript runs', () => {
+  const packagePath = path.join(__dirname, '..', 'package.json');
+  const { version } = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+  const html = fs.readFileSync(path.join(__dirname, '..', 'space', 'index.html'), 'utf8');
+  const badges = [...html.matchAll(/<span\b[^>]*\bid=["']app-version["'][^>]*>([\s\S]*?)<\/span>/g)];
+
+  // Runtime hydration must not hide a missing, duplicated, or stale release badge.
+  assert.strictEqual(badges.length, 1, 'The static page must contain exactly one app-version badge');
+  assert.strictEqual(badges[0][1].trim(), `v${version}`, 'The static badge must show the current release with one v prefix');
+});
+
 test('engine.analyze: routes JSON vs prose and respects malformed JSON error boundary', async () => {
   const bundleUrl = pathToFileURL(path.join(__dirname, '..', 'space', 'engine.bundle.js')).href;
   const engine = await import(bundleUrl);
