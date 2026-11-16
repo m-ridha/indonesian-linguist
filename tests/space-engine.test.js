@@ -5,6 +5,33 @@ const path = require('path');
 const { pathToFileURL } = require('url');
 const { generateSpaceEngine } = require('../scripts/build-space-engine.js');
 
+// These retained brands are documented in scripts/README.md and its skill copy.
+for (const brand of ['Apple Health', 'Google Play', 'App Store', 'SatuSehat', 'Mobile JKN']) {
+  test(`release bundle retains ${brand} without exempting surrounding English`, async () => {
+    const bundleUrl = pathToFileURL(path.join(__dirname, '..', 'space', 'engine.bundle.js')).href;
+    const engine = await import(bundleUrl);
+
+    // All these labels are below the default fallback threshold (16 characters).
+    // Lower it so this assertion exercises the allowlist rather than the length guard.
+    assert.deepEqual(engine.auditDictionary({ [brand]: brand }, { minFallbackLength: 1 }), []);
+
+    const catalog = {};
+    for (const sentence of [`Connect with ${brand}`, `${brand} connection settings`]) {
+      catalog[sentence] = sentence;
+    }
+    const input = JSON.stringify(catalog, null, 2);
+    const result = engine.analyze(input);
+    assert.strictEqual(result.mode, 'json');
+    assert.strictEqual(result.valid, true);
+    assert.deepEqual(
+      result.findings.map(({ keyPath, rule }) => ({ keyPath, rule })),
+      Object.keys(catalog).map((keyPath) => ({ keyPath, rule: 'silent-fallback' })),
+      'a retained brand must not exempt a full English sentence at either boundary',
+    );
+    assert.strictEqual(result.cleanText, input, 'fallback warnings must not rewrite official brand names');
+  });
+}
+
 test('Space engine exports the package release version without a display prefix', async () => {
   const { version } = require('../package.json');
   const bundleUrl = pathToFileURL(path.join(__dirname, '..', 'space', 'engine.bundle.js')).href;
