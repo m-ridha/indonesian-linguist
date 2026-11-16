@@ -18,6 +18,26 @@ const {
   truncateToUtf8ByteLimit,
 } = require('../scripts/audit-id');
 
+for (const brand of ['Apple Health', 'Google Play', 'App Store', 'SatuSehat', 'Mobile JKN']) {
+  test(`auditDictionary: documented retained brand ${brand} is exempt only as a complete label`, () => {
+    // Lower the threshold so short brands cannot pass merely because of their length.
+    assert.deepEqual(auditDictionary({ [brand]: brand }, { minFallbackLength: 1 }), []);
+    assert.deepEqual(auditDictionary({ label: `  ${brand}  ` }, {
+      source: { label: brand },
+      minFallbackLength: 1,
+    }), []);
+
+    for (const sentence of [`Open ${brand}`, `${brand} is available`]) {
+      const findings = auditDictionary({ label: sentence }, {
+        source: { label: sentence },
+        minFallbackLength: 1,
+      });
+      assert.ok(findings.some((f) => f.rule === 'silent-fallback' && f.key === 'label'),
+        `An untranslated sentence containing ${brand} must still be flagged: ${sentence}`);
+    }
+  });
+}
+
 test('auditText: clean natural Indonesian passes with zero findings', () => {
   const clean =
     'Catat beban, repetisi, dan rekor pribadimu di setiap sesi latihan. Silakan atur target mingguan sesuai jadwalmu.';

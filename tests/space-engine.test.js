@@ -4,6 +4,43 @@ const fs = require('fs');
 const path = require('path');
 const { pathToFileURL } = require('url');
 const { generateSpaceEngine } = require('../scripts/build-space-engine.js');
+const os = require('node:os');
+const { execFileSync } = require('node:child_process');
+
+test('release build replaces stale Space assets and is idempotent', (t) => {
+  const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'linguist-release-'));
+  t.after(() => fs.rmSync(fixture, { recursive: true, force: true }));
+  const root = path.join(__dirname, '..');
+  for (const directory of ['scripts', 'space']) {
+    fs.mkdirSync(path.join(fixture, directory));
+  }
+  for (const file of ['package.json', 'scripts/build-space-engine.js', 'scripts/audit-id.js']) {
+    fs.copyFileSync(path.join(root, file), path.join(fixture, file));
+  }
+
+  const htmlPath = path.join(fixture, 'space/index.html');
+  const bundlePath = path.join(fixture, 'space/engine.bundle.js');
+  const html = fs.readFileSync(path.join(root, 'space/index.html'), 'utf8');
+  const { version } = require('../package.json');
+  const staleHtml = html.replace(`>v${version}</span>`, '>v0.0.0</span>');
+  assert.notStrictEqual(staleHtml, html, 'fixture must start with a stale release badge');
+  fs.writeFileSync(htmlPath, staleHtml);
+  fs.writeFileSync(bundlePath, "export const VERSION = '0.0.0';\n");
+
+  const build = () => execFileSync(process.execPath, ['scripts/build-space-engine.js'], {
+    cwd: fixture,
+    timeout: 10000,
+    stdio: 'pipe',
+  });
+  build();
+  const bundle = fs.readFileSync(bundlePath, 'utf8');
+  assert.strictEqual(bundle, generateSpaceEngine(), 'build must regenerate the entire current engine');
+  assert.strictEqual(fs.readFileSync(htmlPath, 'utf8'), html, 'build must update the badge and preserve the rest of the page');
+
+  build();
+  assert.strictEqual(fs.readFileSync(bundlePath, 'utf8'), bundle, 'rebuilding must preserve bundle bytes');
+  assert.strictEqual(fs.readFileSync(htmlPath, 'utf8'), html, 'rebuilding must preserve HTML bytes');
+});
 
 // These retained brands are documented in scripts/README.md and its skill copy.
 for (const brand of ['Apple Health', 'Google Play', 'App Store', 'SatuSehat', 'Mobile JKN']) {
