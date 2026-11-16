@@ -40,18 +40,23 @@ test('bundled engine exports the canonical package version without a display pre
   const bundleUrl = pathToFileURL(path.join(__dirname, '..', 'space', 'engine.bundle.js')).href;
   const engine = await import(bundleUrl);
 
-  assert.strictEqual(engine.VERSION, version, 'Published engine version must match package.json exactly');
+  assert.strictEqual(typeof engine.VERSION, 'string', 'VERSION must be a public string export');
+  assert.strictEqual(engine.VERSION, version, 'The browser engine must report the package version');
 });
 
-test('static Space page displays exactly one canonical version badge before JavaScript runs', () => {
-  const packagePath = path.join(__dirname, '..', 'package.json');
-  const { version } = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+test('static Space page displays exactly one canonical version badge before JavaScript runs', async () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'space', 'index.html'), 'utf8');
-  const badges = [...html.matchAll(/<span\b[^>]*\bid=["']app-version["'][^>]*>([\s\S]*?)<\/span>/g)];
-
+  const { version } = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
+  const bundleUrl = pathToFileURL(path.join(__dirname, '..', 'space', 'engine.bundle.js')).href;
+  const engine = await import(bundleUrl);
   // Runtime hydration must not hide a missing, duplicated, or stale release badge.
-  assert.strictEqual(badges.length, 1, 'The static page must contain exactly one app-version badge');
-  assert.strictEqual(badges[0][1].trim(), `v${version}`, 'The static badge must show the current release with one v prefix');
+  const versionIds = [...html.matchAll(/\bid\s*=\s*(["'])app-version\1/g)];
+  assert.strictEqual(versionIds.length, 1, 'The version badge ID must exist and be unique');
+
+  const badge = html.match(/<span\b[^>]*\bid\s*=\s*(["'])app-version\1[^>]*>([^<]*)<\/span>/);
+  assert.ok(badge, 'The version badge must contain a visible text label');
+  assert.strictEqual(badge[2].trim(), `v${version}`, 'The badge must show the current package version');
+  assert.strictEqual(badge[2].trim(), `v${engine.VERSION}`, 'The badge and engine must agree');
 });
 
 test('engine.analyze: routes JSON vs prose and respects malformed JSON error boundary', async () => {
