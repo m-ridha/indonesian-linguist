@@ -5,6 +5,27 @@ const path = require('path');
 const { pathToFileURL } = require('url');
 const { generateSpaceEngine } = require('../scripts/build-space-engine.js');
 
+test('Space engine exports the package release version without a display prefix', async () => {
+  const { version } = require('../package.json');
+  const bundleUrl = pathToFileURL(path.join(__dirname, '..', 'space', 'engine.bundle.js')).href;
+  const engine = await import(bundleUrl);
+
+  assert.strictEqual(engine.VERSION, version, 'engine VERSION must match the published package version');
+});
+
+test('Space HTML contains exactly one version badge matching the package and engine', async () => {
+  const { version } = require('../package.json');
+  const bundleUrl = pathToFileURL(path.join(__dirname, '..', 'space', 'engine.bundle.js')).href;
+  const engine = await import(bundleUrl);
+  const html = fs.readFileSync(path.join(__dirname, '..', 'space', 'index.html'), 'utf8');
+  const badges = [...html.matchAll(/<span\b[^>]*\bid=["']app-version["'][^>]*>([\s\S]*?)<\/span>/g)];
+
+  assert.strictEqual(badges.length, 1, 'the release badge must exist exactly once');
+  // Check the shipped HTML directly: app.js overwrites this text at runtime and could hide a stale build.
+  assert.strictEqual(badges[0][1].trim(), `v${version}`, 'static badge must show the package release');
+  assert.strictEqual(badges[0][1].trim(), `v${engine.VERSION}`, 'static badge must match the runtime version');
+});
+
 test('space/engine.bundle.js is synchronized with scripts/audit-id.js', () => {
   const expected = generateSpaceEngine();
   const bundlePath = path.join(__dirname, '..', 'space', 'engine.bundle.js');
